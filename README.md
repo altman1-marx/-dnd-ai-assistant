@@ -68,6 +68,8 @@
   - AI DM 未来可调用的工具层：创建战役、添加地点/NPC/线索、揭示线索、记录事件、执行检定、应用伤害和治疗
 - `src/dnd_ai_assistant/demo.py`
   - 当前版本的命令行演示入口
+- `src/dnd_ai_assistant/scene_engine.py`
+  - 场景运行引擎：根据场景 JSON、玩家行动、检定和状态推进短场景
 - `tests/test_core.py`
   - 核心规则的最小单元测试
 - `tests/test_dm_tools.py`
