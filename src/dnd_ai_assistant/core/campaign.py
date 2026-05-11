@@ -56,6 +56,30 @@ class Quest:
 
 
 @dataclass
+class Monster:
+    name: str
+    armor_class: int
+    max_hp: int
+    current_hp: int
+    initiative_modifier: int = 0
+    attack_bonus: int = 0
+    damage: str = "1d4"
+    id: str = field(default_factory=lambda: new_id("mon"))
+
+
+@dataclass
+class Encounter:
+    title: str
+    location_id: str | None = None
+    difficulty: str = "medium"
+    trigger: str = ""
+    reward: str = ""
+    monsters: list[Monster] = field(default_factory=list)
+    resolved: bool = False
+    id: str = field(default_factory=lambda: new_id("enc"))
+
+
+@dataclass
 class SessionEvent:
     actor: str
     content: str
@@ -78,6 +102,7 @@ class Campaign:
     npcs: dict[str, NPC] = field(default_factory=dict)
     clues: dict[str, Clue] = field(default_factory=dict)
     quests: dict[str, Quest] = field(default_factory=dict)
+    encounters: dict[str, Encounter] = field(default_factory=dict)
     session_log: list[SessionEvent] = field(default_factory=list)
 
     def add_character(self, character: Character) -> None:
@@ -98,6 +123,11 @@ class Campaign:
 
     def add_quest(self, quest: Quest) -> None:
         self.quests[quest.id] = quest
+
+    def add_encounter(self, encounter: Encounter) -> None:
+        if encounter.location_id is not None and encounter.location_id not in self.locations:
+            raise ValueError(f"Unknown location id: {encounter.location_id}")
+        self.encounters[encounter.id] = encounter
 
     def record_event(self, event: SessionEvent) -> None:
         self.session_log.append(event)

@@ -63,7 +63,7 @@
   - 简化 DND 角色状态
   - HP、AC、属性、熟练、豁免、伤害和治疗
 - `src/dnd_ai_assistant/core/campaign.py`
-  - 战役、地点、NPC、线索、任务、事件日志等结构化模型
+  - 战役、地点、NPC、线索、任务、遭遇、怪物、事件日志等结构化模型
 - `src/dnd_ai_assistant/core/dm_tools.py`
   - AI DM 未来可调用的工具层：创建战役、添加地点/NPC/线索、揭示线索、记录事件、执行检定、应用伤害和治疗
 - `src/dnd_ai_assistant/demo.py`

@@ -1,6 +1,7 @@
 import random
 import unittest
 
+from dnd_ai_assistant.core.campaign import Monster
 from dnd_ai_assistant.core.character import Character
 from dnd_ai_assistant.core.dm_tools import DMTools
 from dnd_ai_assistant.core.dnd5e import RollMode
@@ -104,6 +105,38 @@ class DMToolsTests(unittest.TestCase):
         self.assertEqual(campaign.characters["Kael"].current_hp, 16)
         self.assertIn("Kael took 6 damage", campaign.session_log[0].content)
         self.assertIn("Kael healed 4", campaign.session_log[1].content)
+
+    def test_add_and_resolve_encounter(self) -> None:
+        tools = DMTools(rng=random.Random(1))
+        campaign = tools.create_campaign("Roadside Ambush", party_level=2).data
+        location = tools.add_location(campaign.id, "Old Road", "A muddy road through the woods.").data
+
+        result = tools.add_encounter(
+            campaign.id,
+            title="Ash Goblin Ambush",
+            location_id=location.id,
+            difficulty="easy",
+            trigger="The party opens the sealed stairway.",
+            reward="A cracked copper bell charm.",
+            monsters=[
+                Monster(
+                    name="Ash Goblin",
+                    armor_class=13,
+                    max_hp=7,
+                    current_hp=7,
+                    initiative_modifier=2,
+                    attack_bonus=4,
+                    damage="1d6+2",
+                )
+            ],
+        )
+        encounter = result.data
+        resolved = tools.resolve_encounter(campaign.id, encounter.id)
+
+        self.assertTrue(result.ok)
+        self.assertTrue(resolved.ok)
+        self.assertTrue(campaign.encounters[encounter.id].resolved)
+        self.assertIn("Encounter resolved", campaign.session_log[0].content)
 
 
 if __name__ == "__main__":

@@ -157,6 +157,7 @@ def summarize_state(path: str | Path) -> str:
             f"NPCs: {len(campaign.npcs)}",
             f"Clues: {sum(1 for clue in campaign.clues.values() if clue.discovered)}/{len(campaign.clues)} discovered",
             f"Quests: {len(campaign.quests)}",
+            f"Encounters: {len(campaign.encounters)}",
             f"Session events: {len(campaign.session_log)}",
         ]
     )

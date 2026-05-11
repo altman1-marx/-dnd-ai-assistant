@@ -3,7 +3,7 @@ from __future__ import annotations
 import random
 from dataclasses import dataclass
 
-from .campaign import Campaign, Clue, Location, NPC, Quest, SessionEvent, Visibility
+from .campaign import Campaign, Clue, Encounter, Location, Monster, NPC, Quest, SessionEvent, Visibility
 from .character import Character
 from .dnd5e import D20Check, RollMode, roll_d20_check
 from .store import InMemoryCampaignStore
@@ -105,6 +105,35 @@ class DMTools:
         quest = Quest(title=title, summary=summary)
         campaign.add_quest(quest)
         return ToolResult(True, f"Added quest: {quest.title}", quest)
+
+    def add_encounter(
+        self,
+        campaign_id: str,
+        title: str,
+        monsters: list[Monster],
+        location_id: str | None = None,
+        difficulty: str = "medium",
+        trigger: str = "",
+        reward: str = "",
+    ) -> ToolResult:
+        campaign = self.store.get(campaign_id)
+        encounter = Encounter(
+            title=title,
+            monsters=monsters,
+            location_id=location_id,
+            difficulty=difficulty,
+            trigger=trigger,
+            reward=reward,
+        )
+        campaign.add_encounter(encounter)
+        return ToolResult(True, f"Added encounter: {encounter.title}", encounter)
+
+    def resolve_encounter(self, campaign_id: str, encounter_id: str) -> ToolResult:
+        campaign = self.store.get(campaign_id)
+        encounter = campaign.encounters[encounter_id]
+        encounter.resolved = True
+        campaign.record_event(SessionEvent(actor="DM", content=f"Encounter resolved: {encounter.title}"))
+        return ToolResult(True, f"Resolved encounter: {encounter.title}", encounter)
 
     def record_event(
         self,

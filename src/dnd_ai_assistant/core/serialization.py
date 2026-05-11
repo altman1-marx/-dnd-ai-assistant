@@ -4,7 +4,7 @@ import json
 from datetime import datetime
 from pathlib import Path
 
-from .campaign import Campaign, Clue, Location, NPC, Quest, SessionEvent, Visibility
+from .campaign import Campaign, Clue, Encounter, Location, Monster, NPC, Quest, SessionEvent, Visibility
 from .character import Character
 
 
@@ -96,6 +96,31 @@ def campaign_to_dict(campaign: Campaign) -> dict:
             }
             for item_id, quest in campaign.quests.items()
         },
+        "encounters": {
+            item_id: {
+                "id": encounter.id,
+                "title": encounter.title,
+                "location_id": encounter.location_id,
+                "difficulty": encounter.difficulty,
+                "trigger": encounter.trigger,
+                "reward": encounter.reward,
+                "resolved": encounter.resolved,
+                "monsters": [
+                    {
+                        "id": monster.id,
+                        "name": monster.name,
+                        "armor_class": monster.armor_class,
+                        "max_hp": monster.max_hp,
+                        "current_hp": monster.current_hp,
+                        "initiative_modifier": monster.initiative_modifier,
+                        "attack_bonus": monster.attack_bonus,
+                        "damage": monster.damage,
+                    }
+                    for monster in encounter.monsters
+                ],
+            }
+            for item_id, encounter in campaign.encounters.items()
+        },
         "session_log": [
             {
                 "id": event.id,
@@ -163,6 +188,31 @@ def campaign_from_dict(data: dict) -> Campaign:
                 status=quest.get("status", "active"),
             )
         )
+    for encounter in data.get("encounters", {}).values():
+        campaign.add_encounter(
+            Encounter(
+                id=encounter["id"],
+                title=encounter["title"],
+                location_id=encounter.get("location_id"),
+                difficulty=encounter.get("difficulty", "medium"),
+                trigger=encounter.get("trigger", ""),
+                reward=encounter.get("reward", ""),
+                resolved=encounter.get("resolved", False),
+                monsters=[
+                    Monster(
+                        id=monster["id"],
+                        name=monster["name"],
+                        armor_class=monster["armor_class"],
+                        max_hp=monster["max_hp"],
+                        current_hp=monster["current_hp"],
+                        initiative_modifier=monster.get("initiative_modifier", 0),
+                        attack_bonus=monster.get("attack_bonus", 0),
+                        damage=monster.get("damage", "1d4"),
+                    )
+                    for monster in encounter.get("monsters", [])
+                ],
+            )
+        )
     for event in data.get("session_log", []):
         campaign.record_event(
             SessionEvent(
@@ -184,4 +234,3 @@ def save_campaign(campaign: Campaign, path: str | Path) -> None:
 
 def load_campaign(path: str | Path) -> Campaign:
     return campaign_from_dict(json.loads(Path(path).read_text(encoding="utf-8")))
-
