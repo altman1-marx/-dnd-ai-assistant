@@ -97,6 +97,28 @@ python -m dnd_ai_assistant.demo quickstart --seed 42
 
 这个 demo 会创建一个示例战役，加入一名游侠角色、一个地点、一个 NPC、一个线索和一个任务，然后进行一次带优势的察觉检定，并打印 session log。
 
+运行一个极简交互场景：
+
+```powershell
+python -m dnd_ai_assistant.demo play
+```
+
+可以输入：
+
+```text
+look around
+inspect rope
+open stairway
+log
+quit
+```
+
+也可以用非交互方式脚本化运行，方便测试：
+
+```powershell
+python -m dnd_ai_assistant.demo play --action "look around" --action "inspect rope" --action "open stairway" --action "quit"
+```
+
 当前版本可以作为 Python 库手动调用。例如：
 
 ```powershell

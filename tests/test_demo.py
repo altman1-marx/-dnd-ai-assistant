@@ -1,6 +1,6 @@
 import unittest
 
-from dnd_ai_assistant.demo import run_quickstart
+from dnd_ai_assistant.demo import run_quickstart, run_scripted_scene
 
 
 class DemoTests(unittest.TestCase):
@@ -14,7 +14,20 @@ class DemoTests(unittest.TestCase):
         self.assertIn("total: 23", output)
         self.assertIn("[System] Kael rolled 23 vs DC 15: success.", output)
 
+    def test_scripted_scene_resolves_basic_actions(self) -> None:
+        output = run_scripted_scene(seed=1, actions=["look around", "inspect rope", "open stairway", "quit"])
+
+        self.assertIn("DM: Kael stands inside the Old Chapel.", output)
+        self.assertIn("Player: inspect rope", output)
+        self.assertIn("System: Perception with advantage vs DC 15 -> rolls (5, 19), total 23.", output)
+        self.assertIn("DM: The seal grinds open.", output)
+        self.assertIn("DM: The scene pauses here.", output)
+
+    def test_stairway_requires_clue_first(self) -> None:
+        output = run_scripted_scene(seed=1, actions=["open stairway"])
+
+        self.assertIn("The stairway seal does not move", output)
+
 
 if __name__ == "__main__":
     unittest.main()
-
