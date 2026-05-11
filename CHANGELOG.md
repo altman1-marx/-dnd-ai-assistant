@@ -1,0 +1,18 @@
+# Changelog
+
+## Unreleased
+
+- Added DND core dice and d20 check utilities.
+- Added simplified character state with HP, AC, proficiencies, damage, and healing.
+- Added campaign, location, NPC, clue, quest, encounter, monster, and session event models.
+- Added in-memory campaign store.
+- Added DM tool layer for campaign updates, rolls, clue reveals, damage, healing, encounter resolution, and attacks.
+- Added JSON campaign serialization and saved-state summaries.
+- Added scene JSON loading, validation, and template generation.
+- Added a bundled `old_chapel` scene.
+- Added scene engine separated from CLI input/output.
+- Added interactive and scripted CLI play mode.
+- Added initiative tracker and initiative CLI demo.
+- Added one-attack combat CLI demo with optional state export.
+- Added architecture documentation.
+

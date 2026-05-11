@@ -583,3 +583,4 @@ SessionEvent
 ## 文档
 
 - [Architecture](docs/architecture.md)
+- [Changelog](CHANGELOG.md)
