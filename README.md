@@ -138,6 +138,12 @@ python -m dnd_ai_assistant.demo validate-scene
 python -m dnd_ai_assistant.demo validate-scene --scene path\to\your_scene.json
 ```
 
+生成一个新的场景模板：
+
+```powershell
+python -m dnd_ai_assistant.demo new-scene --output scenes\my_adventure.json --title "Goblin Road"
+```
+
 现在的场景 JSON 还很小，只覆盖一个地点、一个 NPC、一个线索、一个任务和一个固定检定。它的意义是把“剧本内容”和“跑团引擎”分开，后续 AI 生成的剧本可以按同样格式落盘。
 
 保存一次跑团后的战役状态：

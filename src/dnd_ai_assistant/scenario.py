@@ -117,3 +117,81 @@ def validate_scene(scene: SceneDefinition) -> list[str]:
 
 def validate_scene_file(path: str | Path | None = None) -> SceneDefinition:
     return load_scene(path)
+
+
+def create_scene_template(title: str) -> dict:
+    return {
+        "campaign": {
+            "title": title,
+            "party_level": 1,
+            "tone": "heroic fantasy",
+            "public_lore": "Write the player-facing premise here.",
+            "dm_secrets": "Write hidden truths and future reveals here.",
+        },
+        "hero": {
+            "name": "Example Hero",
+            "player_name": "Player",
+            "class_name": "Fighter",
+            "level": 1,
+            "ancestry": "Human",
+            "ability_scores": {"str": 16, "dex": 12, "con": 14, "int": 10, "wis": 10, "cha": 8},
+            "armor_class": 16,
+            "max_hp": 12,
+            "current_hp": 12,
+            "skill_proficiencies": ["athletics", "perception"],
+            "saving_throw_proficiencies": ["str", "con"],
+        },
+        "location": {
+            "name": "Starting Location",
+            "public_description": "Describe what the players immediately perceive.",
+            "dm_notes": "Describe hidden details, traps, or secret connections.",
+        },
+        "npc": {
+            "name": "Quest Giver",
+            "role": "local contact",
+            "public_description": "Describe what the players can observe.",
+            "dm_secret": "Describe what this NPC hides.",
+        },
+        "clue": {
+            "title": "First Clue",
+            "public_text": "Describe the clue once discovered.",
+            "dm_secret": "Explain what the clue really means.",
+        },
+        "quest": {
+            "title": "Opening Objective",
+            "summary": "Describe the immediate goal for the party.",
+        },
+        "text": {
+            "intro": [
+                "{hero} arrives at the starting location.",
+                "Something is clearly wrong here.",
+                "Try actions like 'look around', 'inspect rope', 'open stairway', 'log', or 'quit'.",
+            ],
+            "look": "Describe the room when the player looks around.",
+            "inspect_first": "Describe the first inspection result.",
+            "inspect_success": "Describe the extra information found on success.",
+            "inspect_failure": "Describe the partial information found on failure.",
+            "inspect_repeat": "Describe what happens if the player repeats the inspection.",
+            "stairway_locked": "Describe why the next path is locked before the clue is found.",
+            "stairway_open": "Describe the next path opening.",
+            "stairway_repeat": "Describe the already-open path.",
+            "unknown": "The current prototype does not know how to resolve that yet.",
+            "pause": "The scene pauses here.",
+        },
+        "checks": {
+            "inspect_rope": {
+                "ability": "wis",
+                "proficient": True,
+                "dc": 12,
+                "mode": "normal",
+                "label": "Perception",
+            }
+        },
+    }
+
+
+def write_scene_template(path: str | Path, title: str) -> None:
+    output_path = Path(path)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    scene = create_scene_template(title)
+    output_path.write_text(json.dumps(scene, ensure_ascii=False, indent=2), encoding="utf-8")

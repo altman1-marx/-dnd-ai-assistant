@@ -10,7 +10,7 @@ from .core.campaign import Campaign, Clue, Location
 from .core.dm_tools import DMTools
 from .core.dnd5e import RollMode
 from .core.serialization import save_campaign
-from .scenario import DEFAULT_SCENE_PATH, SceneDefinition, load_scene, validate_scene_file
+from .scenario import DEFAULT_SCENE_PATH, SceneDefinition, load_scene, validate_scene_file, write_scene_template
 
 
 @dataclass
@@ -282,6 +282,10 @@ def main() -> int:
     validate = subparsers.add_parser("validate-scene", help="Validate a scene JSON file.")
     validate.add_argument("--scene", default=None, help="Path to a scene JSON file. Defaults to bundled old_chapel.")
 
+    new_scene = subparsers.add_parser("new-scene", help="Write a starter scene JSON template.")
+    new_scene.add_argument("--output", required=True, help="Where to write the scene JSON file.")
+    new_scene.add_argument("--title", default="Untitled DND Adventure", help="Campaign title for the template.")
+
     args = parser.parse_args()
     if args.command == "quickstart":
         print(run_quickstart(args.seed))
@@ -296,6 +300,10 @@ def main() -> int:
         scene_path = args.scene or DEFAULT_SCENE_PATH
         print(f"Scene OK: {scene_path}")
         print(f"Title: {scene.campaign['title']}")
+        return 0
+    if args.command == "new-scene":
+        write_scene_template(args.output, args.title)
+        print(f"Wrote scene template: {args.output}")
         return 0
 
     parser.print_help()
