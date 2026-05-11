@@ -10,7 +10,7 @@ from .core.campaign import Campaign, Clue, Location
 from .core.dm_tools import DMTools
 from .core.dnd5e import RollMode
 from .core.serialization import save_campaign
-from .scenario import SceneDefinition, load_scene
+from .scenario import DEFAULT_SCENE_PATH, SceneDefinition, load_scene, validate_scene_file
 
 
 @dataclass
@@ -279,6 +279,9 @@ def main() -> int:
         help="Run a non-interactive action. Repeat this option to script a scene.",
     )
 
+    validate = subparsers.add_parser("validate-scene", help="Validate a scene JSON file.")
+    validate.add_argument("--scene", default=None, help="Path to a scene JSON file. Defaults to bundled old_chapel.")
+
     args = parser.parse_args()
     if args.command == "quickstart":
         print(run_quickstart(args.seed))
@@ -288,6 +291,12 @@ def main() -> int:
             print(run_scripted_scene(args.seed, args.action, args.scene, args.save_state))
             return 0
         return run_interactive_scene(args.seed, args.scene, args.save_state)
+    if args.command == "validate-scene":
+        scene = validate_scene_file(args.scene)
+        scene_path = args.scene or DEFAULT_SCENE_PATH
+        print(f"Scene OK: {scene_path}")
+        print(f"Title: {scene.campaign['title']}")
+        return 0
 
     parser.print_help()
     return 0
