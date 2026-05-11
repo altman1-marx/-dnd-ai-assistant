@@ -2,7 +2,7 @@ import unittest
 import tempfile
 from pathlib import Path
 
-from dnd_ai_assistant.demo import run_initiative_demo, run_quickstart, run_scripted_scene, summarize_state
+from dnd_ai_assistant.demo import run_combat_demo, run_initiative_demo, run_quickstart, run_scripted_scene, summarize_state
 
 
 class DemoTests(unittest.TestCase):
@@ -60,6 +60,15 @@ class DemoTests(unittest.TestCase):
         self.assertIn("Initiative order:", output)
         self.assertIn("Ash Goblin: d20 19 + 2 = 21", output)
         self.assertIn("Round 1: Ash Goblin", output)
+
+    def test_combat_demo_resolves_scene_attack(self) -> None:
+        output = run_combat_demo(seed=1)
+
+        self.assertIn("Encounter: Ash Goblin in the Crypt", output)
+        self.assertIn("Attacker: Ash Goblin", output)
+        self.assertIn("Attack total: 9", output)
+        self.assertIn("Hit: False", output)
+        self.assertIn("Target HP: 18/18", output)
 
 
 if __name__ == "__main__":

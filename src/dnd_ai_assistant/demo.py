@@ -157,6 +157,37 @@ def run_initiative_demo(seed: int, rounds: int, scene_path: str | Path | None = 
     return "\n".join(lines)
 
 
+def run_combat_demo(seed: int, scene_path: str | Path | None = None) -> str:
+    session = build_scene_session(seed, scene_path)
+    encounter = next(iter(session.campaign.encounters.values()), None)
+    if encounter is None or not encounter.monsters:
+        return "No encounter found in this scene."
+
+    monster = encounter.monsters[0]
+    result = session.tools.attack_character(
+        campaign_id=session.campaign.id,
+        attacker_name=monster.name,
+        target_name=session.hero.name,
+        attack_bonus=monster.attack_bonus,
+        damage_expression=monster.damage,
+    )
+    attack = result.data
+    lines = [
+        f"Encounter: {encounter.title}",
+        f"Attacker: {monster.name}",
+        f"Target: {session.hero.name} (AC {session.hero.armor_class})",
+        f"Attack total: {attack.attack.total}",
+        f"Hit: {attack.hit}",
+    ]
+    if attack.damage is not None:
+        lines.append(f"Damage: {attack.damage.total}")
+    lines.append(f"Target HP: {session.hero.current_hp}/{session.hero.max_hp}")
+    lines.append("")
+    lines.append("Session log:")
+    lines.extend(f"- [{event.actor}] {event.content}" for event in session.campaign.session_log)
+    return "\n".join(lines)
+
+
 def summarize_state(path: str | Path) -> str:
     campaign = load_campaign(path)
     lines = [
@@ -226,6 +257,10 @@ def main() -> int:
     initiative.add_argument("--rounds", type=int, default=2, help="How many rounds to print.")
     initiative.add_argument("--scene", default=None, help="Path to a scene JSON file.")
 
+    combat = subparsers.add_parser("combat", help="Run a one-attack combat demo from scene encounter data.")
+    combat.add_argument("--seed", type=int, default=1, help="Random seed for reproducible rolls.")
+    combat.add_argument("--scene", default=None, help="Path to a scene JSON file.")
+
     state = subparsers.add_parser("state-summary", help="Print a saved campaign state summary.")
     state.add_argument("path", help="Path to a saved campaign JSON file.")
 
@@ -250,6 +285,9 @@ def main() -> int:
         return 0
     if args.command == "initiative":
         print(run_initiative_demo(args.seed, args.rounds, args.scene))
+        return 0
+    if args.command == "combat":
+        print(run_combat_demo(args.seed, args.scene))
         return 0
     if args.command == "state-summary":
         print(summarize_state(args.path))

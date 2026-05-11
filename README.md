@@ -110,6 +110,13 @@ python -m dnd_ai_assistant.demo initiative --seed 42 --rounds 3
 python -m dnd_ai_assistant.demo initiative --scene path\to\your_scene.json
 ```
 
+运行一次场景遭遇中的攻击演示：
+
+```powershell
+python -m dnd_ai_assistant.demo combat
+python -m dnd_ai_assistant.demo combat --seed 42 --scene path\to\your_scene.json
+```
+
 指定随机种子，方便复现实验结果：
 
 ```powershell
