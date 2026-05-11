@@ -2,7 +2,7 @@ import unittest
 import tempfile
 from pathlib import Path
 
-from dnd_ai_assistant.demo import run_initiative_demo, run_quickstart, run_scripted_scene
+from dnd_ai_assistant.demo import run_initiative_demo, run_quickstart, run_scripted_scene, summarize_state
 
 
 class DemoTests(unittest.TestCase):
@@ -43,6 +43,16 @@ class DemoTests(unittest.TestCase):
 
             self.assertTrue(path.exists())
             self.assertIn("Saved campaign state", output)
+
+    def test_state_summary_reads_saved_state(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "state.json"
+            run_scripted_scene(seed=1, actions=["inspect rope", "quit"], save_state_path=path)
+            summary = summarize_state(path)
+
+        self.assertIn("Campaign: The Bell Beneath Ashford", summary)
+        self.assertIn("Characters: 1", summary)
+        self.assertIn("Clues: 1/1 discovered", summary)
 
     def test_initiative_demo_prints_order_and_turns(self) -> None:
         output = run_initiative_demo(seed=1, rounds=1)

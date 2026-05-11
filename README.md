@@ -171,6 +171,12 @@ python -m dnd_ai_assistant.demo new-scene --output scenes\my_adventure.json --ti
 python -m dnd_ai_assistant.demo play --action "inspect rope" --action "open stairway" --action "quit" --save-state output\ashford_state.json
 ```
 
+查看保存后的状态摘要：
+
+```powershell
+python -m dnd_ai_assistant.demo state-summary output\ashford_state.json
+```
+
 保存的状态包含战役基础信息、角色、地点、NPC、线索、任务和 session log。相关代码在：
 
 ```text

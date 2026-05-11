@@ -11,7 +11,7 @@ from .core.campaign import Campaign, Clue, Location
 from .core.dm_tools import DMTools
 from .core.dnd5e import RollMode
 from .core.initiative import Combatant, InitiativeTracker
-from .core.serialization import save_campaign
+from .core.serialization import load_campaign, save_campaign
 from .scenario import DEFAULT_SCENE_PATH, SceneDefinition, load_scene, validate_scene_file, write_scene_template
 
 
@@ -294,6 +294,39 @@ def run_initiative_demo(seed: int, rounds: int) -> str:
     return "\n".join(lines)
 
 
+def summarize_state(path: str | Path) -> str:
+    campaign = load_campaign(path)
+    lines = [
+        f"Campaign: {campaign.title}",
+        f"System: {campaign.system}",
+        f"Tone: {campaign.tone}",
+        f"Party level: {campaign.party_level}",
+        "",
+        f"Characters: {len(campaign.characters)}",
+    ]
+    for character in campaign.characters.values():
+        lines.append(
+            f"- {character.name}: level {character.level} {character.ancestry} {character.class_name}, "
+            f"HP {character.current_hp}/{character.max_hp}, AC {character.armor_class}"
+        )
+    lines.extend(
+        [
+            "",
+            f"Locations: {len(campaign.locations)}",
+            f"NPCs: {len(campaign.npcs)}",
+            f"Clues: {sum(1 for clue in campaign.clues.values() if clue.discovered)}/{len(campaign.clues)} discovered",
+            f"Quests: {len(campaign.quests)}",
+            f"Session events: {len(campaign.session_log)}",
+        ]
+    )
+    if campaign.session_log:
+        lines.append("")
+        lines.append("Recent events:")
+        for event in campaign.session_log[-5:]:
+            lines.append(f"- [{event.actor}] {event.content}")
+    return "\n".join(lines)
+
+
 def main() -> int:
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8", errors="replace")
@@ -328,6 +361,9 @@ def main() -> int:
     initiative.add_argument("--seed", type=int, default=1, help="Random seed for reproducible rolls.")
     initiative.add_argument("--rounds", type=int, default=2, help="How many rounds to print.")
 
+    state = subparsers.add_parser("state-summary", help="Print a saved campaign state summary.")
+    state.add_argument("path", help="Path to a saved campaign JSON file.")
+
     args = parser.parse_args()
     if args.command == "quickstart":
         print(run_quickstart(args.seed))
@@ -349,6 +385,9 @@ def main() -> int:
         return 0
     if args.command == "initiative":
         print(run_initiative_demo(args.seed, args.rounds))
+        return 0
+    if args.command == "state-summary":
+        print(summarize_state(args.path))
         return 0
 
     parser.print_help()
