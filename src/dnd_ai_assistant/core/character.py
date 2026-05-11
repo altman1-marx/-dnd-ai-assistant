@@ -1,0 +1,62 @@
+from __future__ import annotations
+
+from dataclasses import dataclass, field
+
+from .dnd5e import ability_modifier, proficiency_bonus
+
+
+ABILITY_NAMES = ("str", "dex", "con", "int", "wis", "cha")
+
+
+@dataclass
+class Character:
+    name: str
+    player_name: str
+    class_name: str
+    level: int
+    ancestry: str
+    ability_scores: dict[str, int]
+    armor_class: int
+    max_hp: int
+    current_hp: int
+    skill_proficiencies: set[str] = field(default_factory=set)
+    saving_throw_proficiencies: set[str] = field(default_factory=set)
+    conditions: set[str] = field(default_factory=set)
+    inventory: list[str] = field(default_factory=list)
+
+    def __post_init__(self) -> None:
+        missing = set(ABILITY_NAMES) - set(self.ability_scores)
+        if missing:
+            raise ValueError(f"Missing ability scores: {', '.join(sorted(missing))}")
+        if self.current_hp > self.max_hp:
+            raise ValueError("Current HP cannot exceed max HP.")
+        if self.max_hp <= 0:
+            raise ValueError("Max HP must be positive.")
+
+    @property
+    def proficiency_bonus(self) -> int:
+        return proficiency_bonus(self.level)
+
+    def ability_modifier(self, ability: str) -> int:
+        return ability_modifier(self.ability_scores[ability])
+
+    def saving_throw_modifier(self, ability: str) -> int:
+        modifier = self.ability_modifier(ability)
+        if ability in self.saving_throw_proficiencies:
+            modifier += self.proficiency_bonus
+        return modifier
+
+    def apply_damage(self, amount: int) -> None:
+        if amount < 0:
+            raise ValueError("Damage cannot be negative.")
+        self.current_hp = max(0, self.current_hp - amount)
+
+    def heal(self, amount: int) -> None:
+        if amount < 0:
+            raise ValueError("Healing cannot be negative.")
+        self.current_hp = min(self.max_hp, self.current_hp + amount)
+
+    @property
+    def is_unconscious(self) -> bool:
+        return self.current_hp == 0
+

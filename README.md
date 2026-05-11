@@ -44,6 +44,33 @@
 
 第一版建议做成 Web App，先支持一个小队、一名 AI DM、一个战役房间。
 
+## 当前原型
+
+当前仓库已经从 DND 核心工具层开始实现，重点是让未来 AI DM 调用确定性的规则工具，而不是自己编结果。
+
+已包含：
+
+- `src/dnd_ai_assistant/core/dice.py`
+  - 解析和投掷 `1d20`、`2d6+3`、`d8-1` 等骰子表达式
+- `src/dnd_ai_assistant/core/dnd5e.py`
+  - 属性修正值
+  - 熟练加值
+  - 普通 / 优势 / 劣势 d20 检定
+  - 伤害骰
+- `src/dnd_ai_assistant/core/character.py`
+  - 简化 DND 角色状态
+  - HP、AC、属性、熟练、豁免、伤害和治疗
+- `tests/test_core.py`
+  - 核心规则的最小单元测试
+
+运行测试：
+
+```powershell
+cd F:\work\dnd-ai-assistant
+$env:PYTHONPATH = "src"
+python -m unittest discover -s tests
+```
+
 ### 1. 战役创建
 
 用户输入：
@@ -357,4 +384,3 @@ SessionEvent
 - EmberDM
 
 当前仓库暂用名称：`dnd-ai-assistant`
-
