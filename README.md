@@ -57,6 +57,8 @@
   - 熟练加值
   - 普通 / 优势 / 劣势 d20 检定
   - 伤害骰
+- `src/dnd_ai_assistant/core/initiative.py`
+  - 简单先攻排序和回合推进
 - `src/dnd_ai_assistant/core/character.py`
   - 简化 DND 角色状态
   - HP、AC、属性、熟练、豁免、伤害和治疗
