@@ -106,6 +106,23 @@ class DMToolsTests(unittest.TestCase):
         self.assertIn("Kael took 6 damage", campaign.session_log[0].content)
         self.assertIn("Kael healed 4", campaign.session_log[1].content)
 
+    def test_attack_character_rolls_attack_and_damage(self) -> None:
+        tools = DMTools(rng=random.Random(1))
+        campaign = tools.create_campaign("Roadside Ambush", party_level=2).data
+        tools.add_character(campaign.id, sample_character())
+
+        result = tools.attack_character(
+            campaign_id=campaign.id,
+            attacker_name="Ash Goblin",
+            target_name="Kael",
+            attack_bonus=11,
+            damage_expression="1d6+2",
+        )
+
+        self.assertTrue(result.ok)
+        self.assertEqual(campaign.characters["Kael"].current_hp, 11)
+        self.assertIn("hit for 7 damage", campaign.session_log[0].content)
+
     def test_add_and_resolve_encounter(self) -> None:
         tools = DMTools(rng=random.Random(1))
         campaign = tools.create_campaign("Roadside Ambush", party_level=2).data

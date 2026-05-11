@@ -26,6 +26,14 @@ class D20Check:
     natural_1: bool
 
 
+@dataclass(frozen=True)
+class AttackRoll:
+    attack: D20Check
+    target_ac: int
+    hit: bool
+    damage: DiceRoll | None
+
+
 def ability_modifier(score: int) -> int:
     if score < 1 or score > 30:
         raise ValueError("DND 5e ability scores should be between 1 and 30.")
@@ -78,3 +86,16 @@ def roll_d20_check(
 def roll_damage(expression: str, rng: random.Random | None = None) -> DiceRoll:
     return roll(expression, rng)
 
+
+def roll_attack(
+    attack_bonus: int,
+    target_ac: int,
+    damage_expression: str,
+    mode: RollMode = RollMode.NORMAL,
+    rng: random.Random | None = None,
+) -> AttackRoll:
+    rng = rng or random.Random()
+    attack = roll_d20_check(modifier=attack_bonus, dc=target_ac, mode=mode, rng=rng)
+    hit = bool(attack.success)
+    damage = roll_damage(damage_expression, rng) if hit else None
+    return AttackRoll(attack=attack, target_ac=target_ac, hit=hit, damage=damage)

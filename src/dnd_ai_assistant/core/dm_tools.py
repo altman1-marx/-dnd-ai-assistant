@@ -5,7 +5,7 @@ from dataclasses import dataclass
 
 from .campaign import Campaign, Clue, Encounter, Location, Monster, NPC, Quest, SessionEvent, Visibility
 from .character import Character
-from .dnd5e import D20Check, RollMode, roll_d20_check
+from .dnd5e import AttackRoll, D20Check, RollMode, roll_attack, roll_d20_check
 from .store import InMemoryCampaignStore
 
 
@@ -197,3 +197,35 @@ class DMTools:
             )
         )
         return ToolResult(True, f"Healed {character_name} for {amount}.", character)
+
+    def attack_character(
+        self,
+        campaign_id: str,
+        attacker_name: str,
+        target_name: str,
+        attack_bonus: int,
+        damage_expression: str,
+        mode: RollMode = RollMode.NORMAL,
+    ) -> ToolResult:
+        campaign = self.store.get(campaign_id)
+        if target_name not in campaign.characters:
+            return ToolResult(False, f"Character not found: {target_name}")
+        target = campaign.characters[target_name]
+        attack: AttackRoll = roll_attack(
+            attack_bonus=attack_bonus,
+            target_ac=target.armor_class,
+            damage_expression=damage_expression,
+            mode=mode,
+            rng=self.rng,
+        )
+        if attack.hit and attack.damage is not None:
+            before = target.current_hp
+            target.apply_damage(attack.damage.total)
+            content = (
+                f"{attacker_name} attacks {target_name}: {attack.attack.total} vs AC {target.armor_class}, "
+                f"hit for {attack.damage.total} damage: HP {before} -> {target.current_hp}."
+            )
+        else:
+            content = f"{attacker_name} attacks {target_name}: {attack.attack.total} vs AC {target.armor_class}, miss."
+        campaign.record_event(SessionEvent(actor="System", content=content))
+        return ToolResult(True, content, attack)

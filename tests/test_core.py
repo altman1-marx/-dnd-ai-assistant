@@ -3,7 +3,7 @@ import unittest
 
 from dnd_ai_assistant.core.character import Character
 from dnd_ai_assistant.core.dice import parse_dice_expression, roll
-from dnd_ai_assistant.core.dnd5e import RollMode, ability_modifier, proficiency_bonus, roll_d20_check
+from dnd_ai_assistant.core.dnd5e import RollMode, ability_modifier, proficiency_bonus, roll_attack, roll_d20_check
 
 
 class DiceTests(unittest.TestCase):
@@ -36,6 +36,13 @@ class Dnd5eTests(unittest.TestCase):
         self.assertEqual(check.total, 21)
         self.assertTrue(check.success)
 
+    def test_attack_roll_deals_damage_on_hit(self) -> None:
+        attack = roll_attack(attack_bonus=8, target_ac=13, damage_expression="1d6+2", rng=random.Random(1))
+
+        self.assertTrue(attack.hit)
+        self.assertEqual(attack.attack.total, 13)
+        self.assertEqual(attack.damage.total, 7)
+
 
 class CharacterTests(unittest.TestCase):
     def test_damage_and_healing(self) -> None:
@@ -63,4 +70,3 @@ class CharacterTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
-

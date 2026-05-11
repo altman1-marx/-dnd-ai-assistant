@@ -57,6 +57,7 @@
   - 熟练加值
   - 普通 / 优势 / 劣势 d20 检定
   - 伤害骰
+  - 简单攻击命中和伤害结算
 - `src/dnd_ai_assistant/core/initiative.py`
   - 简单先攻排序和回合推进
 - `src/dnd_ai_assistant/core/character.py`
