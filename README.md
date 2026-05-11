@@ -60,8 +60,14 @@
 - `src/dnd_ai_assistant/core/character.py`
   - 简化 DND 角色状态
   - HP、AC、属性、熟练、豁免、伤害和治疗
+- `src/dnd_ai_assistant/core/campaign.py`
+  - 战役、地点、NPC、线索、任务、事件日志等结构化模型
+- `src/dnd_ai_assistant/core/dm_tools.py`
+  - AI DM 未来可调用的工具层：创建战役、添加地点/NPC/线索、揭示线索、记录事件、执行检定
 - `tests/test_core.py`
   - 核心规则的最小单元测试
+- `tests/test_dm_tools.py`
+  - 战役工具层的最小单元测试
 
 运行测试：
 
@@ -69,6 +75,69 @@
 cd F:\work\dnd-ai-assistant
 $env:PYTHONPATH = "src"
 python -m unittest discover -s tests
+```
+
+当前版本可以作为 Python 库手动调用。例如：
+
+```powershell
+cd F:\work\dnd-ai-assistant
+$env:PYTHONPATH = "src"
+python
+```
+
+然后在 Python 里运行：
+
+```python
+import random
+from dnd_ai_assistant.core.character import Character
+from dnd_ai_assistant.core.dm_tools import DMTools
+from dnd_ai_assistant.core.dnd5e import RollMode
+
+tools = DMTools(rng=random.Random(1))
+campaign = tools.create_campaign(
+    title="The Bell Beneath Ashford",
+    party_level=2,
+    tone="dark fantasy investigation",
+).data
+
+hero = Character(
+    name="Kael",
+    player_name="Altman",
+    class_name="Ranger",
+    level=2,
+    ancestry="Wood Elf",
+    ability_scores={"str": 10, "dex": 16, "con": 12, "int": 10, "wis": 14, "cha": 8},
+    armor_class=15,
+    max_hp=18,
+    current_hp=18,
+    skill_proficiencies={"perception"},
+    saving_throw_proficiencies={"str", "dex"},
+)
+
+tools.add_character(campaign.id, hero)
+chapel = tools.add_location(
+    campaign.id,
+    name="Old Chapel",
+    public_description="A cracked chapel with a silent bronze bell.",
+).data
+clue = tools.add_clue(
+    campaign.id,
+    title="Ash on the Bell Rope",
+    public_text="The rope is dusted with black ash.",
+    location_id=chapel.id,
+).data
+
+tools.reveal_clue(campaign.id, clue.id)
+check = tools.roll_check(
+    campaign.id,
+    character_name="Kael",
+    modifier=5,
+    dc=15,
+    mode=RollMode.ADVANTAGE,
+).data
+
+print(check.total, check.success)
+print([event.content for event in campaign.session_log])
 ```
 
 ### 1. 战役创建
