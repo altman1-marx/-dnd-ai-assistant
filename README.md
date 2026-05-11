@@ -91,6 +91,13 @@ $env:PYTHONPATH = "src"
 python -m dnd_ai_assistant.demo quickstart
 ```
 
+运行先攻演示：
+
+```powershell
+python -m dnd_ai_assistant.demo initiative
+python -m dnd_ai_assistant.demo initiative --seed 42 --rounds 3
+```
+
 指定随机种子，方便复现实验结果：
 
 ```powershell

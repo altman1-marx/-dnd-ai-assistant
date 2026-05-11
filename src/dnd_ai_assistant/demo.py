@@ -10,6 +10,7 @@ from .core.character import Character
 from .core.campaign import Campaign, Clue, Location
 from .core.dm_tools import DMTools
 from .core.dnd5e import RollMode
+from .core.initiative import Combatant, InitiativeTracker
 from .core.serialization import save_campaign
 from .scenario import DEFAULT_SCENE_PATH, SceneDefinition, load_scene, validate_scene_file, write_scene_template
 
@@ -267,6 +268,32 @@ def run_interactive_scene(
             return 0
 
 
+def run_initiative_demo(seed: int, rounds: int) -> str:
+    tracker = InitiativeTracker(
+        [
+            Combatant("Kael", initiative_modifier=3, armor_class=15, current_hp=18, is_player=True),
+            Combatant("Mira Voss", initiative_modifier=1, armor_class=12, current_hp=9),
+            Combatant("Ash Goblin", initiative_modifier=2, armor_class=13, current_hp=7),
+        ]
+    )
+    tracker.roll_initiative(random.Random(seed))
+
+    lines = ["Initiative order:"]
+    for combatant in tracker.combatants:
+        lines.append(
+            f"- {combatant.name}: d20 {combatant.initiative_roll} + {combatant.initiative_modifier} "
+            f"= {combatant.initiative_total}"
+        )
+
+    lines.append("")
+    lines.append("Turns:")
+    lines.append(f"- Round {tracker.round_number}: {tracker.current().name}")
+    for _ in range(max(0, rounds * len(tracker.combatants) - 1)):
+        current = tracker.advance()
+        lines.append(f"- Round {tracker.round_number}: {current.name}")
+    return "\n".join(lines)
+
+
 def main() -> int:
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8", errors="replace")
@@ -297,6 +324,10 @@ def main() -> int:
     new_scene.add_argument("--output", required=True, help="Where to write the scene JSON file.")
     new_scene.add_argument("--title", default="Untitled DND Adventure", help="Campaign title for the template.")
 
+    initiative = subparsers.add_parser("initiative", help="Run a small initiative tracker demo.")
+    initiative.add_argument("--seed", type=int, default=1, help="Random seed for reproducible rolls.")
+    initiative.add_argument("--rounds", type=int, default=2, help="How many rounds to print.")
+
     args = parser.parse_args()
     if args.command == "quickstart":
         print(run_quickstart(args.seed))
@@ -315,6 +346,9 @@ def main() -> int:
     if args.command == "new-scene":
         write_scene_template(args.output, args.title)
         print(f"Wrote scene template: {args.output}")
+        return 0
+    if args.command == "initiative":
+        print(run_initiative_demo(args.seed, args.rounds))
         return 0
 
     parser.print_help()

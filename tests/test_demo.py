@@ -2,7 +2,7 @@ import unittest
 import tempfile
 from pathlib import Path
 
-from dnd_ai_assistant.demo import run_quickstart, run_scripted_scene
+from dnd_ai_assistant.demo import run_initiative_demo, run_quickstart, run_scripted_scene
 
 
 class DemoTests(unittest.TestCase):
@@ -43,6 +43,13 @@ class DemoTests(unittest.TestCase):
 
             self.assertTrue(path.exists())
             self.assertIn("Saved campaign state", output)
+
+    def test_initiative_demo_prints_order_and_turns(self) -> None:
+        output = run_initiative_demo(seed=1, rounds=1)
+
+        self.assertIn("Initiative order:", output)
+        self.assertIn("Mira Voss: d20 19 + 1 = 20", output)
+        self.assertIn("Round 1: Mira Voss", output)
 
 
 if __name__ == "__main__":
