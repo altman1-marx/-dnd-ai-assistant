@@ -83,6 +83,14 @@ $env:PYTHONPATH = "src"
 python -m unittest discover -s tests
 ```
 
+也可以以可编辑模式安装本地命令：
+
+```powershell
+cd F:\work\dnd-ai-assistant
+python -m pip install -e .
+dnd-ai-assistant --help
+```
+
 运行当前 demo：
 
 ```powershell

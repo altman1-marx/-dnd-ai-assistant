@@ -2,9 +2,21 @@
 name = "dnd-ai-assistant"
 version = "0.1.0"
 description = "DND-first AI tabletop assistant prototype."
-requires-python = ">=3.11"
+requires-python = ">=3.9"
+
+[project.scripts]
+dnd-ai-assistant = "dnd_ai_assistant.demo:main"
+
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+dnd_ai_assistant = ["scenes/*.json"]
 
 [tool.pytest.ini_options]
 pythonpath = ["src"]
 testpaths = ["tests"]
-
