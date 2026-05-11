@@ -1,4 +1,6 @@
 import unittest
+import tempfile
+from pathlib import Path
 
 from dnd_ai_assistant.demo import run_quickstart, run_scripted_scene
 
@@ -27,6 +29,14 @@ class DemoTests(unittest.TestCase):
         output = run_scripted_scene(seed=1, actions=["open stairway"])
 
         self.assertIn("The stairway seal does not move", output)
+
+    def test_scripted_scene_can_save_state(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "state.json"
+            output = run_scripted_scene(seed=1, actions=["inspect rope", "quit"], save_state_path=path)
+
+            self.assertTrue(path.exists())
+            self.assertIn("Saved campaign state", output)
 
 
 if __name__ == "__main__":

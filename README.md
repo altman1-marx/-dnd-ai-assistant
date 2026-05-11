@@ -133,6 +133,18 @@ python -m dnd_ai_assistant.demo play --scene path\to\your_scene.json
 
 现在的场景 JSON 还很小，只覆盖一个地点、一个 NPC、一个线索、一个任务和一个固定检定。它的意义是把“剧本内容”和“跑团引擎”分开，后续 AI 生成的剧本可以按同样格式落盘。
 
+保存一次跑团后的战役状态：
+
+```powershell
+python -m dnd_ai_assistant.demo play --action "inspect rope" --action "open stairway" --action "quit" --save-state output\ashford_state.json
+```
+
+保存的状态包含战役基础信息、角色、地点、NPC、线索、任务和 session log。相关代码在：
+
+```text
+src/dnd_ai_assistant/core/serialization.py
+```
+
 当前版本可以作为 Python 库手动调用。例如：
 
 ```powershell

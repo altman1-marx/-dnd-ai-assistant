@@ -9,6 +9,7 @@ from .core.character import Character
 from .core.campaign import Campaign, Clue, Location
 from .core.dm_tools import DMTools
 from .core.dnd5e import RollMode
+from .core.serialization import save_campaign
 from .scenario import SceneDefinition, load_scene
 
 
@@ -220,16 +221,28 @@ def handle_player_action(sample: SampleCampaign, action: str) -> bool:
     return True
 
 
-def run_scripted_scene(seed: int, actions: list[str], scene_path: str | Path | None = None) -> str:
+def run_scripted_scene(
+    seed: int,
+    actions: list[str],
+    scene_path: str | Path | None = None,
+    save_state_path: str | Path | None = None,
+) -> str:
     sample = build_sample_campaign(seed, scene_path)
     describe_scene(sample)
     for action in actions:
         if not handle_player_action(sample, action):
             break
+    if save_state_path is not None:
+        save_campaign(sample.campaign, save_state_path)
+        sample.narrate(f"System: Saved campaign state to {save_state_path}.")
     return "\n".join(sample.transcript)
 
 
-def run_interactive_scene(seed: int, scene_path: str | Path | None = None) -> int:
+def run_interactive_scene(
+    seed: int,
+    scene_path: str | Path | None = None,
+    save_state_path: str | Path | None = None,
+) -> int:
     sample = build_sample_campaign(seed, scene_path)
     describe_scene(sample)
     print("\n".join(sample.transcript))
@@ -242,6 +255,9 @@ def run_interactive_scene(seed: int, scene_path: str | Path | None = None) -> in
             print("\n".join(sample.transcript))
             sample.transcript.clear()
         if not keep_going:
+            if save_state_path is not None:
+                save_campaign(sample.campaign, save_state_path)
+                print(f"System: Saved campaign state to {save_state_path}.")
             return 0
 
 
@@ -255,6 +271,7 @@ def main() -> int:
     play = subparsers.add_parser("play", help="Play a tiny scripted chapel scene.")
     play.add_argument("--seed", type=int, default=1, help="Random seed for reproducible rolls.")
     play.add_argument("--scene", default=None, help="Path to a scene JSON file.")
+    play.add_argument("--save-state", default=None, help="Write final campaign state to a JSON file.")
     play.add_argument(
         "--action",
         action="append",
@@ -268,9 +285,9 @@ def main() -> int:
         return 0
     if args.command == "play":
         if args.action:
-            print(run_scripted_scene(args.seed, args.action, args.scene))
+            print(run_scripted_scene(args.seed, args.action, args.scene, args.save_state))
             return 0
-        return run_interactive_scene(args.seed, args.scene)
+        return run_interactive_scene(args.seed, args.scene, args.save_state)
 
     parser.print_help()
     return 0
