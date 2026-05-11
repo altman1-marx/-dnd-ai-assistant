@@ -64,10 +64,14 @@
   - 战役、地点、NPC、线索、任务、事件日志等结构化模型
 - `src/dnd_ai_assistant/core/dm_tools.py`
   - AI DM 未来可调用的工具层：创建战役、添加地点/NPC/线索、揭示线索、记录事件、执行检定
+- `src/dnd_ai_assistant/demo.py`
+  - 当前版本的命令行演示入口
 - `tests/test_core.py`
   - 核心规则的最小单元测试
 - `tests/test_dm_tools.py`
   - 战役工具层的最小单元测试
+- `tests/test_demo.py`
+  - 命令行演示流程的最小测试
 
 运行测试：
 
@@ -76,6 +80,22 @@ cd F:\work\dnd-ai-assistant
 $env:PYTHONPATH = "src"
 python -m unittest discover -s tests
 ```
+
+运行当前 demo：
+
+```powershell
+cd F:\work\dnd-ai-assistant
+$env:PYTHONPATH = "src"
+python -m dnd_ai_assistant.demo quickstart
+```
+
+指定随机种子，方便复现实验结果：
+
+```powershell
+python -m dnd_ai_assistant.demo quickstart --seed 42
+```
+
+这个 demo 会创建一个示例战役，加入一名游侠角色、一个地点、一个 NPC、一个线索和一个任务，然后进行一次带优势的察觉检定，并打印 session log。
 
 当前版本可以作为 Python 库手动调用。例如：
 
