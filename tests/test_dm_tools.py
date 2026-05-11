@@ -91,7 +91,20 @@ class DMToolsTests(unittest.TestCase):
         self.assertEqual(len(campaign.session_log), 1)
         self.assertIn("Kael rolled 24 vs DC 15", campaign.session_log[0].content)
 
+    def test_damage_and_healing_tools_record_events(self) -> None:
+        tools = DMTools(rng=random.Random(1))
+        campaign = tools.create_campaign("Roadside Ambush", party_level=2).data
+        tools.add_character(campaign.id, sample_character())
+
+        damage = tools.apply_damage(campaign.id, "Kael", 6)
+        heal = tools.heal_character(campaign.id, "Kael", 4)
+
+        self.assertTrue(damage.ok)
+        self.assertTrue(heal.ok)
+        self.assertEqual(campaign.characters["Kael"].current_hp, 16)
+        self.assertIn("Kael took 6 damage", campaign.session_log[0].content)
+        self.assertIn("Kael healed 4", campaign.session_log[1].content)
+
 
 if __name__ == "__main__":
     unittest.main()
-

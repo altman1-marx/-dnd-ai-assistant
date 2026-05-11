@@ -65,7 +65,7 @@
 - `src/dnd_ai_assistant/core/campaign.py`
   - 战役、地点、NPC、线索、任务、事件日志等结构化模型
 - `src/dnd_ai_assistant/core/dm_tools.py`
-  - AI DM 未来可调用的工具层：创建战役、添加地点/NPC/线索、揭示线索、记录事件、执行检定
+  - AI DM 未来可调用的工具层：创建战役、添加地点/NPC/线索、揭示线索、记录事件、执行检定、应用伤害和治疗
 - `src/dnd_ai_assistant/demo.py`
   - 当前版本的命令行演示入口
 - `tests/test_core.py`

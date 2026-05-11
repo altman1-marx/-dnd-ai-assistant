@@ -139,3 +139,32 @@ class DMTools:
         )
         return ToolResult(True, f"Rolled d20 check: {outcome}", check)
 
+    def apply_damage(self, campaign_id: str, character_name: str, amount: int) -> ToolResult:
+        campaign = self.store.get(campaign_id)
+        if character_name not in campaign.characters:
+            return ToolResult(False, f"Character not found: {character_name}")
+        character = campaign.characters[character_name]
+        before = character.current_hp
+        character.apply_damage(amount)
+        campaign.record_event(
+            SessionEvent(
+                actor="System",
+                content=f"{character_name} took {amount} damage: HP {before} -> {character.current_hp}.",
+            )
+        )
+        return ToolResult(True, f"Applied {amount} damage to {character_name}.", character)
+
+    def heal_character(self, campaign_id: str, character_name: str, amount: int) -> ToolResult:
+        campaign = self.store.get(campaign_id)
+        if character_name not in campaign.characters:
+            return ToolResult(False, f"Character not found: {character_name}")
+        character = campaign.characters[character_name]
+        before = character.current_hp
+        character.heal(amount)
+        campaign.record_event(
+            SessionEvent(
+                actor="System",
+                content=f"{character_name} healed {amount}: HP {before} -> {character.current_hp}.",
+            )
+        )
+        return ToolResult(True, f"Healed {character_name} for {amount}.", character)
