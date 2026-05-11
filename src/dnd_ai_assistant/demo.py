@@ -109,14 +109,36 @@ def run_interactive_scene(
             return 0
 
 
-def run_initiative_demo(seed: int, rounds: int) -> str:
-    tracker = InitiativeTracker(
-        [
-            Combatant("Kael", initiative_modifier=3, armor_class=15, current_hp=18, is_player=True),
-            Combatant("Mira Voss", initiative_modifier=1, armor_class=12, current_hp=9),
-            Combatant("Ash Goblin", initiative_modifier=2, armor_class=13, current_hp=7),
-        ]
-    )
+def run_initiative_demo(seed: int, rounds: int, scene_path: str | Path | None = None) -> str:
+    session = build_scene_session(seed, scene_path)
+    combatants = [
+        Combatant(
+            session.hero.name,
+            initiative_modifier=session.hero.ability_modifier("dex"),
+            armor_class=session.hero.armor_class,
+            current_hp=session.hero.current_hp,
+            is_player=True,
+        )
+    ]
+    for encounter in session.campaign.encounters.values():
+        for monster in encounter.monsters:
+            combatants.append(
+                Combatant(
+                    monster.name,
+                    initiative_modifier=monster.initiative_modifier,
+                    armor_class=monster.armor_class,
+                    current_hp=monster.current_hp,
+                )
+            )
+    if len(combatants) == 1:
+        combatants.extend(
+            [
+                Combatant("Mira Voss", initiative_modifier=1, armor_class=12, current_hp=9),
+                Combatant("Ash Goblin", initiative_modifier=2, armor_class=13, current_hp=7),
+            ]
+        )
+
+    tracker = InitiativeTracker(combatants)
     tracker.roll_initiative(random.Random(seed))
 
     lines = ["Initiative order:"]
@@ -202,6 +224,7 @@ def main() -> int:
     initiative = subparsers.add_parser("initiative", help="Run a small initiative tracker demo.")
     initiative.add_argument("--seed", type=int, default=1, help="Random seed for reproducible rolls.")
     initiative.add_argument("--rounds", type=int, default=2, help="How many rounds to print.")
+    initiative.add_argument("--scene", default=None, help="Path to a scene JSON file.")
 
     state = subparsers.add_parser("state-summary", help="Print a saved campaign state summary.")
     state.add_argument("path", help="Path to a saved campaign JSON file.")
@@ -226,7 +249,7 @@ def main() -> int:
         print(f"Wrote scene template: {args.output}")
         return 0
     if args.command == "initiative":
-        print(run_initiative_demo(args.seed, args.rounds))
+        print(run_initiative_demo(args.seed, args.rounds, args.scene))
         return 0
     if args.command == "state-summary":
         print(summarize_state(args.path))

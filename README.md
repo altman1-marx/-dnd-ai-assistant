@@ -106,6 +106,7 @@ python -m dnd_ai_assistant.demo quickstart
 ```powershell
 python -m dnd_ai_assistant.demo initiative
 python -m dnd_ai_assistant.demo initiative --seed 42 --rounds 3
+python -m dnd_ai_assistant.demo initiative --scene path\to\your_scene.json
 ```
 
 指定随机种子，方便复现实验结果：

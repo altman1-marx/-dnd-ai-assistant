@@ -58,8 +58,8 @@ class DemoTests(unittest.TestCase):
         output = run_initiative_demo(seed=1, rounds=1)
 
         self.assertIn("Initiative order:", output)
-        self.assertIn("Mira Voss: d20 19 + 1 = 20", output)
-        self.assertIn("Round 1: Mira Voss", output)
+        self.assertIn("Ash Goblin: d20 19 + 2 = 21", output)
+        self.assertIn("Round 1: Ash Goblin", output)
 
 
 if __name__ == "__main__":
