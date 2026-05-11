@@ -1,0 +1,2 @@
+"""Bundled demo scene data."""
+

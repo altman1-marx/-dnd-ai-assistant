@@ -1,0 +1,75 @@
+{
+  "campaign": {
+    "title": "The Bell Beneath Ashford",
+    "party_level": 2,
+    "tone": "dark fantasy investigation",
+    "public_lore": "Ashford is a mining town where the old chapel bell has begun ringing underground.",
+    "dm_secrets": "The bell is a planar anchor hidden beneath the chapel crypt."
+  },
+  "hero": {
+    "name": "Kael",
+    "player_name": "Altman",
+    "class_name": "Ranger",
+    "level": 2,
+    "ancestry": "Wood Elf",
+    "ability_scores": {
+      "str": 10,
+      "dex": 16,
+      "con": 12,
+      "int": 10,
+      "wis": 14,
+      "cha": 8
+    },
+    "armor_class": 15,
+    "max_hp": 18,
+    "current_hp": 18,
+    "skill_proficiencies": ["perception", "survival"],
+    "saving_throw_proficiencies": ["str", "dex"]
+  },
+  "location": {
+    "name": "Old Chapel",
+    "public_description": "A cracked chapel with a silent bronze bell and a sealed stairway.",
+    "dm_notes": "The sealed stairway leads to the crypt anchor."
+  },
+  "npc": {
+    "name": "Mira Voss",
+    "role": "worried mayor",
+    "public_description": "A careful woman trying to keep Ashford calm.",
+    "dm_secret": "She hears the bell in her dreams."
+  },
+  "clue": {
+    "title": "Ash on the Bell Rope",
+    "public_text": "The bell rope is dusted with black ash that smells faintly of sulfur.",
+    "dm_secret": "The ash came from the lower crypt."
+  },
+  "quest": {
+    "title": "Find the Source of the Bell",
+    "summary": "Investigate why the chapel bell rings from below ground."
+  },
+  "text": {
+    "intro": [
+      "{hero} stands inside the Old Chapel.",
+      "A bronze bell hangs above a sealed stairway. The bell rope is stained with black dust.",
+      "Try actions like 'look around', 'inspect rope', 'open stairway', 'log', or 'quit'."
+    ],
+    "look": "The chapel is cold. The pews are empty, the altar is cracked, and the bell rope moves without wind.",
+    "inspect_first": "You examine the bell rope. Black ash clings to your glove.",
+    "inspect_success": "You notice the ash trail leading under the sealed stairway. Something below is warm.",
+    "inspect_failure": "You find the ash, but its source is unclear.",
+    "inspect_repeat": "You already found the black ash on the rope.",
+    "stairway_locked": "The stairway seal does not move. The bell rope may hold a clue.",
+    "stairway_open": "The seal grinds open. Warm air rises from the crypt, carrying the sound of a distant bell.",
+    "stairway_repeat": "The stairway is already open.",
+    "unknown": "The current prototype does not know how to resolve that yet.",
+    "pause": "The scene pauses here."
+  },
+  "checks": {
+    "inspect_rope": {
+      "ability": "wis",
+      "proficient": true,
+      "dc": 15,
+      "mode": "advantage",
+      "label": "Perception"
+    }
+  }
+}
