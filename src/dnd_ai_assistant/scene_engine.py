@@ -5,7 +5,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from .core.character import Character
-from .core.campaign import Campaign, Clue, Location
+from .core.campaign import Campaign, Clue, Location, Monster
 from .core.dm_tools import DMTools
 from .core.dnd5e import RollMode
 from .scenario import SceneDefinition, load_scene
@@ -90,6 +90,28 @@ def build_scene_session(seed: int, scene_path: str | Path | None = None) -> Scen
     ).data
     quest_data = scene.quest
     tools.add_quest(campaign.id, title=quest_data["title"], summary=quest_data["summary"])
+    if scene.encounter is not None:
+        encounter_data = scene.encounter
+        tools.add_encounter(
+            campaign.id,
+            title=encounter_data["title"],
+            location_id=location.id,
+            difficulty=encounter_data.get("difficulty", "medium"),
+            trigger=encounter_data.get("trigger", ""),
+            reward=encounter_data.get("reward", ""),
+            monsters=[
+                Monster(
+                    name=monster["name"],
+                    armor_class=monster["armor_class"],
+                    max_hp=monster["max_hp"],
+                    current_hp=monster["current_hp"],
+                    initiative_modifier=monster.get("initiative_modifier", 0),
+                    attack_bonus=monster.get("attack_bonus", 0),
+                    damage=monster.get("damage", "1d4"),
+                )
+                for monster in encounter_data.get("monsters", [])
+            ],
+        )
     return SceneSession(tools=tools, campaign=campaign, hero=hero, location=location, clue=clue, scene=scene)
 
 
@@ -179,4 +201,3 @@ def resolve_open_path(session: SceneSession) -> bool:
     )
     session.narrate(f"DM: {session.scene.text['stairway_open']}")
     return True
-

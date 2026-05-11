@@ -12,6 +12,7 @@ class ScenarioTests(unittest.TestCase):
         self.assertEqual(scene.campaign["title"], "The Bell Beneath Ashford")
         self.assertEqual(scene.hero["name"], "Kael")
         self.assertEqual(scene.location["name"], "Old Chapel")
+        self.assertEqual(scene.encounter["title"], "Ash Goblin in the Crypt")
         self.assertEqual(scene.checks["inspect_rope"]["dc"], 15)
 
     def test_validate_scene_reports_missing_keys(self) -> None:

@@ -46,6 +46,23 @@
     "title": "Find the Source of the Bell",
     "summary": "Investigate why the chapel bell rings from below ground."
   },
+  "encounter": {
+    "title": "Ash Goblin in the Crypt",
+    "difficulty": "easy",
+    "trigger": "The sealed stairway opens.",
+    "reward": "A cracked copper bell charm.",
+    "monsters": [
+      {
+        "name": "Ash Goblin",
+        "armor_class": 13,
+        "max_hp": 7,
+        "current_hp": 7,
+        "initiative_modifier": 2,
+        "attack_bonus": 4,
+        "damage": "1d6+2"
+      }
+    ]
+  },
   "text": {
     "intro": [
       "{hero} stands inside the Old Chapel.",

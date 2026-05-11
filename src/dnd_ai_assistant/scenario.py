@@ -65,6 +65,10 @@ class SceneDefinition:
         return self.raw["quest"]
 
     @property
+    def encounter(self) -> dict | None:
+        return self.raw.get("encounter")
+
+    @property
     def text(self) -> dict:
         return self.raw["text"]
 
@@ -164,6 +168,23 @@ def create_scene_template(title: str) -> dict:
         "quest": {
             "title": "Opening Objective",
             "summary": "Describe the immediate goal for the party.",
+        },
+        "encounter": {
+            "title": "First Encounter",
+            "difficulty": "easy",
+            "trigger": "Describe what starts the encounter.",
+            "reward": "Describe the reward.",
+            "monsters": [
+                {
+                    "name": "Training Goblin",
+                    "armor_class": 13,
+                    "max_hp": 7,
+                    "current_hp": 7,
+                    "initiative_modifier": 2,
+                    "attack_bonus": 4,
+                    "damage": "1d6+2",
+                }
+            ],
         },
         "text": {
             "intro": [

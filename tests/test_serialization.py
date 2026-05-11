@@ -32,9 +32,9 @@ class SerializationTests(unittest.TestCase):
 
         restored = campaign_from_dict(campaign_to_dict(sample.campaign))
 
-        self.assertEqual(len(restored.encounters), 1)
+        self.assertEqual(len(restored.encounters), 2)
         encounter = next(iter(restored.encounters.values()))
-        self.assertEqual(encounter.monsters[0].name, "Ash Goblin")
+        self.assertTrue(any(monster.name == "Ash Goblin" for encounter in restored.encounters.values() for monster in encounter.monsters))
 
     def test_campaign_save_and_load_file(self) -> None:
         sample = build_sample_campaign(seed=1)
