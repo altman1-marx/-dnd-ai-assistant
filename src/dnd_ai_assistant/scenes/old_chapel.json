@@ -71,5 +71,13 @@
       "mode": "advantage",
       "label": "Perception"
     }
+  },
+  "actions": {
+    "look": ["look", "around", "观察", "查看"],
+    "inspect": ["rope", "bell", "inspect", "调查", "检查", "钟绳"],
+    "open": ["stair", "door", "open", "打开", "楼梯", "门"],
+    "log": ["log", "日志"],
+    "help": ["help", "?"],
+    "quit": ["quit", "exit", "退出"]
   }
 }

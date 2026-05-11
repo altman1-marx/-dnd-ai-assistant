@@ -72,6 +72,10 @@ class SceneDefinition:
     def checks(self) -> dict:
         return self.raw["checks"]
 
+    @property
+    def actions(self) -> dict:
+        return self.raw.get("actions", {})
+
 
 def load_scene(path: str | Path | None = None) -> SceneDefinition:
     scene_path = Path(path) if path is not None else DEFAULT_SCENE_PATH
@@ -186,6 +190,14 @@ def create_scene_template(title: str) -> dict:
                 "mode": "normal",
                 "label": "Perception",
             }
+        },
+        "actions": {
+            "look": ["look", "around"],
+            "inspect": ["inspect", "rope", "bell"],
+            "open": ["open", "stair", "door"],
+            "log": ["log"],
+            "help": ["help", "?"],
+            "quit": ["quit", "exit"],
         },
     }
 

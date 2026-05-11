@@ -30,6 +30,12 @@ class DemoTests(unittest.TestCase):
 
         self.assertIn("The stairway seal does not move", output)
 
+    def test_scene_action_aliases_support_chinese_input(self) -> None:
+        output = run_scripted_scene(seed=1, actions=["观察四周", "检查钟绳"])
+
+        self.assertIn("The chapel is cold.", output)
+        self.assertIn("Black ash clings", output)
+
     def test_scripted_scene_can_save_state(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / "state.json"

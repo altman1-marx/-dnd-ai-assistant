@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import random
+import sys
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -148,6 +149,11 @@ def describe_scene(sample: SampleCampaign) -> None:
         sample.narrate(f"DM: {line.format(hero=sample.hero.name)}")
 
 
+def matches_action(sample: SampleCampaign, action_name: str, normalized: str) -> bool:
+    aliases = sample.scene.actions.get(action_name, [])
+    return any(alias.lower() in normalized for alias in aliases)
+
+
 def handle_player_action(sample: SampleCampaign, action: str) -> bool:
     normalized = action.strip().lower()
     if not normalized:
@@ -155,25 +161,25 @@ def handle_player_action(sample: SampleCampaign, action: str) -> bool:
     sample.narrate(f"Player: {action}")
     sample.tools.record_event(sample.campaign.id, actor=sample.hero.name, content=action)
 
-    if normalized in {"quit", "exit"}:
+    if matches_action(sample, "quit", normalized):
         sample.narrate(f"DM: {sample.scene.text['pause']}")
         return False
 
-    if normalized in {"help", "?"}:
+    if matches_action(sample, "help", normalized):
         sample.narrate("DM: Available actions: look around, inspect rope, open stairway, log, quit.")
         return True
 
-    if "log" in normalized:
+    if matches_action(sample, "log", normalized):
         sample.narrate("DM: Session log:")
         for event in sample.campaign.session_log:
             sample.narrate(f"- [{event.actor}] {event.content}")
         return True
 
-    if "look" in normalized or "around" in normalized:
+    if matches_action(sample, "look", normalized):
         sample.narrate(f"DM: {sample.scene.text['look']}")
         return True
 
-    if "rope" in normalized or "bell" in normalized or "inspect" in normalized:
+    if matches_action(sample, "inspect", normalized):
         if not sample.inspected_rope:
             sample.inspected_rope = True
             sample.tools.reveal_clue(sample.campaign.id, sample.clue.id)
@@ -201,7 +207,7 @@ def handle_player_action(sample: SampleCampaign, action: str) -> bool:
             sample.narrate(f"DM: {sample.scene.text['inspect_repeat']}")
         return True
 
-    if "stair" in normalized or "door" in normalized or "open" in normalized:
+    if matches_action(sample, "open", normalized):
         if not sample.inspected_rope:
             sample.narrate(f"DM: {sample.scene.text['stairway_locked']}")
             return True
@@ -262,6 +268,11 @@ def run_interactive_scene(
 
 
 def main() -> int:
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    if hasattr(sys.stderr, "reconfigure"):
+        sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+
     parser = argparse.ArgumentParser(description="Run small DND AI assistant demos.")
     subparsers = parser.add_subparsers(dest="command")
 

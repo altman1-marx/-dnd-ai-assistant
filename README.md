@@ -113,6 +113,15 @@ log
 quit
 ```
 
+默认场景也支持少量中文触发词，例如：
+
+```text
+观察四周
+检查钟绳
+打开楼梯
+退出
+```
+
 也可以用非交互方式脚本化运行，方便测试：
 
 ```powershell
@@ -145,6 +154,7 @@ python -m dnd_ai_assistant.demo new-scene --output scenes\my_adventure.json --ti
 ```
 
 现在的场景 JSON 还很小，只覆盖一个地点、一个 NPC、一个线索、一个任务和一个固定检定。它的意义是把“剧本内容”和“跑团引擎”分开，后续 AI 生成的剧本可以按同样格式落盘。
+动作触发词在 JSON 的 `actions` 字段中配置。
 
 保存一次跑团后的战役状态：
 
