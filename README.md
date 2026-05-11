@@ -569,3 +569,7 @@ SessionEvent
 - EmberDM
 
 当前仓库暂用名称：`dnd-ai-assistant`
+
+## 文档
+
+- [Architecture](docs/architecture.md)
