@@ -157,7 +157,11 @@ def run_initiative_demo(seed: int, rounds: int, scene_path: str | Path | None = 
     return "\n".join(lines)
 
 
-def run_combat_demo(seed: int, scene_path: str | Path | None = None) -> str:
+def run_combat_demo(
+    seed: int,
+    scene_path: str | Path | None = None,
+    save_state_path: str | Path | None = None,
+) -> str:
     session = build_scene_session(seed, scene_path)
     encounter = next(iter(session.campaign.encounters.values()), None)
     if encounter is None or not encounter.monsters:
@@ -185,6 +189,9 @@ def run_combat_demo(seed: int, scene_path: str | Path | None = None) -> str:
     lines.append("")
     lines.append("Session log:")
     lines.extend(f"- [{event.actor}] {event.content}" for event in session.campaign.session_log)
+    if save_state_path is not None:
+        save_campaign(session.campaign, save_state_path)
+        lines.append(f"System: Saved campaign state to {save_state_path}.")
     return "\n".join(lines)
 
 
@@ -260,6 +267,7 @@ def main() -> int:
     combat = subparsers.add_parser("combat", help="Run a one-attack combat demo from scene encounter data.")
     combat.add_argument("--seed", type=int, default=1, help="Random seed for reproducible rolls.")
     combat.add_argument("--scene", default=None, help="Path to a scene JSON file.")
+    combat.add_argument("--save-state", default=None, help="Write final campaign state to a JSON file.")
 
     state = subparsers.add_parser("state-summary", help="Print a saved campaign state summary.")
     state.add_argument("path", help="Path to a saved campaign JSON file.")
@@ -287,7 +295,7 @@ def main() -> int:
         print(run_initiative_demo(args.seed, args.rounds, args.scene))
         return 0
     if args.command == "combat":
-        print(run_combat_demo(args.seed, args.scene))
+        print(run_combat_demo(args.seed, args.scene, args.save_state))
         return 0
     if args.command == "state-summary":
         print(summarize_state(args.path))

@@ -115,6 +115,7 @@ python -m dnd_ai_assistant.demo initiative --scene path\to\your_scene.json
 ```powershell
 python -m dnd_ai_assistant.demo combat
 python -m dnd_ai_assistant.demo combat --seed 42 --scene path\to\your_scene.json
+python -m dnd_ai_assistant.demo combat --save-state output\combat_state.json
 ```
 
 指定随机种子，方便复现实验结果：

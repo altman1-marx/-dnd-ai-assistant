@@ -70,6 +70,14 @@ class DemoTests(unittest.TestCase):
         self.assertIn("Hit: False", output)
         self.assertIn("Target HP: 18/18", output)
 
+    def test_combat_demo_can_save_state(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "combat_state.json"
+            output = run_combat_demo(seed=1, save_state_path=path)
+
+            self.assertTrue(path.exists())
+            self.assertIn("Saved campaign state", output)
+
 
 if __name__ == "__main__":
     unittest.main()
