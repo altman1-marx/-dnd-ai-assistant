@@ -209,9 +209,11 @@ python -m dnd_ai_assistant.demo new-adventure --output adventures\moonlit_road.j
 python -m dnd_ai_assistant.demo validate-adventure adventures\moonlit_road.json
 python -m dnd_ai_assistant.demo adventure-map adventures\moonlit_road.json
 python -m dnd_ai_assistant.demo adventure-map adventures\moonlit_road.json --format mermaid
+python -m dnd_ai_assistant.demo import-adventure adventures\moonlit_road.json --output output\moonlit_campaign.json
 ```
 
 冒险 JSON 比场景 JSON 更适合 AI 剧本创作，包含地点网络、起点、终点、NPC、线索、任务、遭遇和结局。程序会校验地点引用和从起点出发的可达性。
+导入后的 campaign state 可以继续用 `state-summary` 查看，并作为后续 AI DM 运行时状态。
 
 保存一次跑团后的战役状态：
 

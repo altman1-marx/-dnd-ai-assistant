@@ -24,6 +24,7 @@ REQUIRED_NPC_KEYS = ("id", "name", "role", "public_description", "location_id")
 REQUIRED_CLUE_KEYS = ("id", "title", "public_text", "location_id")
 REQUIRED_QUEST_KEYS = ("id", "title", "summary")
 REQUIRED_ENCOUNTER_KEYS = ("id", "title", "location_id", "difficulty")
+REQUIRED_MONSTER_KEYS = ("name", "armor_class", "max_hp")
 REQUIRED_ENDING_KEYS = ("id", "title", "summary")
 REQUIRED_OPENING_KEYS = ("player_text", "dm_notes")
 
@@ -96,6 +97,7 @@ def validate_adventure(adventure: AdventureDefinition) -> list[str]:
     _validate_required_items("clues", adventure.clues, REQUIRED_CLUE_KEYS, errors)
     _validate_required_items("quests", adventure.quests, REQUIRED_QUEST_KEYS, errors)
     _validate_required_items("encounters", adventure.encounters, REQUIRED_ENCOUNTER_KEYS, errors)
+    _validate_encounter_monsters(adventure.encounters, errors)
     _validate_required_items("endings", adventure.endings, REQUIRED_ENDING_KEYS, errors)
     if errors:
         raise ValueError("; ".join(errors))
@@ -246,6 +248,28 @@ def _validate_required_items(name: str, items: list[dict], keys: tuple[str, ...]
             errors.append(f"{name}[{index}] must be an object.")
             continue
         _require_keys(f"{name}[{index}]", item, keys, errors)
+
+
+def _validate_encounter_monsters(encounters: list[dict], errors: list[str]) -> None:
+    if not isinstance(encounters, list):
+        return
+    for encounter_index, encounter in enumerate(encounters):
+        if not isinstance(encounter, dict):
+            continue
+        monsters = encounter.get("monsters", [])
+        if not isinstance(monsters, list):
+            errors.append(f"encounters[{encounter_index}].monsters must be a list.")
+            continue
+        for monster_index, monster in enumerate(monsters):
+            if not isinstance(monster, dict):
+                errors.append(f"encounters[{encounter_index}].monsters[{monster_index}] must be an object.")
+                continue
+            _require_keys(
+                f"encounters[{encounter_index}].monsters[{monster_index}]",
+                monster,
+                REQUIRED_MONSTER_KEYS,
+                errors,
+            )
 
 
 def _collect_unique_ids(name: str, items: list[dict], errors: list[str]) -> set[str]:

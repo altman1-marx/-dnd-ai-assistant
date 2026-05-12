@@ -71,6 +71,15 @@ class AdventureTests(unittest.TestCase):
 
         self.assertIn("locations must be a list", str(context.exception))
 
+    def test_validate_adventure_reports_invalid_monster_entries(self) -> None:
+        raw = create_adventure_template("Broken Road")
+        raw["encounters"][0]["monsters"] = [{"name": "Ash Goblin"}]
+
+        with self.assertRaises(ValueError) as context:
+            validate_adventure(AdventureDefinition(raw))
+
+        self.assertIn("Missing encounters[0].monsters[0] key: armor_class", str(context.exception))
+
 
 if __name__ == "__main__":
     unittest.main()

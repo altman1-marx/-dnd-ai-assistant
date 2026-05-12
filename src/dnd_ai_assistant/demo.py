@@ -6,6 +6,7 @@ import sys
 from pathlib import Path
 
 from .adventure import load_adventure, validate_adventure, write_adventure_template
+from .adventure_importer import campaign_from_adventure
 from .adventure_map import render_mermaid_map, render_text_map
 from .core.dnd5e import RollMode
 from .core.initiative import Combatant, InitiativeTracker
@@ -273,6 +274,10 @@ def main() -> int:
     adventure_map.add_argument("path", help="Path to an adventure JSON file.")
     adventure_map.add_argument("--format", choices=("text", "mermaid"), default="text", help="Map output format.")
 
+    import_adventure = subparsers.add_parser("import-adventure", help="Import an adventure JSON as campaign state.")
+    import_adventure.add_argument("path", help="Path to an adventure JSON file.")
+    import_adventure.add_argument("--output", required=True, help="Where to write the campaign state JSON.")
+
     initiative = subparsers.add_parser("initiative", help="Run a small initiative tracker demo.")
     initiative.add_argument("--seed", type=int, default=1, help="Random seed for reproducible rolls.")
     initiative.add_argument("--rounds", type=int, default=2, help="How many rounds to print.")
@@ -322,6 +327,13 @@ def main() -> int:
             print(render_mermaid_map(adventure))
         else:
             print(render_text_map(adventure))
+        return 0
+    if args.command == "import-adventure":
+        adventure = load_adventure(args.path)
+        campaign = campaign_from_adventure(adventure)
+        save_campaign(campaign, args.output)
+        print(f"Imported adventure: {adventure.campaign['title']}")
+        print(f"Wrote campaign state: {args.output}")
         return 0
     if args.command == "initiative":
         print(run_initiative_demo(args.seed, args.rounds, args.scene))

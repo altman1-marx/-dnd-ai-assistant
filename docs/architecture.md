@@ -71,6 +71,16 @@ src/dnd_ai_assistant/adventure_map.py
 
 The map renderer turns adventure location connections into text or Mermaid output. This keeps the first map generator structural and testable before adding visual map rendering.
 
+### Adventure Import
+
+Location:
+
+```text
+src/dnd_ai_assistant/adventure_importer.py
+```
+
+The importer converts validated adventure JSON into the core `Campaign` model while preserving adventure ids for locations, NPCs, clues, quests, and encounters. This connects generated adventure content to the existing campaign state and serialization layer.
+
 ### Scene Engine
 
 Location:
