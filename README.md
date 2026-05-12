@@ -86,6 +86,12 @@ $env:PYTHONPATH = "src"
 python -m unittest discover -s tests
 ```
 
+或使用脚本：
+
+```powershell
+.\scripts\test.ps1
+```
+
 也可以以可编辑模式安装本地命令：
 
 ```powershell
