@@ -24,3 +24,4 @@
 - Added minimal spell and spellcasting resource models with serialization support.
 - Added GitHub Actions unit test workflow.
 - Added rules configuration for common DC thresholds and default movement speed.
+- Added adventure JSON template, loader, validator, and CLI commands.

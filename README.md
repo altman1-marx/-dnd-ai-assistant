@@ -202,6 +202,15 @@ python -m dnd_ai_assistant.demo new-scene --output scenes\my_adventure.json --ti
 现在的场景 JSON 还很小，只覆盖一个地点、一个 NPC、一个线索、一个任务、一个遭遇和一个固定检定。它的意义是把“剧本内容”和“跑团引擎”分开，后续 AI 生成的剧本可以按同样格式落盘。
 动作触发词在 JSON 的 `actions` 字段中配置。
 
+生成完整短团冒险模板：
+
+```powershell
+python -m dnd_ai_assistant.demo new-adventure --output adventures\moonlit_road.json --title "Moonlit Road"
+python -m dnd_ai_assistant.demo validate-adventure adventures\moonlit_road.json
+```
+
+冒险 JSON 比场景 JSON 更适合 AI 剧本创作，包含地点网络、起点、终点、NPC、线索、任务、遭遇和结局。程序会校验地点引用和从起点出发的可达性。
+
 保存一次跑团后的战役状态：
 
 ```powershell

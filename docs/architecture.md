@@ -51,6 +51,16 @@ Scene JSON currently defines:
 
 This format is deliberately simple. It is a stepping stone toward AI-generated scenario packs.
 
+### Adventure Data
+
+Location:
+
+```text
+src/dnd_ai_assistant/adventure.py
+```
+
+Adventure JSON is the broader format intended for AI adventure generation. It includes campaign metadata, a connected location graph, start and final locations, NPCs, clues, quests, encounters, endings, and opening text. The validator checks required fields, unique ids, location references, and reachability from the starting location.
+
 ### Scene Engine
 
 Location:

@@ -5,6 +5,7 @@ import random
 import sys
 from pathlib import Path
 
+from .adventure import load_adventure, validate_adventure, write_adventure_template
 from .core.dnd5e import RollMode
 from .core.initiative import Combatant, InitiativeTracker
 from .core.serialization import load_campaign, save_campaign
@@ -260,6 +261,13 @@ def main() -> int:
     new_scene.add_argument("--output", required=True, help="Where to write the scene JSON file.")
     new_scene.add_argument("--title", default="Untitled DND Adventure", help="Campaign title for the template.")
 
+    validate_adventure_parser = subparsers.add_parser("validate-adventure", help="Validate an adventure JSON file.")
+    validate_adventure_parser.add_argument("path", help="Path to an adventure JSON file.")
+
+    new_adventure = subparsers.add_parser("new-adventure", help="Write a starter adventure JSON template.")
+    new_adventure.add_argument("--output", required=True, help="Where to write the adventure JSON file.")
+    new_adventure.add_argument("--title", default="Untitled DND Adventure", help="Campaign title for the template.")
+
     initiative = subparsers.add_parser("initiative", help="Run a small initiative tracker demo.")
     initiative.add_argument("--seed", type=int, default=1, help="Random seed for reproducible rolls.")
     initiative.add_argument("--rounds", type=int, default=2, help="How many rounds to print.")
@@ -291,6 +299,17 @@ def main() -> int:
     if args.command == "new-scene":
         write_scene_template(args.output, args.title)
         print(f"Wrote scene template: {args.output}")
+        return 0
+    if args.command == "validate-adventure":
+        adventure = load_adventure(args.path)
+        validate_adventure(adventure)
+        print(f"Adventure OK: {args.path}")
+        print(f"Title: {adventure.campaign['title']}")
+        print(f"Locations: {len(adventure.locations)}")
+        return 0
+    if args.command == "new-adventure":
+        write_adventure_template(args.output, args.title)
+        print(f"Wrote adventure template: {args.output}")
         return 0
     if args.command == "initiative":
         print(run_initiative_demo(args.seed, args.rounds, args.scene))
