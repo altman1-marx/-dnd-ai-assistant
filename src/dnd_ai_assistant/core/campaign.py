@@ -106,27 +106,39 @@ class Campaign:
     session_log: list[SessionEvent] = field(default_factory=list)
 
     def add_character(self, character: Character) -> None:
+        if character.name in self.characters:
+            raise ValueError(f"Character already exists: {character.name}")
         self.characters[character.name] = character
 
     def add_location(self, location: Location) -> None:
+        if location.id in self.locations:
+            raise ValueError(f"Location already exists: {location.id}")
         self.locations[location.id] = location
 
     def add_npc(self, npc: NPC) -> None:
         if npc.location_id is not None and npc.location_id not in self.locations:
             raise ValueError(f"Unknown location id: {npc.location_id}")
+        if npc.id in self.npcs:
+            raise ValueError(f"NPC already exists: {npc.id}")
         self.npcs[npc.id] = npc
 
     def add_clue(self, clue: Clue) -> None:
         if clue.location_id is not None and clue.location_id not in self.locations:
             raise ValueError(f"Unknown location id: {clue.location_id}")
+        if clue.id in self.clues:
+            raise ValueError(f"Clue already exists: {clue.id}")
         self.clues[clue.id] = clue
 
     def add_quest(self, quest: Quest) -> None:
+        if quest.id in self.quests:
+            raise ValueError(f"Quest already exists: {quest.id}")
         self.quests[quest.id] = quest
 
     def add_encounter(self, encounter: Encounter) -> None:
         if encounter.location_id is not None and encounter.location_id not in self.locations:
             raise ValueError(f"Unknown location id: {encounter.location_id}")
+        if encounter.id in self.encounters:
+            raise ValueError(f"Encounter already exists: {encounter.id}")
         self.encounters[encounter.id] = encounter
 
     def record_event(self, event: SessionEvent) -> None:

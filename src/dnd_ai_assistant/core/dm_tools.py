@@ -193,6 +193,30 @@ class DMTools:
         )
         return ToolResult(True, f"Rolled {label} check: {outcome}", check)
 
+    def roll_saving_throw(
+        self,
+        campaign_id: str,
+        character_name: str,
+        ability: str,
+        dc: int,
+        mode: RollMode = RollMode.NORMAL,
+    ) -> ToolResult:
+        campaign = self.store.get(campaign_id)
+        if character_name not in campaign.characters:
+            return ToolResult(False, f"Character not found: {character_name}")
+        character = campaign.characters[character_name]
+        modifier = character.saving_throw_modifier(ability)
+        check: D20Check = roll_d20_check(modifier=modifier, dc=dc, mode=mode, rng=self.rng)
+        outcome = "success" if check.success else "failure"
+        label = ability.upper()
+        campaign.record_event(
+            SessionEvent(
+                actor="System",
+                content=f"{character_name} rolled {label} save {check.total} vs DC {dc}: {outcome}.",
+            )
+        )
+        return ToolResult(True, f"Rolled {label} save: {outcome}", check)
+
     def apply_damage(self, campaign_id: str, character_name: str, amount: int) -> ToolResult:
         campaign = self.store.get(campaign_id)
         if character_name not in campaign.characters:

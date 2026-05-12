@@ -63,6 +63,9 @@
   - 技能显示名与规范化工具，供角色和 DM 工具复用
 - `src/dnd_ai_assistant/core/initiative.py`
   - 简单先攻排序和回合推进
+- `src/dnd_ai_assistant/core/combat.py`
+  - 战斗回合资源：动作、附赠动作、反应和移动
+  - 与先攻顺序结合的回合推进状态
 - `src/dnd_ai_assistant/core/character.py`
   - 简化 DND 角色状态
   - HP、AC、属性、熟练、豁免、伤害和治疗
@@ -417,6 +420,8 @@ AI DM 不应该：
   - `roll_dice`
   - `get_character`
   - `update_character`
+  - `roll_skill_check`
+  - `roll_saving_throw`
   - `search_lore`
   - `record_event`
   - `reveal_clue`

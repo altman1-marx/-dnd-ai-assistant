@@ -2,7 +2,8 @@ import random
 import unittest
 
 from dnd_ai_assistant.core.character import Character
-from dnd_ai_assistant.core.dice import parse_dice_expression, roll
+from dnd_ai_assistant.core.campaign import Campaign, Clue, Encounter, Location, NPC
+from dnd_ai_assistant.core.dice import ConstantTerm, parse_dice_expression, roll
 from dnd_ai_assistant.core.dnd5e import RollMode, ability_modifier, proficiency_bonus, roll_attack, roll_d20_check
 
 
@@ -10,6 +11,8 @@ class DiceTests(unittest.TestCase):
     def test_parse_dice_expression(self) -> None:
         terms = parse_dice_expression("2d6+3-1d4")
         self.assertEqual(len(terms), 3)
+        self.assertIsInstance(terms[1], ConstantTerm)
+        self.assertIsInstance(terms[1].value, int)
 
     def test_roll_is_deterministic_with_seed(self) -> None:
         result = roll("2d6+3", random.Random(1))
@@ -84,6 +87,74 @@ class CharacterTests(unittest.TestCase):
         self.assertEqual(character.skill_modifier("Stealth"), 6)
         self.assertEqual(character.skill_modifier("investigation"), 5)
         self.assertEqual(character.skill_modifier("perception"), 0)
+
+    def test_character_normalizes_skill_names(self) -> None:
+        character = Character(
+            name="Ari",
+            player_name="Player",
+            class_name="Rogue",
+            level=1,
+            ancestry="Halfling",
+            ability_scores={"str": 8, "dex": 16, "con": 12, "int": 14, "wis": 10, "cha": 13},
+            armor_class=15,
+            max_hp=9,
+            current_hp=9,
+            skill_proficiencies={"Sleight of Hand"},
+        )
+
+        self.assertEqual(character.skill_modifier("sleight-of-hand"), 5)
+
+    def test_character_rejects_invalid_state(self) -> None:
+        with self.assertRaises(ValueError):
+            Character(
+                name="Ari",
+                player_name="Player",
+                class_name="Fighter",
+                level=21,
+                ancestry="Human",
+                ability_scores={"str": 16, "dex": 12, "con": 14, "int": 10, "wis": 10, "cha": 8},
+                armor_class=16,
+                max_hp=28,
+                current_hp=28,
+            )
+
+    def test_campaign_rejects_duplicate_character_names(self) -> None:
+        campaign = Campaign("Roadside Ambush")
+        character = Character(
+            name="Ari",
+            player_name="Player",
+            class_name="Fighter",
+            level=3,
+            ancestry="Human",
+            ability_scores={"str": 16, "dex": 12, "con": 14, "int": 10, "wis": 10, "cha": 8},
+            armor_class=16,
+            max_hp=28,
+            current_hp=28,
+        )
+
+        campaign.add_character(character)
+
+        with self.assertRaises(ValueError):
+            campaign.add_character(character)
+
+    def test_campaign_rejects_unknown_location_references(self) -> None:
+        campaign = Campaign("Roadside Ambush")
+
+        with self.assertRaises(ValueError):
+            campaign.add_npc(NPC("Mira", "mayor", "Worried.", location_id="loc_missing"))
+        with self.assertRaises(ValueError):
+            campaign.add_clue(Clue("Ash", "Black ash.", location_id="loc_missing"))
+        with self.assertRaises(ValueError):
+            campaign.add_encounter(Encounter("Ambush", location_id="loc_missing"))
+
+    def test_campaign_rejects_duplicate_entity_ids(self) -> None:
+        campaign = Campaign("Roadside Ambush")
+        location = Location("Old Road", "A muddy road.", id="loc_1")
+
+        campaign.add_location(location)
+
+        with self.assertRaises(ValueError):
+            campaign.add_location(Location("Old Road", "A muddy road.", id="loc_1"))
 
 
 if __name__ == "__main__":

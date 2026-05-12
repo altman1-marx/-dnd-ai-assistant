@@ -16,3 +16,8 @@
 - Added one-attack combat CLI demo with optional state export.
 - Added architecture documentation.
 - Added core DND 5e skill mapping and reusable skill-check tooling.
+- Added combat turn resources for actions, bonus actions, reactions, and movement.
+- Added duplicate entity safeguards for campaign inserts.
+- Added stricter character validation and skill proficiency normalization.
+- Added reusable saving throw tool support.
+- Added store and campaign integrity tests.

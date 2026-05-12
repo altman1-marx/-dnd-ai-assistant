@@ -112,6 +112,25 @@ class DMToolsTests(unittest.TestCase):
         self.assertTrue(check.success)
         self.assertIn("Kael rolled Perception 23 vs DC 15", campaign.session_log[0].content)
 
+    def test_roll_saving_throw_uses_character_save_modifier(self) -> None:
+        tools = DMTools(rng=random.Random(1))
+        campaign = tools.create_campaign("Roadside Ambush", party_level=2).data
+        tools.add_character(campaign.id, sample_character())
+
+        result = tools.roll_saving_throw(
+            campaign_id=campaign.id,
+            character_name="Kael",
+            ability="dex",
+            dc=14,
+        )
+
+        self.assertTrue(result.ok)
+        check = result.data
+        self.assertEqual(check.d20_rolls, (5,))
+        self.assertEqual(check.total, 10)
+        self.assertFalse(check.success)
+        self.assertIn("Kael rolled DEX save 10 vs DC 14", campaign.session_log[0].content)
+
     def test_damage_and_healing_tools_record_events(self) -> None:
         tools = DMTools(rng=random.Random(1))
         campaign = tools.create_campaign("Roadside Ambush", party_level=2).data

@@ -29,10 +29,21 @@ class Character:
         missing = set(ABILITY_NAMES) - set(self.ability_scores)
         if missing:
             raise ValueError(f"Missing ability scores: {', '.join(sorted(missing))}")
+        proficiency_bonus(self.level)
+        for ability in ABILITY_NAMES:
+            ability_modifier(self.ability_scores[ability])
+        if self.armor_class <= 0:
+            raise ValueError("Armor class must be positive.")
         if self.current_hp > self.max_hp:
             raise ValueError("Current HP cannot exceed max HP.")
+        if self.current_hp < 0:
+            raise ValueError("Current HP cannot be negative.")
         if self.max_hp <= 0:
             raise ValueError("Max HP must be positive.")
+        self.skill_proficiencies = {normalize_skill_name(skill) for skill in self.skill_proficiencies}
+        unknown_saves = set(self.saving_throw_proficiencies) - set(ABILITY_NAMES)
+        if unknown_saves:
+            raise ValueError(f"Unknown saving throw proficiencies: {', '.join(sorted(unknown_saves))}")
 
     @property
     def proficiency_bonus(self) -> int:

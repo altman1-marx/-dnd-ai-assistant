@@ -19,6 +19,7 @@ Responsibilities:
 - DND 5e skill-to-ability mapping and skill modifiers
 - Character HP and conditions
 - Initiative order
+- Combat turn resources and round advancement
 - Campaign data objects
 - In-memory campaign storage
 - Campaign serialization
