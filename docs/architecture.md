@@ -20,6 +20,7 @@ Responsibilities:
 - Character HP and conditions
 - Initiative order
 - Combat turn resources and round advancement
+- Minimal spellcasting resources and spell metadata
 - Campaign data objects
 - In-memory campaign storage
 - Campaign serialization

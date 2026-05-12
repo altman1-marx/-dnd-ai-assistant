@@ -69,6 +69,9 @@
 - `src/dnd_ai_assistant/core/character.py`
   - 简化 DND 角色状态
   - HP、AC、属性、熟练、豁免、伤害和治疗
+- `src/dnd_ai_assistant/core/spells.py`
+  - 最小法术与施法资源模型
+  - 法术位消耗/恢复、已知法术、准备法术和专注字段
 - `src/dnd_ai_assistant/core/campaign.py`
   - 战役、地点、NPC、线索、任务、遭遇、怪物、事件日志等结构化模型
 - `src/dnd_ai_assistant/core/dm_tools.py`

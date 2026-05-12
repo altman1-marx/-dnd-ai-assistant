@@ -4,6 +4,7 @@ from dataclasses import dataclass, field
 
 from .dnd5e import ability_modifier, proficiency_bonus
 from .skills import normalize_skill_name, skill_ability
+from .spells import Spellcasting
 
 
 ABILITY_NAMES = ("str", "dex", "con", "int", "wis", "cha")
@@ -24,6 +25,7 @@ class Character:
     saving_throw_proficiencies: set[str] = field(default_factory=set)
     conditions: set[str] = field(default_factory=set)
     inventory: list[str] = field(default_factory=list)
+    spellcasting: Spellcasting | None = None
 
     def __post_init__(self) -> None:
         missing = set(ABILITY_NAMES) - set(self.ability_scores)
@@ -44,6 +46,8 @@ class Character:
         unknown_saves = set(self.saving_throw_proficiencies) - set(ABILITY_NAMES)
         if unknown_saves:
             raise ValueError(f"Unknown saving throw proficiencies: {', '.join(sorted(unknown_saves))}")
+        if self.spellcasting is not None and self.spellcasting.ability not in ABILITY_NAMES:
+            raise ValueError(f"Unknown spellcasting ability: {self.spellcasting.ability}")
 
     @property
     def proficiency_bonus(self) -> int:
@@ -78,3 +82,15 @@ class Character:
     @property
     def is_unconscious(self) -> bool:
         return self.current_hp == 0
+
+    @property
+    def spell_save_dc(self) -> int | None:
+        if self.spellcasting is None:
+            return None
+        return 8 + self.proficiency_bonus + self.ability_modifier(self.spellcasting.ability)
+
+    @property
+    def spell_attack_modifier(self) -> int | None:
+        if self.spellcasting is None:
+            return None
+        return self.proficiency_bonus + self.ability_modifier(self.spellcasting.ability)

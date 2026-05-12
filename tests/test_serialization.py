@@ -3,7 +3,9 @@ import unittest
 from pathlib import Path
 
 from dnd_ai_assistant.core.campaign import Monster
+from dnd_ai_assistant.core.character import Character
 from dnd_ai_assistant.core.serialization import campaign_from_dict, campaign_to_dict, load_campaign, save_campaign
+from dnd_ai_assistant.core.spells import Spell, Spellcasting
 from dnd_ai_assistant.demo import build_sample_campaign, handle_player_action
 
 
@@ -47,6 +49,37 @@ class SerializationTests(unittest.TestCase):
 
         self.assertEqual(restored.title, "The Bell Beneath Ashford")
         self.assertEqual(restored.session_log[0].actor, "Kael")
+
+    def test_character_spellcasting_round_trip(self) -> None:
+        sample = build_sample_campaign(seed=1)
+        sample.tools.add_character(
+            sample.campaign.id,
+            Character(
+                name="Leth",
+                player_name="Player",
+                class_name="Cleric",
+                level=5,
+                ancestry="Human",
+                ability_scores={"str": 10, "dex": 10, "con": 14, "int": 10, "wis": 16, "cha": 12},
+                armor_class=16,
+                max_hp=38,
+                current_hp=38,
+                spellcasting=Spellcasting(
+                    ability="wis",
+                    slots_by_level={1: 4, 2: 3},
+                    expended_slots_by_level={1: 1},
+                    known_spells=[Spell("Cure Wounds", 1, school="evocation")],
+                    prepared_spell_names={"Cure Wounds"},
+                ),
+            ),
+        )
+
+        restored = campaign_from_dict(campaign_to_dict(sample.campaign))
+        spellcasting = restored.characters["Leth"].spellcasting
+
+        self.assertIsNotNone(spellcasting)
+        self.assertEqual(spellcasting.available_slots(1), 3)
+        self.assertEqual(restored.characters["Leth"].spell_save_dc, 14)
 
 
 if __name__ == "__main__":

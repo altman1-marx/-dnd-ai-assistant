@@ -6,6 +6,65 @@ from pathlib import Path
 
 from .campaign import Campaign, Clue, Encounter, Location, Monster, NPC, Quest, SessionEvent, Visibility
 from .character import Character
+from .spells import Spell, Spellcasting
+
+
+def spell_to_dict(spell: Spell) -> dict:
+    return {
+        "name": spell.name,
+        "level": spell.level,
+        "school": spell.school,
+        "casting_time": spell.casting_time,
+        "range_text": spell.range_text,
+        "components": spell.components,
+        "duration": spell.duration,
+        "concentration": spell.concentration,
+        "description": spell.description,
+    }
+
+
+def spell_from_dict(data: dict) -> Spell:
+    return Spell(
+        name=data["name"],
+        level=data["level"],
+        school=data.get("school", ""),
+        casting_time=data.get("casting_time", "1 action"),
+        range_text=data.get("range_text", ""),
+        components=data.get("components", ""),
+        duration=data.get("duration", ""),
+        concentration=data.get("concentration", False),
+        description=data.get("description", ""),
+    )
+
+
+def spellcasting_to_dict(spellcasting: Spellcasting | None) -> dict | None:
+    if spellcasting is None:
+        return None
+    return {
+        "ability": spellcasting.ability,
+        "slots_by_level": {str(level): slots for level, slots in spellcasting.slots_by_level.items()},
+        "expended_slots_by_level": {
+            str(level): slots for level, slots in spellcasting.expended_slots_by_level.items()
+        },
+        "known_spells": [spell_to_dict(spell) for spell in spellcasting.known_spells],
+        "prepared_spell_names": sorted(spellcasting.prepared_spell_names),
+        "concentration_spell_name": spellcasting.concentration_spell_name,
+    }
+
+
+def spellcasting_from_dict(data: dict | None) -> Spellcasting | None:
+    if data is None:
+        return None
+    return Spellcasting(
+        ability=data["ability"],
+        slots_by_level={int(level): slots for level, slots in data.get("slots_by_level", {}).items()},
+        expended_slots_by_level={
+            int(level): slots for level, slots in data.get("expended_slots_by_level", {}).items()
+        },
+        known_spells=[spell_from_dict(spell) for spell in data.get("known_spells", [])],
+        prepared_spell_names=set(data.get("prepared_spell_names", [])),
+        concentration_spell_name=data.get("concentration_spell_name"),
+    )
 
 
 def character_to_dict(character: Character) -> dict:
@@ -23,6 +82,7 @@ def character_to_dict(character: Character) -> dict:
         "saving_throw_proficiencies": sorted(character.saving_throw_proficiencies),
         "conditions": sorted(character.conditions),
         "inventory": list(character.inventory),
+        "spellcasting": spellcasting_to_dict(character.spellcasting),
     }
 
 
@@ -41,6 +101,7 @@ def character_from_dict(data: dict) -> Character:
         saving_throw_proficiencies=set(data.get("saving_throw_proficiencies", [])),
         conditions=set(data.get("conditions", [])),
         inventory=list(data.get("inventory", [])),
+        spellcasting=spellcasting_from_dict(data.get("spellcasting")),
     )
 
 
