@@ -22,3 +22,4 @@
 - Added reusable saving throw tool support.
 - Added store and campaign integrity tests.
 - Added minimal spell and spellcasting resource models with serialization support.
+- Added GitHub Actions unit test workflow.
