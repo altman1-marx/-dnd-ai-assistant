@@ -5,6 +5,9 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from .adventure import AdventureDefinition, validate_adventure
+from .adventure_importer import campaign_from_adventure
+from .core.campaign import Campaign
+from .core.serialization import save_campaign
 
 
 @dataclass(frozen=True)
@@ -70,6 +73,17 @@ def write_adventure_from_model_text(text: str, path: str | Path) -> AdventureDef
     output_path.parent.mkdir(parents=True, exist_ok=True)
     output_path.write_text(json.dumps(adventure.raw, ensure_ascii=False, indent=2), encoding="utf-8")
     return adventure
+
+
+def write_campaign_from_model_text(
+    text: str,
+    adventure_path: str | Path,
+    campaign_path: str | Path,
+) -> tuple[AdventureDefinition, Campaign]:
+    adventure = write_adventure_from_model_text(text, adventure_path)
+    campaign = campaign_from_adventure(adventure)
+    save_campaign(campaign, campaign_path)
+    return adventure, campaign
 
 
 def extract_json_object(text: str) -> str:

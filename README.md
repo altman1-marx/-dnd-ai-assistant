@@ -220,6 +220,7 @@ python -m dnd_ai_assistant.demo import-adventure adventures\moonlit_road.json --
 ```powershell
 python -m dnd_ai_assistant.demo adventure-prompt --premise "A bell rings under a ruined chapel." --party-level 2
 python -m dnd_ai_assistant.demo clean-adventure-output ai_response.txt --output adventures\generated.json
+python -m dnd_ai_assistant.demo compile-adventure-output ai_response.txt --adventure-output adventures\generated.json --campaign-output output\generated_campaign.json
 ```
 
 当前版本不会直接调用外部 AI API；它先把提示词、JSON 抽取和 adventure 校验链稳定下来。

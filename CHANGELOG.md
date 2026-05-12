@@ -28,3 +28,4 @@
 - Added text and Mermaid adventure map rendering.
 - Added adventure-to-campaign import support.
 - Added AI adventure prompt generation and model-output JSON cleanup.
+- Added a one-step model-output compile command for adventure and campaign files.

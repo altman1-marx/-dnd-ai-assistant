@@ -10,6 +10,7 @@ from dnd_ai_assistant.adventure_generator import (
     build_adventure_prompt,
     extract_json_object,
     write_adventure_from_model_text,
+    write_campaign_from_model_text,
 )
 
 
@@ -59,6 +60,23 @@ class AdventureGeneratorTests(unittest.TestCase):
     def test_adventure_from_model_text_rejects_invalid_json_shape(self) -> None:
         with self.assertRaises(ValueError):
             adventure_from_model_text('{"campaign": {}}')
+
+    def test_write_campaign_from_model_text_writes_adventure_and_campaign(self) -> None:
+        raw = create_adventure_template("Moonlit Road")
+
+        with tempfile.TemporaryDirectory() as tmp:
+            adventure_path = Path(tmp) / "adventure.json"
+            campaign_path = Path(tmp) / "campaign.json"
+            adventure, campaign = write_campaign_from_model_text(
+                json.dumps(raw),
+                adventure_path,
+                campaign_path,
+            )
+            written_campaign = json.loads(campaign_path.read_text(encoding="utf-8"))
+
+        self.assertEqual(adventure.campaign["title"], "Moonlit Road")
+        self.assertEqual(campaign.title, "Moonlit Road")
+        self.assertEqual(written_campaign["title"], "Moonlit Road")
 
 
 if __name__ == "__main__":
