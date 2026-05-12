@@ -163,16 +163,26 @@ def resolve_inspection(session: SceneSession) -> bool:
     session.inspected = True
     session.tools.reveal_clue(session.campaign.id, session.clue.id)
     check_data = session.scene.checks["inspect_rope"]
-    modifier = session.hero.ability_modifier(check_data["ability"])
-    if check_data.get("proficient", False):
-        modifier += session.hero.proficiency_bonus
-    check = session.tools.roll_check(
-        session.campaign.id,
-        character_name=session.hero.name,
-        modifier=modifier,
-        dc=check_data["dc"],
-        mode=RollMode(check_data["mode"]),
-    ).data
+    skill_name = check_data.get("skill")
+    if skill_name is not None:
+        check = session.tools.roll_skill_check(
+            session.campaign.id,
+            character_name=session.hero.name,
+            skill_name=skill_name,
+            dc=check_data["dc"],
+            mode=RollMode(check_data["mode"]),
+        ).data
+    else:
+        modifier = session.hero.ability_modifier(check_data["ability"])
+        if check_data.get("proficient", False):
+            modifier += session.hero.proficiency_bonus
+        check = session.tools.roll_check(
+            session.campaign.id,
+            character_name=session.hero.name,
+            modifier=modifier,
+            dc=check_data["dc"],
+            mode=RollMode(check_data["mode"]),
+        ).data
     session.narrate(f"DM: {session.scene.text['inspect_first']}")
     session.narrate(
         f"System: {check_data['label']} with {check.mode.value} vs DC {check.dc} -> "

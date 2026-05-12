@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 
 from .dnd5e import ability_modifier, proficiency_bonus
+from .skills import normalize_skill_name, skill_ability
 
 
 ABILITY_NAMES = ("str", "dex", "con", "int", "wis", "cha")
@@ -46,6 +47,13 @@ class Character:
             modifier += self.proficiency_bonus
         return modifier
 
+    def skill_modifier(self, skill_name: str) -> int:
+        normalized = normalize_skill_name(skill_name)
+        modifier = self.ability_modifier(skill_ability(normalized))
+        if normalized in self.skill_proficiencies:
+            modifier += self.proficiency_bonus
+        return modifier
+
     def apply_damage(self, amount: int) -> None:
         if amount < 0:
             raise ValueError("Damage cannot be negative.")
@@ -59,4 +67,3 @@ class Character:
     @property
     def is_unconscious(self) -> bool:
         return self.current_hp == 0
-

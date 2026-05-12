@@ -4,6 +4,8 @@ import json
 from dataclasses import dataclass
 from pathlib import Path
 
+from .core.skills import skill_ability
+
 
 DEFAULT_SCENE_PATH = Path(__file__).parent / "scenes" / "old_chapel.json"
 
@@ -117,6 +119,11 @@ def validate_scene(scene: SceneDefinition) -> list[str]:
         for key in ("ability", "dc", "mode", "label"):
             if key not in check:
                 errors.append(f"Missing checks.inspect_rope key: {key}")
+        if "skill" in check:
+            try:
+                skill_ability(check["skill"])
+            except ValueError as exc:
+                errors.append(str(exc))
 
     if errors:
         raise ValueError("; ".join(errors))
@@ -205,6 +212,7 @@ def create_scene_template(title: str) -> dict:
         },
         "checks": {
             "inspect_rope": {
+                "skill": "perception",
                 "ability": "wis",
                 "proficient": True,
                 "dc": 12,

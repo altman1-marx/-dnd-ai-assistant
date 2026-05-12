@@ -16,6 +16,7 @@ Responsibilities:
 
 - Dice parsing and rolling
 - DND 5e d20 checks
+- DND 5e skill-to-ability mapping and skill modifiers
 - Character HP and conditions
 - Initiative order
 - Campaign data objects
@@ -136,4 +137,3 @@ The AI DM should call tools for:
 5. Add persistent SQLite storage.
 6. Add a minimal local web UI.
 7. Add OpenAI-backed AI DM only after tool boundaries are stable.
-

@@ -67,6 +67,24 @@ class CharacterTests(unittest.TestCase):
         character.heal(7)
         self.assertEqual(character.current_hp, 7)
 
+    def test_skill_modifier_uses_skill_ability_and_proficiency(self) -> None:
+        character = Character(
+            name="Ari",
+            player_name="Player",
+            class_name="Rogue",
+            level=5,
+            ancestry="Halfling",
+            ability_scores={"str": 8, "dex": 16, "con": 12, "int": 14, "wis": 10, "cha": 13},
+            armor_class=15,
+            max_hp=31,
+            current_hp=31,
+            skill_proficiencies={"stealth", "investigation"},
+        )
+
+        self.assertEqual(character.skill_modifier("Stealth"), 6)
+        self.assertEqual(character.skill_modifier("investigation"), 5)
+        self.assertEqual(character.skill_modifier("perception"), 0)
+
 
 if __name__ == "__main__":
     unittest.main()

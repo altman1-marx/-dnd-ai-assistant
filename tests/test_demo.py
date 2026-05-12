@@ -14,7 +14,7 @@ class DemoTests(unittest.TestCase):
         self.assertIn("Revealed clues:", output)
         self.assertIn("d20 rolls: 5, 19", output)
         self.assertIn("total: 23", output)
-        self.assertIn("[System] Kael rolled 23 vs DC 15: success.", output)
+        self.assertIn("[System] Kael rolled Perception 23 vs DC 15: success.", output)
 
     def test_scripted_scene_resolves_basic_actions(self) -> None:
         output = run_scripted_scene(seed=1, actions=["look around", "inspect rope", "open stairway", "quit"])

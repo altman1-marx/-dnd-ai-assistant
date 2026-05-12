@@ -34,12 +34,13 @@ def run_quickstart(seed: int) -> str:
         content="Kael enters the Old Chapel and studies the bell rope.",
     )
     tools.reveal_clue(campaign.id, clue.id)
-    check = tools.roll_check(
+    check_data = sample.scene.checks["inspect_rope"]
+    check = tools.roll_skill_check(
         campaign.id,
         character_name=hero.name,
-        modifier=hero.ability_modifier("wis") + hero.proficiency_bonus,
-        dc=15,
-        mode=RollMode(sample.scene.checks["inspect_rope"]["mode"]),
+        skill_name=check_data.get("skill", "perception"),
+        dc=check_data["dc"],
+        mode=RollMode(check_data["mode"]),
     ).data
 
     lines = [
@@ -58,7 +59,7 @@ def run_quickstart(seed: int) -> str:
         f"- {clue.title}: {clue.public_text}",
         "",
         "Check:",
-        f"- {hero.name} rolls Perception with advantage vs DC 15",
+        f"- {hero.name} rolls {check_data['label']} with {check.mode.value} vs DC {check.dc}",
         f"- d20 rolls: {', '.join(str(value) for value in check.d20_rolls)}",
         f"- total: {check.total}",
         f"- success: {check.success}",

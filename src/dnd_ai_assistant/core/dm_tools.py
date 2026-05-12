@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from .campaign import Campaign, Clue, Encounter, Location, Monster, NPC, Quest, SessionEvent, Visibility
 from .character import Character
 from .dnd5e import AttackRoll, D20Check, RollMode, roll_attack, roll_d20_check
+from .skills import skill_label
 from .store import InMemoryCampaignStore
 
 
@@ -167,6 +168,30 @@ class DMTools:
             )
         )
         return ToolResult(True, f"Rolled d20 check: {outcome}", check)
+
+    def roll_skill_check(
+        self,
+        campaign_id: str,
+        character_name: str,
+        skill_name: str,
+        dc: int,
+        mode: RollMode = RollMode.NORMAL,
+    ) -> ToolResult:
+        campaign = self.store.get(campaign_id)
+        if character_name not in campaign.characters:
+            return ToolResult(False, f"Character not found: {character_name}")
+        character = campaign.characters[character_name]
+        modifier = character.skill_modifier(skill_name)
+        check: D20Check = roll_d20_check(modifier=modifier, dc=dc, mode=mode, rng=self.rng)
+        outcome = "success" if check.success else "failure"
+        label = skill_label(skill_name)
+        campaign.record_event(
+            SessionEvent(
+                actor="System",
+                content=f"{character_name} rolled {label} {check.total} vs DC {dc}: {outcome}.",
+            )
+        )
+        return ToolResult(True, f"Rolled {label} check: {outcome}", check)
 
     def apply_damage(self, campaign_id: str, character_name: str, amount: int) -> ToolResult:
         campaign = self.store.get(campaign_id)

@@ -82,6 +82,7 @@
   },
   "checks": {
     "inspect_rope": {
+      "skill": "perception",
       "ability": "wis",
       "proficient": true,
       "dc": 15,

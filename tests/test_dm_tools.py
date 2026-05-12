@@ -92,6 +92,26 @@ class DMToolsTests(unittest.TestCase):
         self.assertEqual(len(campaign.session_log), 1)
         self.assertIn("Kael rolled 24 vs DC 15", campaign.session_log[0].content)
 
+    def test_roll_skill_check_uses_character_skill_modifier(self) -> None:
+        tools = DMTools(rng=random.Random(1))
+        campaign = tools.create_campaign("Roadside Ambush", party_level=2).data
+        tools.add_character(campaign.id, sample_character())
+
+        result = tools.roll_skill_check(
+            campaign_id=campaign.id,
+            character_name="Kael",
+            skill_name="perception",
+            dc=15,
+            mode=RollMode.ADVANTAGE,
+        )
+
+        self.assertTrue(result.ok)
+        check = result.data
+        self.assertEqual(check.d20_rolls, (5, 19))
+        self.assertEqual(check.total, 23)
+        self.assertTrue(check.success)
+        self.assertIn("Kael rolled Perception 23 vs DC 15", campaign.session_log[0].content)
+
     def test_damage_and_healing_tools_record_events(self) -> None:
         tools = DMTools(rng=random.Random(1))
         campaign = tools.create_campaign("Roadside Ambush", party_level=2).data

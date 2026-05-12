@@ -15,4 +15,4 @@
 - Added initiative tracker and initiative CLI demo.
 - Added one-attack combat CLI demo with optional state export.
 - Added architecture documentation.
-
+- Added core DND 5e skill mapping and reusable skill-check tooling.
