@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass
 
 from .adventure import AdventureDefinition, validate_adventure
@@ -67,3 +68,25 @@ def render_adventure_review(adventure: AdventureDefinition) -> str:
         lines.append("Strengths:")
         lines.extend(f"- {strength}" for strength in review.strengths)
     return "\n".join(lines)
+
+
+def adventure_review_to_dict(adventure: AdventureDefinition) -> dict:
+    review = review_adventure(adventure)
+    return {
+        "title": adventure.campaign["title"],
+        "ok": review.ok,
+        "warnings": list(review.warnings),
+        "strengths": list(review.strengths),
+        "counts": {
+            "locations": len(adventure.locations),
+            "npcs": len(adventure.npcs),
+            "clues": len(adventure.clues),
+            "quests": len(adventure.quests),
+            "encounters": len(adventure.encounters),
+            "endings": len(adventure.endings),
+        },
+    }
+
+
+def render_adventure_review_json(adventure: AdventureDefinition) -> str:
+    return json.dumps(adventure_review_to_dict(adventure), ensure_ascii=False, indent=2)

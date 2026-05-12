@@ -30,3 +30,4 @@
 - Added AI adventure prompt generation and model-output JSON cleanup.
 - Added a one-step model-output compile command for adventure and campaign files.
 - Added adventure content review warnings and CLI output.
+- Added JSON output for adventure content reviews.

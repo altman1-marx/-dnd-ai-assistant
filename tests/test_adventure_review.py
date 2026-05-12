@@ -1,7 +1,14 @@
 import unittest
 
 from dnd_ai_assistant.adventure import AdventureDefinition, create_adventure_template
-from dnd_ai_assistant.adventure_review import render_adventure_review, review_adventure
+import json
+
+from dnd_ai_assistant.adventure_review import (
+    adventure_review_to_dict,
+    render_adventure_review,
+    render_adventure_review_json,
+    review_adventure,
+)
 
 
 class AdventureReviewTests(unittest.TestCase):
@@ -40,6 +47,23 @@ class AdventureReviewTests(unittest.TestCase):
         self.assertIn("Adventure review: Moonlit Road", output)
         self.assertIn("Warnings:", output)
         self.assertIn("Strengths:", output)
+
+    def test_render_adventure_review_json_outputs_counts(self) -> None:
+        adventure = AdventureDefinition(create_adventure_template("Moonlit Road"))
+
+        data = json.loads(render_adventure_review_json(adventure))
+
+        self.assertEqual(data["title"], "Moonlit Road")
+        self.assertEqual(data["counts"]["locations"], 3)
+        self.assertIn("warnings", data)
+
+    def test_adventure_review_to_dict_is_machine_readable(self) -> None:
+        adventure = AdventureDefinition(create_adventure_template("Moonlit Road"))
+
+        data = adventure_review_to_dict(adventure)
+
+        self.assertFalse(data["ok"])
+        self.assertEqual(data["counts"]["encounters"], 1)
 
 
 if __name__ == "__main__":

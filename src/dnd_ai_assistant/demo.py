@@ -14,7 +14,7 @@ from .adventure_generator import (
 )
 from .adventure_importer import campaign_from_adventure
 from .adventure_map import render_mermaid_map, render_text_map
-from .adventure_review import render_adventure_review
+from .adventure_review import render_adventure_review, render_adventure_review_json
 from .core.dnd5e import RollMode
 from .core.initiative import Combatant, InitiativeTracker
 from .core.serialization import load_campaign, save_campaign
@@ -283,6 +283,7 @@ def main() -> int:
 
     adventure_review = subparsers.add_parser("review-adventure", help="Review adventure content quality.")
     adventure_review.add_argument("path", help="Path to an adventure JSON file.")
+    adventure_review.add_argument("--format", choices=("text", "json"), default="text", help="Review output format.")
 
     import_adventure = subparsers.add_parser("import-adventure", help="Import an adventure JSON as campaign state.")
     import_adventure.add_argument("path", help="Path to an adventure JSON file.")
@@ -364,7 +365,10 @@ def main() -> int:
         return 0
     if args.command == "review-adventure":
         adventure = load_adventure(args.path)
-        print(render_adventure_review(adventure))
+        if args.format == "json":
+            print(render_adventure_review_json(adventure))
+        else:
+            print(render_adventure_review(adventure))
         return 0
     if args.command == "import-adventure":
         adventure = load_adventure(args.path)
