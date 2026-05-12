@@ -31,3 +31,4 @@
 - Added a one-step model-output compile command for adventure and campaign files.
 - Added adventure content review warnings and CLI output.
 - Added JSON output for adventure content reviews.
+- Added review finding codes and severity levels.

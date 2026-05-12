@@ -19,6 +19,7 @@ class AdventureReviewTests(unittest.TestCase):
 
         self.assertFalse(review.ok)
         self.assertIn("Add at least two clues", review.warnings[0])
+        self.assertEqual(review.findings[0].code, "clue_count")
         self.assertTrue(any("Location count" in strength for strength in review.strengths))
 
     def test_review_accepts_richer_short_adventure(self) -> None:
@@ -55,6 +56,7 @@ class AdventureReviewTests(unittest.TestCase):
 
         self.assertEqual(data["title"], "Moonlit Road")
         self.assertEqual(data["counts"]["locations"], 3)
+        self.assertEqual(data["findings"][0]["severity"], "warning")
         self.assertIn("warnings", data)
 
     def test_adventure_review_to_dict_is_machine_readable(self) -> None:
