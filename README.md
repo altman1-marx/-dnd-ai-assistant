@@ -209,6 +209,7 @@ python -m dnd_ai_assistant.demo new-adventure --output adventures\moonlit_road.j
 python -m dnd_ai_assistant.demo validate-adventure adventures\moonlit_road.json
 python -m dnd_ai_assistant.demo adventure-map adventures\moonlit_road.json
 python -m dnd_ai_assistant.demo adventure-map adventures\moonlit_road.json --format mermaid
+python -m dnd_ai_assistant.demo review-adventure adventures\moonlit_road.json
 python -m dnd_ai_assistant.demo import-adventure adventures\moonlit_road.json --output output\moonlit_campaign.json
 ```
 

@@ -14,6 +14,7 @@ from .adventure_generator import (
 )
 from .adventure_importer import campaign_from_adventure
 from .adventure_map import render_mermaid_map, render_text_map
+from .adventure_review import render_adventure_review
 from .core.dnd5e import RollMode
 from .core.initiative import Combatant, InitiativeTracker
 from .core.serialization import load_campaign, save_campaign
@@ -280,6 +281,9 @@ def main() -> int:
     adventure_map.add_argument("path", help="Path to an adventure JSON file.")
     adventure_map.add_argument("--format", choices=("text", "mermaid"), default="text", help="Map output format.")
 
+    adventure_review = subparsers.add_parser("review-adventure", help="Review adventure content quality.")
+    adventure_review.add_argument("path", help="Path to an adventure JSON file.")
+
     import_adventure = subparsers.add_parser("import-adventure", help="Import an adventure JSON as campaign state.")
     import_adventure.add_argument("path", help="Path to an adventure JSON file.")
     import_adventure.add_argument("--output", required=True, help="Where to write the campaign state JSON.")
@@ -357,6 +361,10 @@ def main() -> int:
             print(render_mermaid_map(adventure))
         else:
             print(render_text_map(adventure))
+        return 0
+    if args.command == "review-adventure":
+        adventure = load_adventure(args.path)
+        print(render_adventure_review(adventure))
         return 0
     if args.command == "import-adventure":
         adventure = load_adventure(args.path)
