@@ -58,6 +58,8 @@
   - 普通 / 优势 / 劣势 d20 检定
   - 伤害骰
   - 简单攻击命中和伤害结算
+- `src/dnd_ai_assistant/core/config.py`
+  - 常用 DC 难度阈值和默认规则配置
 - `src/dnd_ai_assistant/core/skills.py`
   - DND 5e 技能到属性的映射
   - 技能显示名与规范化工具，供角色和 DM 工具复用

@@ -23,3 +23,4 @@
 - Added store and campaign integrity tests.
 - Added minimal spell and spellcasting resource models with serialization support.
 - Added GitHub Actions unit test workflow.
+- Added rules configuration for common DC thresholds and default movement speed.

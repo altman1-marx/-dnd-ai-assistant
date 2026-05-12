@@ -16,6 +16,7 @@ Responsibilities:
 
 - Dice parsing and rolling
 - DND 5e d20 checks
+- Rules configuration such as common DC thresholds
 - DND 5e skill-to-ability mapping and skill modifiers
 - Character HP and conditions
 - Initiative order

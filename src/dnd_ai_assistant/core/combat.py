@@ -4,6 +4,7 @@ import random
 from dataclasses import dataclass, field
 from enum import Enum
 
+from .config import DEFAULT_RULES_CONFIG
 from .initiative import Combatant, InitiativeTracker
 
 
@@ -19,7 +20,7 @@ class TurnResources:
     action: bool = True
     bonus_action: bool = True
     reaction: bool = True
-    movement: int = 30
+    movement: int = DEFAULT_RULES_CONFIG.default_movement_speed
 
     def spend(self, resource: ActionResource, amount: int = 0) -> None:
         if resource == ActionResource.MOVEMENT:
@@ -36,7 +37,7 @@ class TurnResources:
             raise ValueError(f"{resource.value} already spent.")
         setattr(self, resource.value, False)
 
-    def reset_for_turn(self, movement_speed: int = 30) -> None:
+    def reset_for_turn(self, movement_speed: int = DEFAULT_RULES_CONFIG.default_movement_speed) -> None:
         self.action = True
         self.bonus_action = True
         self.movement = movement_speed
@@ -66,7 +67,9 @@ class CombatState:
         speeds = movement_speeds or {}
         state = cls(tracker=tracker, movement_speeds=speeds)
         for combatant in tracker.combatants:
-            state.resources[combatant.name] = TurnResources(movement=speeds.get(combatant.name, 30))
+            state.resources[combatant.name] = TurnResources(
+                movement=speeds.get(combatant.name, DEFAULT_RULES_CONFIG.default_movement_speed)
+            )
         state.current_resources().reset_for_turn(state.current_speed())
         return state
 
@@ -74,7 +77,7 @@ class CombatState:
         return self.tracker.current()
 
     def current_speed(self) -> int:
-        return self.movement_speeds.get(self.current().name, 30)
+        return self.movement_speeds.get(self.current().name, DEFAULT_RULES_CONFIG.default_movement_speed)
 
     def current_resources(self) -> TurnResources:
         return self.resources[self.current().name]
