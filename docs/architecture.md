@@ -61,6 +61,16 @@ src/dnd_ai_assistant/adventure.py
 
 Adventure JSON is the broader format intended for AI adventure generation. It includes campaign metadata, a connected location graph, start and final locations, NPCs, clues, quests, encounters, endings, and opening text. The validator checks required fields, unique ids, location references, and reachability from the starting location.
 
+### Adventure Map Rendering
+
+Location:
+
+```text
+src/dnd_ai_assistant/adventure_map.py
+```
+
+The map renderer turns adventure location connections into text or Mermaid output. This keeps the first map generator structural and testable before adding visual map rendering.
+
 ### Scene Engine
 
 Location:

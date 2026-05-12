@@ -207,6 +207,8 @@ python -m dnd_ai_assistant.demo new-scene --output scenes\my_adventure.json --ti
 ```powershell
 python -m dnd_ai_assistant.demo new-adventure --output adventures\moonlit_road.json --title "Moonlit Road"
 python -m dnd_ai_assistant.demo validate-adventure adventures\moonlit_road.json
+python -m dnd_ai_assistant.demo adventure-map adventures\moonlit_road.json
+python -m dnd_ai_assistant.demo adventure-map adventures\moonlit_road.json --format mermaid
 ```
 
 冒险 JSON 比场景 JSON 更适合 AI 剧本创作，包含地点网络、起点、终点、NPC、线索、任务、遭遇和结局。程序会校验地点引用和从起点出发的可达性。

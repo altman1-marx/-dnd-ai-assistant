@@ -6,6 +6,7 @@ import sys
 from pathlib import Path
 
 from .adventure import load_adventure, validate_adventure, write_adventure_template
+from .adventure_map import render_mermaid_map, render_text_map
 from .core.dnd5e import RollMode
 from .core.initiative import Combatant, InitiativeTracker
 from .core.serialization import load_campaign, save_campaign
@@ -268,6 +269,10 @@ def main() -> int:
     new_adventure.add_argument("--output", required=True, help="Where to write the adventure JSON file.")
     new_adventure.add_argument("--title", default="Untitled DND Adventure", help="Campaign title for the template.")
 
+    adventure_map = subparsers.add_parser("adventure-map", help="Render an adventure location map.")
+    adventure_map.add_argument("path", help="Path to an adventure JSON file.")
+    adventure_map.add_argument("--format", choices=("text", "mermaid"), default="text", help="Map output format.")
+
     initiative = subparsers.add_parser("initiative", help="Run a small initiative tracker demo.")
     initiative.add_argument("--seed", type=int, default=1, help="Random seed for reproducible rolls.")
     initiative.add_argument("--rounds", type=int, default=2, help="How many rounds to print.")
@@ -310,6 +315,13 @@ def main() -> int:
     if args.command == "new-adventure":
         write_adventure_template(args.output, args.title)
         print(f"Wrote adventure template: {args.output}")
+        return 0
+    if args.command == "adventure-map":
+        adventure = load_adventure(args.path)
+        if args.format == "mermaid":
+            print(render_mermaid_map(adventure))
+        else:
+            print(render_text_map(adventure))
         return 0
     if args.command == "initiative":
         print(run_initiative_demo(args.seed, args.rounds, args.scene))
