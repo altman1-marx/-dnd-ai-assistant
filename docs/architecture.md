@@ -81,6 +81,16 @@ src/dnd_ai_assistant/adventure_importer.py
 
 The importer converts validated adventure JSON into the core `Campaign` model while preserving adventure ids for locations, NPCs, clues, quests, and encounters. This connects generated adventure content to the existing campaign state and serialization layer.
 
+### Adventure Generation Prompting
+
+Location:
+
+```text
+src/dnd_ai_assistant/adventure_generator.py
+```
+
+The generator module currently builds strict prompts for external adventure-writing AI tools and cleans model output into validated adventure JSON. It intentionally does not call an API yet, so provider integration can be added after the schema and validation loop stay stable.
+
 ### Scene Engine
 
 Location:

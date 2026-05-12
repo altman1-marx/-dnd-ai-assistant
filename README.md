@@ -215,6 +215,15 @@ python -m dnd_ai_assistant.demo import-adventure adventures\moonlit_road.json --
 冒险 JSON 比场景 JSON 更适合 AI 剧本创作，包含地点网络、起点、终点、NPC、线索、任务、遭遇和结局。程序会校验地点引用和从起点出发的可达性。
 导入后的 campaign state 可以继续用 `state-summary` 查看，并作为后续 AI DM 运行时状态。
 
+生成给剧本创作 AI 使用的提示词，并清理/校验 AI 返回的 JSON：
+
+```powershell
+python -m dnd_ai_assistant.demo adventure-prompt --premise "A bell rings under a ruined chapel." --party-level 2
+python -m dnd_ai_assistant.demo clean-adventure-output ai_response.txt --output adventures\generated.json
+```
+
+当前版本不会直接调用外部 AI API；它先把提示词、JSON 抽取和 adventure 校验链稳定下来。
+
 保存一次跑团后的战役状态：
 
 ```powershell

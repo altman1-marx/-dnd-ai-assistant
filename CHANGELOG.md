@@ -27,3 +27,4 @@
 - Added adventure JSON template, loader, validator, and CLI commands.
 - Added text and Mermaid adventure map rendering.
 - Added adventure-to-campaign import support.
+- Added AI adventure prompt generation and model-output JSON cleanup.

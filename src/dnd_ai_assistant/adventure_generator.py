@@ -1,0 +1,161 @@
+from __future__ import annotations
+
+import json
+from dataclasses import dataclass
+from pathlib import Path
+
+from .adventure import AdventureDefinition, validate_adventure
+
+
+@dataclass(frozen=True)
+class AdventureRequest:
+    premise: str
+    party_level: int = 1
+    player_count: int = 4
+    duration_hours: int = 2
+    tone: str = "heroic fantasy mystery"
+    combat_ratio: str = "medium"
+    puzzle_ratio: str = "medium"
+
+    def __post_init__(self) -> None:
+        if not self.premise.strip():
+            raise ValueError("Premise cannot be empty.")
+        if self.party_level < 1 or self.party_level > 20:
+            raise ValueError("Party level must be between 1 and 20.")
+        if self.player_count < 1:
+            raise ValueError("Player count must be positive.")
+        if self.duration_hours < 1:
+            raise ValueError("Duration must be at least 1 hour.")
+
+
+def build_adventure_prompt(request: AdventureRequest) -> str:
+    return "\n".join(
+        [
+            "You are designing a short DND 5e adventure for an AI tabletop assistant.",
+            "Return only valid JSON. Do not wrap it in markdown.",
+            "The JSON must match this shape:",
+            _schema_instructions(),
+            "",
+            "Design constraints:",
+            f"- Premise: {request.premise}",
+            f"- Party level: {request.party_level}",
+            f"- Player count: {request.player_count}",
+            f"- Target duration: {request.duration_hours} hours",
+            f"- Tone: {request.tone}",
+            f"- Combat ratio: {request.combat_ratio}",
+            f"- Puzzle ratio: {request.puzzle_ratio}",
+            "",
+            "Quality requirements:",
+            "- Include 3 to 6 connected locations.",
+            "- Include a clear start_location_id and final_location_id.",
+            "- Include at least one clue, one quest, one encounter, and one ending.",
+            "- Keep player-facing text spoiler-free.",
+            "- Put secrets and twists only in dm_secret, dm_notes, or opening.dm_notes.",
+            "- Use stable ids like loc_old_chapel, npc_mayor_voss, clue_black_ash.",
+            "- Make all location references point to existing location ids.",
+        ]
+    )
+
+
+def adventure_from_model_text(text: str) -> AdventureDefinition:
+    raw = json.loads(extract_json_object(text))
+    adventure = AdventureDefinition(raw)
+    validate_adventure(adventure)
+    return adventure
+
+
+def write_adventure_from_model_text(text: str, path: str | Path) -> AdventureDefinition:
+    adventure = adventure_from_model_text(text)
+    output_path = Path(path)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    output_path.write_text(json.dumps(adventure.raw, ensure_ascii=False, indent=2), encoding="utf-8")
+    return adventure
+
+
+def extract_json_object(text: str) -> str:
+    stripped = _strip_markdown_fence(text.strip())
+    if stripped.startswith("{") and stripped.endswith("}"):
+        return stripped
+
+    start = stripped.find("{")
+    end = stripped.rfind("}")
+    if start == -1 or end == -1 or end <= start:
+        raise ValueError("No JSON object found in model output.")
+    return stripped[start : end + 1]
+
+
+def _strip_markdown_fence(text: str) -> str:
+    if not text.startswith("```"):
+        return text
+    lines = text.splitlines()
+    if len(lines) >= 3 and lines[-1].strip() == "```":
+        return "\n".join(lines[1:-1]).strip()
+    return text
+
+
+def _schema_instructions() -> str:
+    return json.dumps(
+        {
+            "campaign": {
+                "title": "string",
+                "party_level": "integer",
+                "tone": "string",
+                "public_hook": "string",
+                "dm_secret": "string",
+            },
+            "start_location_id": "string",
+            "final_location_id": "string",
+            "locations": [
+                {
+                    "id": "string",
+                    "name": "string",
+                    "public_description": "string",
+                    "dm_notes": "string",
+                    "connections": ["location_id"],
+                }
+            ],
+            "npcs": [
+                {
+                    "id": "string",
+                    "name": "string",
+                    "role": "string",
+                    "public_description": "string",
+                    "dm_secret": "string",
+                    "location_id": "location_id",
+                }
+            ],
+            "clues": [
+                {
+                    "id": "string",
+                    "title": "string",
+                    "public_text": "string",
+                    "dm_secret": "string",
+                    "location_id": "location_id",
+                }
+            ],
+            "quests": [{"id": "string", "title": "string", "summary": "string"}],
+            "encounters": [
+                {
+                    "id": "string",
+                    "title": "string",
+                    "location_id": "location_id",
+                    "difficulty": "easy|medium|hard",
+                    "trigger": "string",
+                    "reward": "string",
+                    "monsters": [
+                        {
+                            "name": "string",
+                            "armor_class": "integer",
+                            "max_hp": "integer",
+                            "attack_bonus": "integer",
+                            "damage": "dice expression",
+                        }
+                    ],
+                }
+            ],
+            "endings": [{"id": "string", "title": "string", "summary": "string"}],
+            "opening": {"player_text": "string", "dm_notes": "string"},
+        },
+        ensure_ascii=False,
+        indent=2,
+    )

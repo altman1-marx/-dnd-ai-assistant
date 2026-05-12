@@ -6,6 +6,7 @@ import sys
 from pathlib import Path
 
 from .adventure import load_adventure, validate_adventure, write_adventure_template
+from .adventure_generator import AdventureRequest, build_adventure_prompt, write_adventure_from_model_text
 from .adventure_importer import campaign_from_adventure
 from .adventure_map import render_mermaid_map, render_text_map
 from .core.dnd5e import RollMode
@@ -278,6 +279,22 @@ def main() -> int:
     import_adventure.add_argument("path", help="Path to an adventure JSON file.")
     import_adventure.add_argument("--output", required=True, help="Where to write the campaign state JSON.")
 
+    adventure_prompt = subparsers.add_parser("adventure-prompt", help="Print a prompt for an adventure-writing AI.")
+    adventure_prompt.add_argument("--premise", required=True, help="Adventure premise or inspiration.")
+    adventure_prompt.add_argument("--party-level", type=int, default=1, help="Target party level.")
+    adventure_prompt.add_argument("--player-count", type=int, default=4, help="Number of players.")
+    adventure_prompt.add_argument("--duration-hours", type=int, default=2, help="Target play time in hours.")
+    adventure_prompt.add_argument("--tone", default="heroic fantasy mystery", help="Adventure tone.")
+    adventure_prompt.add_argument("--combat-ratio", default="medium", help="Desired combat ratio.")
+    adventure_prompt.add_argument("--puzzle-ratio", default="medium", help="Desired puzzle ratio.")
+
+    clean_adventure = subparsers.add_parser(
+        "clean-adventure-output",
+        help="Extract and validate adventure JSON from an AI response file.",
+    )
+    clean_adventure.add_argument("input", help="Path to a text file containing model output.")
+    clean_adventure.add_argument("--output", required=True, help="Where to write clean adventure JSON.")
+
     initiative = subparsers.add_parser("initiative", help="Run a small initiative tracker demo.")
     initiative.add_argument("--seed", type=int, default=1, help="Random seed for reproducible rolls.")
     initiative.add_argument("--rounds", type=int, default=2, help="How many rounds to print.")
@@ -334,6 +351,24 @@ def main() -> int:
         save_campaign(campaign, args.output)
         print(f"Imported adventure: {adventure.campaign['title']}")
         print(f"Wrote campaign state: {args.output}")
+        return 0
+    if args.command == "adventure-prompt":
+        request = AdventureRequest(
+            premise=args.premise,
+            party_level=args.party_level,
+            player_count=args.player_count,
+            duration_hours=args.duration_hours,
+            tone=args.tone,
+            combat_ratio=args.combat_ratio,
+            puzzle_ratio=args.puzzle_ratio,
+        )
+        print(build_adventure_prompt(request))
+        return 0
+    if args.command == "clean-adventure-output":
+        text = Path(args.input).read_text(encoding="utf-8")
+        adventure = write_adventure_from_model_text(text, args.output)
+        print(f"Adventure OK: {args.output}")
+        print(f"Title: {adventure.campaign['title']}")
         return 0
     if args.command == "initiative":
         print(run_initiative_demo(args.seed, args.rounds, args.scene))
