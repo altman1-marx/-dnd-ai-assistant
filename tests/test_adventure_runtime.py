@@ -5,6 +5,7 @@ from dnd_ai_assistant.adventure import AdventureDefinition, create_adventure_tem
 from dnd_ai_assistant.adventure_importer import campaign_from_adventure
 from dnd_ai_assistant.adventure_runtime import AdventureRuntime, describe_current_location, handle_adventure_action
 from dnd_ai_assistant.core.character import Character
+from dnd_ai_assistant.core.spells import Spell, Spellcasting
 
 
 class AdventureRuntimeTests(unittest.TestCase):
@@ -297,6 +298,63 @@ class AdventureRuntimeTests(unittest.TestCase):
         self.assertEqual(campaign.active_combat["initiative"][1]["current_hp"], 10)
         self.assertIn("0 poison damage (8 before adjustments)", output)
 
+    def test_cast_spell_spends_slot_and_action_resource(self) -> None:
+        campaign = campaign_from_adventure(AdventureDefinition(create_adventure_template("Moonlit Road")))
+        campaign.add_character(_caster())
+        campaign.active_combat = {
+            "round": 1,
+            "turn": "Leth",
+            "initiative": [{"name": "Leth", "initiative_total": 18, "armor_class": 16, "current_hp": 24}],
+            "resources": {"Leth": {"action": True, "bonus_action": True, "reaction": True, "movement": 30}},
+        }
+        runtime = AdventureRuntime(campaign)
+
+        handle_adventure_action(runtime, "cast bless")
+        output = runtime.flush()
+
+        caster = campaign.characters["Leth"]
+        self.assertFalse(campaign.active_combat["resources"]["Leth"]["action"])
+        self.assertEqual(caster.spellcasting.available_slots(1), 1)
+        self.assertEqual(caster.spellcasting.concentration_spell_name, "Bless")
+        self.assertIn("casts Bless using a level 1 slot", output)
+
+    def test_cast_bonus_action_spell_spends_bonus_action(self) -> None:
+        campaign = campaign_from_adventure(AdventureDefinition(create_adventure_template("Moonlit Road")))
+        campaign.add_character(_caster())
+        campaign.active_combat = {
+            "round": 1,
+            "turn": "Leth",
+            "initiative": [{"name": "Leth", "initiative_total": 18, "armor_class": 16, "current_hp": 24}],
+            "resources": {"Leth": {"action": True, "bonus_action": True, "reaction": True, "movement": 30}},
+        }
+        runtime = AdventureRuntime(campaign)
+
+        handle_adventure_action(runtime, "cast healing word")
+
+        self.assertTrue(campaign.active_combat["resources"]["Leth"]["action"])
+        self.assertFalse(campaign.active_combat["resources"]["Leth"]["bonus_action"])
+        self.assertEqual(campaign.characters["Leth"].spellcasting.available_slots(1), 1)
+
+    def test_failed_spell_cast_does_not_spend_action(self) -> None:
+        campaign = campaign_from_adventure(AdventureDefinition(create_adventure_template("Moonlit Road")))
+        caster = _caster()
+        caster.spellcasting.expend_slot(1)
+        caster.spellcasting.expend_slot(1)
+        campaign.add_character(caster)
+        campaign.active_combat = {
+            "round": 1,
+            "turn": "Leth",
+            "initiative": [{"name": "Leth", "initiative_total": 18, "armor_class": 16, "current_hp": 24}],
+            "resources": {"Leth": {"action": True, "bonus_action": True, "reaction": True, "movement": 30}},
+        }
+        runtime = AdventureRuntime(campaign)
+
+        handle_adventure_action(runtime, "cast bless")
+        output = runtime.flush()
+
+        self.assertTrue(campaign.active_combat["resources"]["Leth"]["action"])
+        self.assertIn("No level 1 spell slots remaining", output)
+
     def test_end_turn_resets_next_turn_resources(self) -> None:
         campaign = campaign_from_adventure(AdventureDefinition(create_adventure_template("Moonlit Road")))
         campaign.active_combat = {
@@ -507,6 +565,28 @@ def _scout() -> Character:
         max_hp=12,
         current_hp=12,
         skill_proficiencies={"survival"},
+    )
+
+
+def _caster() -> Character:
+    return Character(
+        name="Leth",
+        player_name="Player",
+        class_name="Cleric",
+        level=3,
+        ancestry="Human",
+        ability_scores={"str": 10, "dex": 10, "con": 14, "int": 10, "wis": 16, "cha": 12},
+        armor_class=16,
+        max_hp=24,
+        current_hp=24,
+        spellcasting=Spellcasting(
+            ability="wis",
+            slots_by_level={1: 2},
+            known_spells=[
+                Spell("Bless", 1, concentration=True),
+                Spell("Healing Word", 1, casting_time="1 bonus action"),
+            ],
+        ),
     )
 
 

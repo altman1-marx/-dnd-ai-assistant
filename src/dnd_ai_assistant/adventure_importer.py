@@ -144,6 +144,7 @@ def _default_runtime_actions() -> dict[str, dict]:
         "use_reaction": {"aliases": ["use reaction"], "handler": "use_reaction"},
         "spend_movement": {"aliases": ["spend movement", "use movement"], "handler": "spend_movement"},
         "attack": {"aliases": ["attack", "strike"], "handler": "attack"},
+        "cast_spell": {"aliases": ["cast", "cast spell"], "handler": "cast_spell"},
         "resolve_encounter": {"aliases": ["resolve encounter", "end encounter"], "handler": "resolve_encounter"},
         "quests": {"aliases": ["quests", "quest log"], "handler": "quests"},
         "complete_quest": {"aliases": ["complete quest", "finish quest"], "handler": "complete_quest"},

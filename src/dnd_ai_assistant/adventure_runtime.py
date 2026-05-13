@@ -3,7 +3,7 @@ from __future__ import annotations
 import random
 from dataclasses import dataclass, field
 
-from .core.combat import CombatState
+from .core.combat import ActionResource, CombatState, action_resource_for_spell
 from .core.campaign import Campaign, Encounter, Location, NPC, Clue, SessionEvent
 from .core.character import Character
 from .core.config import DEFAULT_RULES_CONFIG
@@ -29,6 +29,7 @@ DEFAULT_RUNTIME_ACTIONS = {
     "use_reaction": {"aliases": ["use reaction"], "handler": "use_reaction"},
     "spend_movement": {"aliases": ["spend movement", "use movement"], "handler": "spend_movement"},
     "attack": {"aliases": ["attack", "strike"], "handler": "attack"},
+    "cast_spell": {"aliases": ["cast", "cast spell"], "handler": "cast_spell"},
     "resolve_encounter": {"aliases": ["resolve encounter", "end encounter"], "handler": "resolve_encounter"},
     "quests": {"aliases": ["quests", "quest log"], "handler": "quests"},
     "complete_quest": {"aliases": ["complete quest", "finish quest"], "handler": "complete_quest"},
@@ -120,6 +121,9 @@ def handle_adventure_action(runtime: AdventureRuntime, action: str) -> bool:
         return True
     if handler == "attack":
         attack_active_combat_target(runtime, action_match.get("argument", ""))
+        return True
+    if handler == "cast_spell":
+        cast_active_combat_spell(runtime, action_match.get("argument", ""))
         return True
     if handler == "resolve_encounter":
         return resolve_active_encounter(runtime)
@@ -376,6 +380,53 @@ def attack_active_combat_target(runtime: AdventureRuntime, target: str) -> None:
     runtime.narrate(f"DM: {content}")
 
 
+def cast_active_combat_spell(runtime: AdventureRuntime, spell_text: str) -> None:
+    combat = runtime.campaign.active_combat
+    if combat is None:
+        runtime.narrate("DM: There is no active combat.")
+        return
+    spell_name, slot_level = _parse_spell_cast_text(spell_text)
+    if not spell_name:
+        runtime.narrate("DM: Which spell?")
+        return
+    caster_name = combat.get("turn", "")
+    caster = runtime.campaign.characters.get(caster_name)
+    if caster is None:
+        runtime.narrate("DM: Only player characters can cast spells in the current runtime.")
+        return
+    if caster.spellcasting is None:
+        runtime.narrate(f"DM: {caster.name} cannot cast spells.")
+        return
+
+    try:
+        spell = caster.spellcasting.spell_named(spell_name)
+    except ValueError:
+        runtime.narrate(f"DM: {caster.name} does not know that spell.")
+        return
+
+    resource = action_resource_for_spell(spell)
+    resources = _active_resources(combat).setdefault(caster.name, _default_turn_resources())
+    resource_name = _resource_key(resource)
+    if not resources.get(resource_name, True):
+        runtime.narrate(f"DM: {caster.name} has already used {resource_name.replace('_', ' ')}.")
+        return
+
+    try:
+        cast_spell = caster.spellcasting.cast_spell(spell.name, slot_level=slot_level)
+    except ValueError as exc:
+        runtime.narrate(f"DM: {exc}")
+        return
+
+    resources[resource_name] = False
+    slot_text = ""
+    if cast_spell.level > 0:
+        effective_level = slot_level if slot_level is not None else cast_spell.level
+        slot_text = f" using a level {effective_level} slot"
+    content = f"{caster.name} casts {cast_spell.name}{slot_text}, spending {resource_name.replace('_', ' ')}."
+    runtime.campaign.record_event(SessionEvent(actor="DM", content=content))
+    runtime.narrate(f"DM: {content}")
+
+
 def resolve_active_encounter(runtime: AdventureRuntime) -> bool:
     combat = runtime.campaign.active_combat
     if combat is None:
@@ -562,6 +613,27 @@ def _default_turn_resources() -> dict:
     }
 
 
+def _resource_key(resource: ActionResource) -> str:
+    return resource.value
+
+
+def _parse_spell_cast_text(spell_text: str) -> tuple[str, int | None]:
+    words = spell_text.strip().split()
+    if not words:
+        return "", None
+    if len(words) >= 2 and words[-2].lower() == "level":
+        try:
+            return " ".join(words[:-2]), int(words[-1])
+        except ValueError:
+            return spell_text.strip(), None
+    if len(words) >= 3 and words[-3].lower() == "at" and words[-2].lower() == "level":
+        try:
+            return " ".join(words[:-3]), int(words[-1])
+        except ValueError:
+            return spell_text.strip(), None
+    return spell_text.strip(), None
+
+
 def _reset_turn_resources(combat: dict, name: str) -> None:
     resources = _active_resources(combat).setdefault(name, _default_turn_resources())
     resources["action"] = True
@@ -684,6 +756,7 @@ def _match_runtime_action(campaign: Campaign, normalized: str) -> dict:
                 "fail_quest",
                 "spend_movement",
                 "attack",
+                "cast_spell",
             } and normalized.startswith(alias_text + " "):
                 return {"name": action_name, "handler": handler, "argument": normalized[len(alias_text) :].strip()}
             if normalized == alias_text:
