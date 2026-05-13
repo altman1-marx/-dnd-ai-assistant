@@ -159,6 +159,27 @@ class AdventureRuntimeTests(unittest.TestCase):
         self.assertIn("round 2, turn: Kael", second_output)
         self.assertEqual(campaign.active_combat["round"], 2)
 
+    def test_resolve_encounter_marks_encounter_done_and_clears_combat(self) -> None:
+        campaign = campaign_from_adventure(AdventureDefinition(create_adventure_template("Moonlit Road")))
+        campaign.active_combat = {"encounter_id": "enc_lantern_sprites", "round": 1, "turn": "Kael", "initiative": []}
+        runtime = AdventureRuntime(campaign)
+
+        handle_adventure_action(runtime, "resolve encounter")
+        output = runtime.flush()
+
+        self.assertIsNone(campaign.active_combat)
+        self.assertTrue(campaign.encounters["enc_lantern_sprites"].resolved)
+        self.assertIn("Encounter resolved: Lantern Sprites", output)
+        self.assertTrue(any("Encounter resolved" in event.content for event in campaign.session_log))
+
+    def test_resolve_encounter_reports_when_none_active(self) -> None:
+        campaign = campaign_from_adventure(AdventureDefinition(create_adventure_template("Moonlit Road")))
+        runtime = AdventureRuntime(campaign)
+
+        handle_adventure_action(runtime, "resolve encounter")
+
+        self.assertIn("no active encounter", runtime.flush())
+
     def test_encounter_action_reports_when_none_present(self) -> None:
         campaign = campaign_from_adventure(AdventureDefinition(create_adventure_template("Moonlit Road")))
         runtime = AdventureRuntime(campaign)

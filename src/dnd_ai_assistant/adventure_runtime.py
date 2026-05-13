@@ -22,6 +22,7 @@ DEFAULT_RUNTIME_ACTIONS = {
     "encounter": {"aliases": ["fight", "start encounter", "encounter"], "handler": "encounter"},
     "combat_status": {"aliases": ["combat", "combat status"], "handler": "combat_status"},
     "end_turn": {"aliases": ["end turn", "next turn"], "handler": "end_turn"},
+    "resolve_encounter": {"aliases": ["resolve encounter", "end encounter"], "handler": "resolve_encounter"},
     "quests": {"aliases": ["quests", "quest log"], "handler": "quests"},
     "complete_quest": {"aliases": ["complete quest", "finish quest"], "handler": "complete_quest"},
     "fail_quest": {"aliases": ["fail quest", "abandon quest"], "handler": "fail_quest"},
@@ -98,6 +99,8 @@ def handle_adventure_action(runtime: AdventureRuntime, action: str) -> bool:
     if handler == "end_turn":
         advance_active_combat(runtime)
         return True
+    if handler == "resolve_encounter":
+        return resolve_active_encounter(runtime)
     if handler == "quests":
         describe_quests(runtime)
         return True
@@ -250,6 +253,26 @@ def advance_active_combat(runtime: AdventureRuntime) -> None:
         SessionEvent(actor="DM", content=f"Combat advanced to round {combat['round']}: {combat['turn']}.")
     )
     runtime.narrate(f"DM: Combat advances to round {combat['round']}, turn: {combat['turn']}.")
+
+
+def resolve_active_encounter(runtime: AdventureRuntime) -> bool:
+    combat = runtime.campaign.active_combat
+    if combat is None:
+        runtime.narrate("DM: There is no active encounter to resolve.")
+        return True
+    encounter_id = combat.get("encounter_id")
+    encounter = runtime.campaign.encounters.get(encounter_id)
+    if encounter is not None:
+        encounter.resolved = True
+        content = f"Encounter resolved: {encounter.title}."
+        if encounter.reward:
+            content += f" Reward: {encounter.reward}"
+    else:
+        content = f"Encounter resolved: {encounter_id}."
+    runtime.campaign.active_combat = None
+    runtime.campaign.record_event(SessionEvent(actor="DM", content=content))
+    runtime.narrate(f"DM: {content}")
+    return True
 
 
 def describe_quests(runtime: AdventureRuntime) -> None:

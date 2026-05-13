@@ -38,6 +38,7 @@ SUPPORTED_RUNTIME_HANDLERS = {
     "encounter",
     "combat_status",
     "end_turn",
+    "resolve_encounter",
     "quests",
     "complete_quest",
     "fail_quest",

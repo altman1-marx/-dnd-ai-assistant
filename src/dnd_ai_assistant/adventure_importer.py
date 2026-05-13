@@ -139,6 +139,7 @@ def _default_runtime_actions() -> dict[str, dict]:
         "encounter": {"aliases": ["fight", "start encounter", "encounter"], "handler": "encounter"},
         "combat_status": {"aliases": ["combat", "combat status"], "handler": "combat_status"},
         "end_turn": {"aliases": ["end turn", "next turn"], "handler": "end_turn"},
+        "resolve_encounter": {"aliases": ["resolve encounter", "end encounter"], "handler": "resolve_encounter"},
         "quests": {"aliases": ["quests", "quest log"], "handler": "quests"},
         "complete_quest": {"aliases": ["complete quest", "finish quest"], "handler": "complete_quest"},
         "fail_quest": {"aliases": ["fail quest", "abandon quest"], "handler": "fail_quest"},
