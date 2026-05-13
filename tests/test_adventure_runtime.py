@@ -159,6 +159,49 @@ class AdventureRuntimeTests(unittest.TestCase):
         self.assertIn("round 2, turn: Kael", second_output)
         self.assertEqual(campaign.active_combat["round"], 2)
 
+    def test_combat_resource_actions_spend_current_turn_resources(self) -> None:
+        campaign = campaign_from_adventure(AdventureDefinition(create_adventure_template("Moonlit Road")))
+        campaign.active_combat = {
+            "round": 1,
+            "turn": "Kael",
+            "initiative": [{"name": "Kael", "initiative_total": 18}],
+            "resources": {"Kael": {"action": True, "bonus_action": True, "reaction": True, "movement": 30}},
+        }
+        runtime = AdventureRuntime(campaign)
+
+        handle_adventure_action(runtime, "use action")
+        runtime.flush()
+        handle_adventure_action(runtime, "use action")
+        output = runtime.flush()
+        handle_adventure_action(runtime, "spend movement 10")
+        movement_output = runtime.flush()
+
+        self.assertFalse(campaign.active_combat["resources"]["Kael"]["action"])
+        self.assertIn("already used action", output)
+        self.assertEqual(campaign.active_combat["resources"]["Kael"]["movement"], 20)
+        self.assertIn("20 feet remaining", movement_output)
+
+    def test_end_turn_resets_next_turn_resources(self) -> None:
+        campaign = campaign_from_adventure(AdventureDefinition(create_adventure_template("Moonlit Road")))
+        campaign.active_combat = {
+            "round": 1,
+            "turn": "Kael",
+            "initiative": [{"name": "Kael", "initiative_total": 18}, {"name": "Goblin", "initiative_total": 12}],
+            "resources": {
+                "Kael": {"action": False, "bonus_action": False, "reaction": False, "movement": 0},
+                "Goblin": {"action": False, "bonus_action": False, "reaction": False, "movement": 0},
+            },
+        }
+        runtime = AdventureRuntime(campaign)
+
+        handle_adventure_action(runtime, "end turn")
+
+        goblin = campaign.active_combat["resources"]["Goblin"]
+        self.assertTrue(goblin["action"])
+        self.assertTrue(goblin["bonus_action"])
+        self.assertFalse(goblin["reaction"])
+        self.assertEqual(goblin["movement"], 30)
+
     def test_resolve_encounter_marks_encounter_done_and_clears_combat(self) -> None:
         campaign = campaign_from_adventure(AdventureDefinition(create_adventure_template("Moonlit Road")))
         campaign.active_combat = {"encounter_id": "enc_lantern_sprites", "round": 1, "turn": "Kael", "initiative": []}

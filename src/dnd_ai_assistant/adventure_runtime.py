@@ -6,6 +6,7 @@ from dataclasses import dataclass, field
 from .core.combat import CombatState
 from .core.campaign import Campaign, Encounter, Location, NPC, Clue, SessionEvent
 from .core.character import Character
+from .core.config import DEFAULT_RULES_CONFIG
 from .core.dnd5e import RollMode, roll_d20_check
 from .core.initiative import Combatant
 from .core.skills import skill_label
@@ -22,6 +23,10 @@ DEFAULT_RUNTIME_ACTIONS = {
     "encounter": {"aliases": ["fight", "start encounter", "encounter"], "handler": "encounter"},
     "combat_status": {"aliases": ["combat", "combat status"], "handler": "combat_status"},
     "end_turn": {"aliases": ["end turn", "next turn"], "handler": "end_turn"},
+    "use_action": {"aliases": ["use action"], "handler": "use_action"},
+    "use_bonus_action": {"aliases": ["use bonus action"], "handler": "use_bonus_action"},
+    "use_reaction": {"aliases": ["use reaction"], "handler": "use_reaction"},
+    "spend_movement": {"aliases": ["spend movement", "use movement"], "handler": "spend_movement"},
     "resolve_encounter": {"aliases": ["resolve encounter", "end encounter"], "handler": "resolve_encounter"},
     "quests": {"aliases": ["quests", "quest log"], "handler": "quests"},
     "complete_quest": {"aliases": ["complete quest", "finish quest"], "handler": "complete_quest"},
@@ -98,6 +103,18 @@ def handle_adventure_action(runtime: AdventureRuntime, action: str) -> bool:
         return True
     if handler == "end_turn":
         advance_active_combat(runtime)
+        return True
+    if handler == "use_action":
+        spend_active_combat_resource(runtime, "action")
+        return True
+    if handler == "use_bonus_action":
+        spend_active_combat_resource(runtime, "bonus_action")
+        return True
+    if handler == "use_reaction":
+        spend_active_combat_resource(runtime, "reaction")
+        return True
+    if handler == "spend_movement":
+        spend_active_combat_movement(runtime, action_match.get("argument", ""))
         return True
     if handler == "resolve_encounter":
         return resolve_active_encounter(runtime)
@@ -223,6 +240,16 @@ def describe_active_combat(runtime: AdventureRuntime) -> None:
         runtime.narrate("DM: There is no active combat.")
         return
     runtime.narrate(f"DM: Active combat round {combat.get('round', 1)}, turn: {combat.get('turn', '<unknown>')}.")
+    resources = _active_resources(combat)
+    turn_resources = resources.get(combat.get("turn"), {})
+    if turn_resources:
+        runtime.narrate(
+            "DM: Resources: "
+            f"action={turn_resources.get('action', True)}, "
+            f"bonus_action={turn_resources.get('bonus_action', True)}, "
+            f"reaction={turn_resources.get('reaction', True)}, "
+            f"movement={turn_resources.get('movement', DEFAULT_RULES_CONFIG.default_movement_speed)}."
+        )
     initiative = combat.get("initiative", [])
     if initiative:
         runtime.narrate(
@@ -248,11 +275,53 @@ def advance_active_combat(runtime: AdventureRuntime) -> None:
     if next_index >= len(initiative):
         next_index = 0
         combat["round"] = combat.get("round", 1) + 1
+        for resources in _active_resources(combat).values():
+            resources["reaction"] = True
     combat["turn"] = initiative[next_index]["name"]
+    _reset_turn_resources(combat, combat["turn"])
     runtime.campaign.record_event(
         SessionEvent(actor="DM", content=f"Combat advanced to round {combat['round']}: {combat['turn']}.")
     )
     runtime.narrate(f"DM: Combat advances to round {combat['round']}, turn: {combat['turn']}.")
+
+
+def spend_active_combat_resource(runtime: AdventureRuntime, resource: str) -> None:
+    combat = runtime.campaign.active_combat
+    if combat is None:
+        runtime.narrate("DM: There is no active combat.")
+        return
+    turn = combat.get("turn")
+    resources = _active_resources(combat).setdefault(turn, _default_turn_resources())
+    if not resources.get(resource, True):
+        runtime.narrate(f"DM: {turn} has already used {resource.replace('_', ' ')}.")
+        return
+    resources[resource] = False
+    runtime.campaign.record_event(SessionEvent(actor="DM", content=f"{turn} used {resource.replace('_', ' ')}."))
+    runtime.narrate(f"DM: {turn} uses {resource.replace('_', ' ')}.")
+
+
+def spend_active_combat_movement(runtime: AdventureRuntime, amount_text: str) -> None:
+    combat = runtime.campaign.active_combat
+    if combat is None:
+        runtime.narrate("DM: There is no active combat.")
+        return
+    try:
+        amount = int(amount_text.strip())
+    except ValueError:
+        runtime.narrate("DM: How many feet of movement?")
+        return
+    if amount <= 0:
+        runtime.narrate("DM: Movement must be positive.")
+        return
+    turn = combat.get("turn")
+    resources = _active_resources(combat).setdefault(turn, _default_turn_resources())
+    remaining = resources.get("movement", DEFAULT_RULES_CONFIG.default_movement_speed)
+    if amount > remaining:
+        runtime.narrate("DM: Not enough movement remaining.")
+        return
+    resources["movement"] = remaining - amount
+    runtime.campaign.record_event(SessionEvent(actor="DM", content=f"{turn} moved {amount} feet."))
+    runtime.narrate(f"DM: {turn} moves {amount} feet, {resources['movement']} feet remaining.")
 
 
 def resolve_active_encounter(runtime: AdventureRuntime) -> bool:
@@ -398,10 +467,15 @@ def _combatants_for_encounter(campaign: Campaign, encounter: Encounter) -> list[
 
 
 def _combat_summary(encounter: Encounter, combat: CombatState) -> dict:
+    resources = {
+        combatant.name: _default_turn_resources()
+        for combatant in combat.tracker.combatants
+    }
     return {
         "encounter_id": encounter.id,
         "round": combat.tracker.round_number,
         "turn": combat.current().name,
+        "resources": resources,
         "initiative": [
             {
                 "name": combatant.name,
@@ -419,6 +493,26 @@ def _combat_summary(encounter: Encounter, combat: CombatState) -> dict:
 
 def _initiative_line(combatant: Combatant) -> str:
     return f"{combatant.name} {combatant.initiative_total}"
+
+
+def _active_resources(combat: dict) -> dict:
+    return combat.setdefault("resources", {})
+
+
+def _default_turn_resources() -> dict:
+    return {
+        "action": True,
+        "bonus_action": True,
+        "reaction": True,
+        "movement": DEFAULT_RULES_CONFIG.default_movement_speed,
+    }
+
+
+def _reset_turn_resources(combat: dict, name: str) -> None:
+    resources = _active_resources(combat).setdefault(name, _default_turn_resources())
+    resources["action"] = True
+    resources["bonus_action"] = True
+    resources["movement"] = DEFAULT_RULES_CONFIG.default_movement_speed
 
 
 def _passes_clue_check(runtime: AdventureRuntime, clue: Clue) -> bool:
@@ -469,9 +563,14 @@ def _match_runtime_action(campaign: Campaign, normalized: str) -> dict:
             alias_text = str(alias).strip().lower()
             if not alias_text:
                 continue
-            if handler in {"move", "talk", "inspect", "complete_quest", "fail_quest"} and normalized.startswith(
-                alias_text + " "
-            ):
+            if handler in {
+                "move",
+                "talk",
+                "inspect",
+                "complete_quest",
+                "fail_quest",
+                "spend_movement",
+            } and normalized.startswith(alias_text + " "):
                 return {"name": action_name, "handler": handler, "argument": normalized[len(alias_text) :].strip()}
             if normalized == alias_text:
                 return {"name": action_name, "handler": handler}

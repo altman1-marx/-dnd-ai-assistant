@@ -250,6 +250,10 @@ def _schema_instructions() -> str:
                 "encounter": {"aliases": ["fight", "start encounter", "encounter"], "handler": "encounter"},
                 "combat_status": {"aliases": ["combat", "combat status"], "handler": "combat_status"},
                 "end_turn": {"aliases": ["end turn", "next turn"], "handler": "end_turn"},
+                "use_action": {"aliases": ["use action"], "handler": "use_action"},
+                "use_bonus_action": {"aliases": ["use bonus action"], "handler": "use_bonus_action"},
+                "use_reaction": {"aliases": ["use reaction"], "handler": "use_reaction"},
+                "spend_movement": {"aliases": ["spend movement", "use movement"], "handler": "spend_movement"},
                 "resolve_encounter": {
                     "aliases": ["resolve encounter", "end encounter"],
                     "handler": "resolve_encounter",
