@@ -6,15 +6,11 @@ import sys
 from pathlib import Path
 
 from .adventure import load_adventure, validate_adventure, write_adventure_template
-from .adventure_generator import (
-    AdventureRequest,
-    build_adventure_prompt,
-    write_adventure_from_model_text,
-    write_campaign_from_model_text,
-)
+from .adventure_generator import AdventureRequest, build_adventure_prompt, generate_adventure_files, write_adventure_from_model_text, write_campaign_from_model_text
 from .adventure_importer import campaign_from_adventure
 from .adventure_map import render_mermaid_map, render_text_map
 from .adventure_review import render_adventure_review, render_adventure_review_json
+from .ai_provider import build_provider
 from .core.dnd5e import RollMode
 from .core.initiative import Combatant, InitiativeTracker
 from .core.serialization import load_campaign, save_campaign
@@ -313,6 +309,25 @@ def main() -> int:
     compile_adventure.add_argument("--adventure-output", required=True, help="Where to write clean adventure JSON.")
     compile_adventure.add_argument("--campaign-output", required=True, help="Where to write campaign state JSON.")
 
+    generate_adventure = subparsers.add_parser(
+        "generate-adventure",
+        help="Generate adventure and campaign files through an AI provider.",
+    )
+    generate_adventure.add_argument("--premise", required=True, help="Adventure premise or inspiration.")
+    generate_adventure.add_argument("--adventure-output", required=True, help="Where to write clean adventure JSON.")
+    generate_adventure.add_argument("--campaign-output", required=True, help="Where to write campaign state JSON.")
+    generate_adventure.add_argument("--provider", choices=("mock", "openai-compatible"), default="openai-compatible")
+    generate_adventure.add_argument("--mock-response", default=None, help="Path to mock model output text.")
+    generate_adventure.add_argument("--base-url", default=None, help="Override DND_AI_BASE_URL.")
+    generate_adventure.add_argument("--model", default=None, help="Override DND_AI_MODEL.")
+    generate_adventure.add_argument("--party-level", type=int, default=1, help="Target party level.")
+    generate_adventure.add_argument("--player-count", type=int, default=4, help="Number of players.")
+    generate_adventure.add_argument("--duration-hours", type=int, default=2, help="Target play time in hours.")
+    generate_adventure.add_argument("--tone", default="heroic fantasy mystery", help="Adventure tone.")
+    generate_adventure.add_argument("--combat-ratio", default="medium", help="Desired combat ratio.")
+    generate_adventure.add_argument("--puzzle-ratio", default="medium", help="Desired puzzle ratio.")
+    generate_adventure.add_argument("--review-format", choices=("text", "json"), default="text")
+
     initiative = subparsers.add_parser("initiative", help="Run a small initiative tracker demo.")
     initiative.add_argument("--seed", type=int, default=1, help="Random seed for reproducible rolls.")
     initiative.add_argument("--rounds", type=int, default=2, help="How many rounds to print.")
@@ -403,6 +418,39 @@ def main() -> int:
         print(f"Title: {campaign.title}")
         print(f"Locations: {len(campaign.locations)}")
         print(f"Encounters: {len(campaign.encounters)}")
+        return 0
+    if args.command == "generate-adventure":
+        mock_response_text = None
+        if args.mock_response is not None:
+            mock_response_text = Path(args.mock_response).read_text(encoding="utf-8")
+        provider = build_provider(
+            args.provider,
+            mock_response_text=mock_response_text,
+            base_url=args.base_url,
+            model=args.model,
+        )
+        request = AdventureRequest(
+            premise=args.premise,
+            party_level=args.party_level,
+            player_count=args.player_count,
+            duration_hours=args.duration_hours,
+            tone=args.tone,
+            combat_ratio=args.combat_ratio,
+            puzzle_ratio=args.puzzle_ratio,
+        )
+        adventure, campaign, review = generate_adventure_files(
+            request,
+            provider,
+            args.adventure_output,
+            args.campaign_output,
+        )
+        print(f"Adventure OK: {args.adventure_output}")
+        print(f"Campaign OK: {args.campaign_output}")
+        print(f"Title: {campaign.title}")
+        if args.review_format == "json":
+            print(render_adventure_review_json(adventure))
+        else:
+            print(render_adventure_review(adventure))
         return 0
     if args.command == "initiative":
         print(run_initiative_demo(args.seed, args.rounds, args.scene))

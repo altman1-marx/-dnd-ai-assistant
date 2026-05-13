@@ -227,6 +227,13 @@ python -m dnd_ai_assistant.demo compile-adventure-output ai_response.txt --adven
 
 当前版本不会直接调用外部 AI API；它先把提示词、JSON 抽取和 adventure 校验链稳定下来。
 
+也可以通过 provider 直接生成并导入。`mock` provider 用于本地演示和测试；`openai-compatible` provider 读取 `DND_AI_API_KEY`、`DND_AI_MODEL` 和可选的 `DND_AI_BASE_URL`：
+
+```powershell
+python -m dnd_ai_assistant.demo generate-adventure --provider mock --mock-response ai_response.txt --premise "A bell rings under a ruined chapel." --adventure-output adventures\generated.json --campaign-output output\generated_campaign.json
+python -m dnd_ai_assistant.demo generate-adventure --provider openai-compatible --premise "A bell rings under a ruined chapel." --model your-model-name --adventure-output adventures\generated.json --campaign-output output\generated_campaign.json
+```
+
 保存一次跑团后的战役状态：
 
 ```powershell

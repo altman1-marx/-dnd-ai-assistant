@@ -4,11 +4,13 @@ import unittest
 from pathlib import Path
 
 from dnd_ai_assistant.adventure import create_adventure_template
+from dnd_ai_assistant.ai_provider import MockProvider
 from dnd_ai_assistant.adventure_generator import (
     AdventureRequest,
     adventure_from_model_text,
     build_adventure_prompt,
     extract_json_object,
+    generate_adventure_files,
     write_adventure_from_model_text,
     write_campaign_from_model_text,
 )
@@ -77,6 +79,24 @@ class AdventureGeneratorTests(unittest.TestCase):
         self.assertEqual(adventure.campaign["title"], "Moonlit Road")
         self.assertEqual(campaign.title, "Moonlit Road")
         self.assertEqual(written_campaign["title"], "Moonlit Road")
+
+    def test_generate_adventure_files_uses_provider_and_writes_outputs(self) -> None:
+        raw = create_adventure_template("Moonlit Road")
+        provider = MockProvider("```json\n" + json.dumps(raw) + "\n```")
+
+        with tempfile.TemporaryDirectory() as tmp:
+            adventure_path = Path(tmp) / "adventure.json"
+            campaign_path = Path(tmp) / "campaign.json"
+            adventure, campaign, review = generate_adventure_files(
+                AdventureRequest(premise="A moonlit road."),
+                provider,
+                adventure_path,
+                campaign_path,
+            )
+
+        self.assertEqual(adventure.campaign["title"], "Moonlit Road")
+        self.assertEqual(campaign.title, "Moonlit Road")
+        self.assertFalse(review.ok)
 
 
 if __name__ == "__main__":

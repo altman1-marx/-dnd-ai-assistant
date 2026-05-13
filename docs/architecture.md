@@ -91,6 +91,16 @@ src/dnd_ai_assistant/adventure_generator.py
 
 The generator module currently builds strict prompts for external adventure-writing AI tools and cleans model output into validated adventure JSON. It intentionally does not call an API yet, so provider integration can be added after the schema and validation loop stay stable.
 
+### AI Providers
+
+Location:
+
+```text
+src/dnd_ai_assistant/ai_provider.py
+```
+
+AI providers expose a small `generate_text(prompt)` interface. The first implementations are a deterministic mock provider for tests and an OpenAI-compatible HTTP provider that reads `DND_AI_API_KEY`, `DND_AI_MODEL`, and optional `DND_AI_BASE_URL`.
+
 ### Scene Engine
 
 Location:

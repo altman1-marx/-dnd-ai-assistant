@@ -32,3 +32,5 @@
 - Added adventure content review warnings and CLI output.
 - Added JSON output for adventure content reviews.
 - Added review finding codes and severity levels.
+- Added pluggable AI providers for mock and OpenAI-compatible text generation.
+- Added `generate-adventure` CLI workflow for provider-backed adventure generation.

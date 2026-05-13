@@ -6,6 +6,8 @@ from pathlib import Path
 
 from .adventure import AdventureDefinition, validate_adventure
 from .adventure_importer import campaign_from_adventure
+from .adventure_review import AdventureReview, review_adventure
+from .ai_provider import AIProvider
 from .core.campaign import Campaign
 from .core.serialization import save_campaign
 
@@ -84,6 +86,18 @@ def write_campaign_from_model_text(
     campaign = campaign_from_adventure(adventure)
     save_campaign(campaign, campaign_path)
     return adventure, campaign
+
+
+def generate_adventure_files(
+    request: AdventureRequest,
+    provider: AIProvider,
+    adventure_path: str | Path,
+    campaign_path: str | Path,
+) -> tuple[AdventureDefinition, Campaign, AdventureReview]:
+    model_text = provider.generate_text(build_adventure_prompt(request))
+    adventure, campaign = write_campaign_from_model_text(model_text, adventure_path, campaign_path)
+    review = review_adventure(adventure)
+    return adventure, campaign, review
 
 
 def extract_json_object(text: str) -> str:
