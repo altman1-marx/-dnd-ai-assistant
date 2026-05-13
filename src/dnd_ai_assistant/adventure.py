@@ -36,6 +36,8 @@ SUPPORTED_RUNTIME_HANDLERS = {
     "inspect",
     "talk",
     "encounter",
+    "combat_status",
+    "end_turn",
     "quests",
     "complete_quest",
     "fail_quest",

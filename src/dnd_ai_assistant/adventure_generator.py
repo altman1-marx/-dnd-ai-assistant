@@ -248,6 +248,8 @@ def _schema_instructions() -> str:
                 "inspect": {"aliases": ["inspect", "search"], "handler": "inspect"},
                 "talk": {"aliases": ["talk", "speak", "ask"], "handler": "talk"},
                 "encounter": {"aliases": ["fight", "start encounter", "encounter"], "handler": "encounter"},
+                "combat_status": {"aliases": ["combat", "combat status"], "handler": "combat_status"},
+                "end_turn": {"aliases": ["end turn", "next turn"], "handler": "end_turn"},
                 "quests": {"aliases": ["quests", "quest log"], "handler": "quests"},
                 "complete_quest": {"aliases": ["complete quest", "finish quest"], "handler": "complete_quest"},
                 "fail_quest": {"aliases": ["fail quest", "abandon quest"], "handler": "fail_quest"},

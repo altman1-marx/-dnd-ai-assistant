@@ -20,6 +20,8 @@ DEFAULT_RUNTIME_ACTIONS = {
     "inspect": {"aliases": ["inspect", "search", "investigate"], "handler": "inspect"},
     "talk": {"aliases": ["talk", "speak", "ask"], "handler": "talk"},
     "encounter": {"aliases": ["fight", "start encounter", "encounter"], "handler": "encounter"},
+    "combat_status": {"aliases": ["combat", "combat status"], "handler": "combat_status"},
+    "end_turn": {"aliases": ["end turn", "next turn"], "handler": "end_turn"},
     "quests": {"aliases": ["quests", "quest log"], "handler": "quests"},
     "complete_quest": {"aliases": ["complete quest", "finish quest"], "handler": "complete_quest"},
     "fail_quest": {"aliases": ["fail quest", "abandon quest"], "handler": "fail_quest"},
@@ -90,6 +92,12 @@ def handle_adventure_action(runtime: AdventureRuntime, action: str) -> bool:
         return talk_to_npc(runtime, target)
     if handler == "encounter":
         return start_location_encounter(runtime)
+    if handler == "combat_status":
+        describe_active_combat(runtime)
+        return True
+    if handler == "end_turn":
+        advance_active_combat(runtime)
+        return True
     if handler == "quests":
         describe_quests(runtime)
         return True
@@ -204,6 +212,44 @@ def start_location_encounter(runtime: AdventureRuntime) -> bool:
         runtime.narrate("DM: Initiative order: " + ", ".join(_initiative_line(combatant) for combatant in combat.tracker.combatants) + ".")
         runtime.narrate(f"DM: Current turn: {combat.current().name}.")
     return True
+
+
+def describe_active_combat(runtime: AdventureRuntime) -> None:
+    combat = runtime.campaign.active_combat
+    if combat is None:
+        runtime.narrate("DM: There is no active combat.")
+        return
+    runtime.narrate(f"DM: Active combat round {combat.get('round', 1)}, turn: {combat.get('turn', '<unknown>')}.")
+    initiative = combat.get("initiative", [])
+    if initiative:
+        runtime.narrate(
+            "DM: Initiative order: "
+            + ", ".join(f"{entry['name']} {entry.get('initiative_total', 0)}" for entry in initiative)
+            + "."
+        )
+
+
+def advance_active_combat(runtime: AdventureRuntime) -> None:
+    combat = runtime.campaign.active_combat
+    if combat is None:
+        runtime.narrate("DM: There is no active combat.")
+        return
+    initiative = combat.get("initiative", [])
+    if not initiative:
+        runtime.narrate("DM: Active combat has no initiative order.")
+        return
+
+    current_turn = combat.get("turn")
+    current_index = next((index for index, entry in enumerate(initiative) if entry["name"] == current_turn), 0)
+    next_index = current_index + 1
+    if next_index >= len(initiative):
+        next_index = 0
+        combat["round"] = combat.get("round", 1) + 1
+    combat["turn"] = initiative[next_index]["name"]
+    runtime.campaign.record_event(
+        SessionEvent(actor="DM", content=f"Combat advanced to round {combat['round']}: {combat['turn']}.")
+    )
+    runtime.narrate(f"DM: Combat advances to round {combat['round']}, turn: {combat['turn']}.")
 
 
 def describe_quests(runtime: AdventureRuntime) -> None:

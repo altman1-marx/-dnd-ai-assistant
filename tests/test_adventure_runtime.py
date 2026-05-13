@@ -125,6 +125,40 @@ class AdventureRuntimeTests(unittest.TestCase):
         self.assertIn("Initiative order", output)
         self.assertIn("Current turn", output)
 
+    def test_combat_status_reports_active_combat(self) -> None:
+        campaign = campaign_from_adventure(AdventureDefinition(create_adventure_template("Moonlit Road")))
+        campaign.active_combat = {
+            "round": 1,
+            "turn": "Kael",
+            "initiative": [{"name": "Kael", "initiative_total": 18}, {"name": "Goblin", "initiative_total": 12}],
+        }
+        runtime = AdventureRuntime(campaign)
+
+        handle_adventure_action(runtime, "combat")
+        output = runtime.flush()
+
+        self.assertIn("round 1", output)
+        self.assertIn("turn: Kael", output)
+        self.assertIn("Kael 18", output)
+
+    def test_end_turn_advances_active_combat(self) -> None:
+        campaign = campaign_from_adventure(AdventureDefinition(create_adventure_template("Moonlit Road")))
+        campaign.active_combat = {
+            "round": 1,
+            "turn": "Kael",
+            "initiative": [{"name": "Kael", "initiative_total": 18}, {"name": "Goblin", "initiative_total": 12}],
+        }
+        runtime = AdventureRuntime(campaign)
+
+        handle_adventure_action(runtime, "end turn")
+        first_output = runtime.flush()
+        handle_adventure_action(runtime, "end turn")
+        second_output = runtime.flush()
+
+        self.assertIn("turn: Goblin", first_output)
+        self.assertIn("round 2, turn: Kael", second_output)
+        self.assertEqual(campaign.active_combat["round"], 2)
+
     def test_encounter_action_reports_when_none_present(self) -> None:
         campaign = campaign_from_adventure(AdventureDefinition(create_adventure_template("Moonlit Road")))
         runtime = AdventureRuntime(campaign)
