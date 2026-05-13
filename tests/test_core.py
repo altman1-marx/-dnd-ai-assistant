@@ -46,6 +46,22 @@ class Dnd5eTests(unittest.TestCase):
         self.assertEqual(attack.attack.total, 13)
         self.assertEqual(attack.damage.total, 7)
 
+    def test_attack_natural_20_is_critical_hit(self) -> None:
+        attack = roll_attack(attack_bonus=0, target_ac=99, damage_expression="1d6+2", rng=random.Random(5))
+
+        self.assertTrue(attack.hit)
+        self.assertTrue(attack.attack.natural_20)
+        self.assertEqual(attack.damage.rolls, ((3, 6),))
+        self.assertEqual(attack.damage.total, 11)
+        self.assertEqual(attack.damage.modifier, 2)
+
+    def test_attack_natural_1_misses_even_with_high_bonus(self) -> None:
+        attack = roll_attack(attack_bonus=99, target_ac=5, damage_expression="1d6+2", rng=random.Random(31))
+
+        self.assertFalse(attack.hit)
+        self.assertTrue(attack.attack.natural_1)
+        self.assertIsNone(attack.damage)
+
 
 class CharacterTests(unittest.TestCase):
     def test_damage_and_healing(self) -> None:

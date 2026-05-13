@@ -4,7 +4,7 @@ import random
 from dataclasses import dataclass
 from enum import Enum
 
-from .dice import DiceRoll, roll
+from .dice import ConstantTerm, DiceRoll, DiceTerm, parse_dice_expression, roll
 
 
 class RollMode(str, Enum):
@@ -96,6 +96,27 @@ def roll_attack(
 ) -> AttackRoll:
     rng = rng or random.Random()
     attack = roll_d20_check(modifier=attack_bonus, dc=target_ac, mode=mode, rng=rng)
-    hit = bool(attack.success)
-    damage = roll_damage(damage_expression, rng) if hit else None
+    hit = attack.natural_20 or (bool(attack.success) and not attack.natural_1)
+    damage = _roll_critical_damage(damage_expression, rng) if hit and attack.natural_20 else None
+    if hit and damage is None:
+        damage = roll_damage(damage_expression, rng)
     return AttackRoll(attack=attack, target_ac=target_ac, hit=hit, damage=damage)
+
+
+def _roll_critical_damage(expression: str, rng: random.Random) -> DiceRoll:
+    rolls: list[tuple[int, ...]] = []
+    modifier = 0
+    total = 0
+    for term in parse_dice_expression(expression):
+        if isinstance(term, ConstantTerm):
+            value = term.sign * term.value
+            modifier += value
+            total += value
+            continue
+
+        if isinstance(term, DiceTerm):
+            term_rolls = tuple(rng.randint(1, term.sides) for _ in range(term.count * 2))
+            rolls.append(term_rolls)
+            total += term.sign * sum(term_rolls)
+
+    return DiceRoll(expression=expression, total=total, rolls=tuple(rolls), modifier=modifier)
