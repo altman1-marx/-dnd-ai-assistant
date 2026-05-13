@@ -196,6 +196,25 @@ class AdventureRuntimeTests(unittest.TestCase):
         self.assertIn("Clue found - Moonlit Ash", output)
         self.assertTrue(any("Clue revealed: Moonlit Ash" in event.content for event in campaign.session_log))
 
+    def test_inspect_target_reveals_matching_clue(self) -> None:
+        campaign = campaign_from_adventure(AdventureDefinition(create_adventure_template("Moonlit Road")))
+        runtime = AdventureRuntime(campaign)
+
+        handle_adventure_action(runtime, "inspect ash")
+        output = runtime.flush()
+
+        self.assertTrue(campaign.clues["clue_moon_ash"].discovered)
+        self.assertIn("Clue found - Moonlit Ash", output)
+
+    def test_inspect_target_reports_no_match(self) -> None:
+        campaign = campaign_from_adventure(AdventureDefinition(create_adventure_template("Moonlit Road")))
+        runtime = AdventureRuntime(campaign)
+
+        handle_adventure_action(runtime, "inspect statue")
+
+        self.assertFalse(campaign.clues["clue_moon_ash"].discovered)
+        self.assertIn("matching", runtime.flush())
+
     def test_inspect_reports_when_no_new_clues_remain(self) -> None:
         campaign = campaign_from_adventure(AdventureDefinition(create_adventure_template("Moonlit Road")))
         runtime = AdventureRuntime(campaign)

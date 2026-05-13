@@ -81,7 +81,7 @@ def handle_adventure_action(runtime: AdventureRuntime, action: str) -> bool:
         describe_current_location(runtime)
         return True
     if handler == "inspect":
-        reveal_location_clues(runtime)
+        reveal_location_clues(runtime, action_match.get("argument", ""))
         return True
     if handler == "talk":
         target = action_match.get("argument", "")
@@ -111,13 +111,18 @@ def handle_adventure_action(runtime: AdventureRuntime, action: str) -> bool:
     return True
 
 
-def reveal_location_clues(runtime: AdventureRuntime) -> None:
+def reveal_location_clues(runtime: AdventureRuntime, target: str = "") -> None:
     location = current_location(runtime.campaign)
     hidden_clues = [
         clue
         for clue in runtime.campaign.clues.values()
         if clue.location_id == location.id and not clue.discovered
     ]
+    if target:
+        hidden_clues = [clue for clue in hidden_clues if _matches_clue(clue, target)]
+        if not hidden_clues:
+            runtime.narrate("DM: You do not find anything matching that here.")
+            return
     if not hidden_clues:
         runtime.narrate("DM: You find no new clues here.")
         return
@@ -262,6 +267,13 @@ def _match_npc(npcs: list[NPC], target: str) -> NPC | None:
     return None
 
 
+def _matches_clue(clue: Clue, target: str) -> bool:
+    normalized = target.strip().lower()
+    title = clue.title.lower()
+    text = clue.public_text.lower()
+    return normalized == clue.id.lower() or normalized in title or normalized in text
+
+
 def _match_quest(campaign: Campaign, target: str):
     normalized = target.strip().lower()
     if not normalized and len(campaign.quests) == 1:
@@ -333,7 +345,9 @@ def _match_runtime_action(campaign: Campaign, normalized: str) -> dict:
             alias_text = str(alias).strip().lower()
             if not alias_text:
                 continue
-            if handler in {"move", "talk", "complete_quest", "fail_quest"} and normalized.startswith(alias_text + " "):
+            if handler in {"move", "talk", "inspect", "complete_quest", "fail_quest"} and normalized.startswith(
+                alias_text + " "
+            ):
                 return {"name": action_name, "handler": handler, "argument": normalized[len(alias_text) :].strip()}
             if normalized == alias_text:
                 return {"name": action_name, "handler": handler}
