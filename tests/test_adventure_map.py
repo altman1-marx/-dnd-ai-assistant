@@ -20,6 +20,7 @@ class AdventureMapTests(unittest.TestCase):
 
         self.assertIn("[start] Village Square", output)
         self.assertIn("[final] Moonlit Glade", output)
+        self.assertIn("requires Moonlit Ash", output)
         self.assertIn("Old Road", output)
 
     def test_render_mermaid_map_outputs_graph_edges_once(self) -> None:
@@ -30,6 +31,7 @@ class AdventureMapTests(unittest.TestCase):
         self.assertIn("graph TD", output)
         self.assertEqual(output.count("loc_village_square"), 1)
         self.assertIn("loc_old_road", output)
+        self.assertIn("requires Moonlit Ash", output)
 
 
 if __name__ == "__main__":

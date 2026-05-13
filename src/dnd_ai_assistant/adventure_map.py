@@ -18,6 +18,7 @@ def location_adjacency(adventure: AdventureDefinition) -> dict[str, list[str]]:
 
 def render_text_map(adventure: AdventureDefinition) -> str:
     names = _location_names(adventure)
+    gates = _location_gate_labels(adventure)
     adjacency = location_adjacency(adventure)
     lines = [f"Adventure map: {adventure.campaign['title']}"]
     for location_id in sorted(adjacency):
@@ -27,18 +28,19 @@ def render_text_map(adventure: AdventureDefinition) -> str:
         else:
             targets = "(no connections)"
         marker = _location_marker(adventure, location_id)
-        lines.append(f"- {marker}{names[location_id]} -> {targets}")
+        gate = f" ({gates[location_id]})" if gates[location_id] else ""
+        lines.append(f"- {marker}{names[location_id]}{gate} -> {targets}")
     return "\n".join(lines)
 
 
 def render_mermaid_map(adventure: AdventureDefinition) -> str:
-    names = _location_names(adventure)
+    labels = _location_labels(adventure)
     adjacency = location_adjacency(adventure)
     lines = ["graph TD"]
     rendered_edges: set[tuple[str, str]] = set()
     for location_id in sorted(adjacency):
         if not adjacency[location_id]:
-            lines.append(f'  {location_id}["{_escape_mermaid_label(names[location_id])}"]')
+            lines.append(f'  {location_id}["{_escape_mermaid_label(labels[location_id])}"]')
         for connected_id in adjacency[location_id]:
             edge = tuple(sorted((location_id, connected_id)))
             if edge in rendered_edges:
@@ -46,14 +48,32 @@ def render_mermaid_map(adventure: AdventureDefinition) -> str:
             rendered_edges.add(edge)
             left, right = edge
             lines.append(
-                f'  {left}["{_escape_mermaid_label(names[left])}"] --- '
-                f'{right}["{_escape_mermaid_label(names[right])}"]'
+                f'  {left}["{_escape_mermaid_label(labels[left])}"] --- '
+                f'{right}["{_escape_mermaid_label(labels[right])}"]'
             )
     return "\n".join(lines)
 
 
 def _location_names(adventure: AdventureDefinition) -> dict[str, str]:
     return {location["id"]: location["name"] for location in adventure.locations}
+
+
+def _location_labels(adventure: AdventureDefinition) -> dict[str, str]:
+    names = _location_names(adventure)
+    gates = _location_gate_labels(adventure)
+    return {
+        location_id: f"{name}\\n{gates[location_id]}" if gates[location_id] else name
+        for location_id, name in names.items()
+    }
+
+
+def _location_gate_labels(adventure: AdventureDefinition) -> dict[str, str]:
+    clue_titles = {clue["id"]: clue["title"] for clue in adventure.clues}
+    labels: dict[str, str] = {}
+    for location in adventure.locations:
+        required = location.get("requires_clue_ids", [])
+        labels[location["id"]] = ", ".join(f"requires {clue_titles.get(clue_id, clue_id)}" for clue_id in required)
+    return labels
 
 
 def _location_marker(adventure: AdventureDefinition, location_id: str) -> str:
