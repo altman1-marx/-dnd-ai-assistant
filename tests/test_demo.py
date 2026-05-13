@@ -77,7 +77,13 @@ class DemoTests(unittest.TestCase):
 
     def test_state_summary_shows_active_combat(self) -> None:
         campaign = campaign_from_adventure(AdventureDefinition(create_adventure_template("Moonlit Road")))
-        campaign.active_combat = {"encounter_id": "enc_lantern_sprites", "round": 1, "turn": "Kael"}
+        campaign.active_combat = {
+            "encounter_id": "enc_lantern_sprites",
+            "round": 1,
+            "turn": "Kael",
+            "initiative": [{"name": "Kael", "initiative_total": 18, "armor_class": 14, "current_hp": 12}],
+            "resources": {"Kael": {"action": True, "bonus_action": False, "reaction": True, "movement": 20}},
+        }
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / "state.json"
             save_campaign(campaign, path)
@@ -85,6 +91,8 @@ class DemoTests(unittest.TestCase):
 
         self.assertIn("Active combat:", summary)
         self.assertIn("Turn: Kael", summary)
+        self.assertIn("Kael: 18 initiative, AC 14, HP 12", summary)
+        self.assertIn("Current resources: action=True, bonus_action=False, reaction=True, movement=20", summary)
 
     def test_initiative_demo_prints_order_and_turns(self) -> None:
         output = run_initiative_demo(seed=1, rounds=1)

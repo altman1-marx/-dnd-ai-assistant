@@ -232,15 +232,36 @@ def summarize_state(path: str | Path) -> str:
         ]
     )
     if campaign.active_combat is not None:
+        active_combat = campaign.active_combat
         lines.extend(
             [
                 "",
                 "Active combat:",
-                f"- Encounter: {campaign.active_combat.get('encounter_id', '<unknown>')}",
-                f"- Round: {campaign.active_combat.get('round', 1)}",
-                f"- Turn: {campaign.active_combat.get('turn', '<unknown>')}",
+                f"- Encounter: {active_combat.get('encounter_id', '<unknown>')}",
+                f"- Round: {active_combat.get('round', 1)}",
+                f"- Turn: {active_combat.get('turn', '<unknown>')}",
             ]
         )
+        initiative = active_combat.get("initiative", [])
+        if initiative:
+            lines.append("- Initiative:")
+            for combatant in initiative:
+                hp_text = _combatant_hp_summary(campaign, combatant)
+                lines.append(
+                    f"  - {combatant.get('name', '<unknown>')}: "
+                    f"{combatant.get('initiative_total', 0)} initiative, "
+                    f"AC {combatant.get('armor_class', '?')}, {hp_text}"
+                )
+        resources = active_combat.get("resources", {})
+        turn_resources = resources.get(active_combat.get("turn"), {})
+        if turn_resources:
+            lines.append(
+                "- Current resources: "
+                f"action={turn_resources.get('action', True)}, "
+                f"bonus_action={turn_resources.get('bonus_action', True)}, "
+                f"reaction={turn_resources.get('reaction', True)}, "
+                f"movement={turn_resources.get('movement', 30)}"
+            )
     if campaign.session_log:
         lines.append("")
         lines.append("Recent events:")
@@ -256,6 +277,18 @@ def _current_location_summary(campaign) -> str:
     if location is None:
         return f"(unknown: {campaign.current_location_id})"
     return location.name
+
+
+def _combatant_hp_summary(campaign, combatant: dict) -> str:
+    name = combatant.get("name", "")
+    character = campaign.characters.get(name)
+    if character is not None:
+        return f"HP {character.current_hp}/{character.max_hp}"
+    for encounter in campaign.encounters.values():
+        for monster in encounter.monsters:
+            if monster.name == name:
+                return f"HP {monster.current_hp}/{monster.max_hp}"
+    return f"HP {combatant.get('current_hp', '?')}"
 
 
 def main() -> int:
