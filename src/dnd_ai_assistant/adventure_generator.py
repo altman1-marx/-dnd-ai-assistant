@@ -93,11 +93,46 @@ def generate_adventure_files(
     provider: AIProvider,
     adventure_path: str | Path,
     campaign_path: str | Path,
+    max_attempts: int = 1,
 ) -> tuple[AdventureDefinition, Campaign, AdventureReview]:
-    model_text = provider.generate_text(build_adventure_prompt(request))
+    model_text = generate_adventure_text(request, provider, max_attempts=max_attempts)
     adventure, campaign = write_campaign_from_model_text(model_text, adventure_path, campaign_path)
     review = review_adventure(adventure)
     return adventure, campaign, review
+
+
+def generate_adventure_text(request: AdventureRequest, provider: AIProvider, max_attempts: int = 1) -> str:
+    if max_attempts < 1:
+        raise ValueError("max_attempts must be at least 1.")
+
+    prompt = build_adventure_prompt(request)
+    last_error: Exception | None = None
+    for attempt in range(max_attempts):
+        model_text = provider.generate_text(prompt)
+        try:
+            adventure_from_model_text(model_text)
+            return model_text
+        except (json.JSONDecodeError, ValueError) as exc:
+            last_error = exc
+            if attempt == max_attempts - 1:
+                break
+            prompt = build_repair_prompt(model_text, str(exc))
+
+    raise ValueError(f"Model did not produce a valid adventure after {max_attempts} attempt(s): {last_error}")
+
+
+def build_repair_prompt(model_text: str, error_message: str) -> str:
+    return "\n".join(
+        [
+            "The previous response was not a valid adventure JSON document.",
+            "Return only a corrected complete JSON object. Do not wrap it in markdown.",
+            "Validation error:",
+            error_message,
+            "",
+            "Previous response:",
+            model_text,
+        ]
+    )
 
 
 def extract_json_object(text: str) -> str:

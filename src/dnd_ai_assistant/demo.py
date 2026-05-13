@@ -327,6 +327,7 @@ def main() -> int:
     generate_adventure.add_argument("--combat-ratio", default="medium", help="Desired combat ratio.")
     generate_adventure.add_argument("--puzzle-ratio", default="medium", help="Desired puzzle ratio.")
     generate_adventure.add_argument("--review-format", choices=("text", "json"), default="text")
+    generate_adventure.add_argument("--max-attempts", type=int, default=1, help="Retry with repair prompts on invalid model output.")
 
     initiative = subparsers.add_parser("initiative", help="Run a small initiative tracker demo.")
     initiative.add_argument("--seed", type=int, default=1, help="Random seed for reproducible rolls.")
@@ -443,6 +444,7 @@ def main() -> int:
             provider,
             args.adventure_output,
             args.campaign_output,
+            max_attempts=args.max_attempts,
         )
         print(f"Adventure OK: {args.adventure_output}")
         print(f"Campaign OK: {args.campaign_output}")

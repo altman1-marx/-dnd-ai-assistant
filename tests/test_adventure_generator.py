@@ -8,12 +8,24 @@ from dnd_ai_assistant.ai_provider import MockProvider
 from dnd_ai_assistant.adventure_generator import (
     AdventureRequest,
     adventure_from_model_text,
+    build_repair_prompt,
     build_adventure_prompt,
     extract_json_object,
     generate_adventure_files,
+    generate_adventure_text,
     write_adventure_from_model_text,
     write_campaign_from_model_text,
 )
+
+
+class SequenceProvider:
+    def __init__(self, responses: list[str]) -> None:
+        self.responses = list(responses)
+        self.prompts: list[str] = []
+
+    def generate_text(self, prompt: str) -> str:
+        self.prompts.append(prompt)
+        return self.responses.pop(0)
 
 
 class AdventureGeneratorTests(unittest.TestCase):
@@ -97,6 +109,28 @@ class AdventureGeneratorTests(unittest.TestCase):
         self.assertEqual(adventure.campaign["title"], "Moonlit Road")
         self.assertEqual(campaign.title, "Moonlit Road")
         self.assertFalse(review.ok)
+
+    def test_generate_adventure_text_repairs_invalid_first_response(self) -> None:
+        raw = create_adventure_template("Moonlit Road")
+        provider = SequenceProvider(['{"campaign": {}}', json.dumps(raw)])
+
+        text = generate_adventure_text(AdventureRequest(premise="A moonlit road."), provider, max_attempts=2)
+
+        self.assertEqual(json.loads(text)["campaign"]["title"], "Moonlit Road")
+        self.assertEqual(len(provider.prompts), 2)
+        self.assertIn("Validation error:", provider.prompts[1])
+
+    def test_generate_adventure_text_fails_after_max_attempts(self) -> None:
+        provider = SequenceProvider(['{"campaign": {}}', '{"campaign": {}}'])
+
+        with self.assertRaisesRegex(ValueError, "after 2 attempt"):
+            generate_adventure_text(AdventureRequest(premise="A moonlit road."), provider, max_attempts=2)
+
+    def test_build_repair_prompt_includes_error_and_previous_response(self) -> None:
+        prompt = build_repair_prompt("bad output", "Missing top-level key: locations")
+
+        self.assertIn("Missing top-level key: locations", prompt)
+        self.assertIn("bad output", prompt)
 
 
 if __name__ == "__main__":
