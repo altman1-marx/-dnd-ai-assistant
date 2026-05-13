@@ -80,6 +80,25 @@ class AdventureTests(unittest.TestCase):
 
         self.assertIn("Missing encounters[0].monsters[0] key: armor_class", str(context.exception))
 
+    def test_validate_adventure_reports_invalid_monster_abilities(self) -> None:
+        raw = create_adventure_template("Broken Road")
+        raw["encounters"][0]["monsters"] = [
+            {
+                "name": "Ash Goblin",
+                "armor_class": 13,
+                "max_hp": 7,
+                "ability_scores": {"str": 8, "dex": 14},
+                "saving_throw_proficiencies": ["luck"],
+            }
+        ]
+
+        with self.assertRaises(ValueError) as context:
+            validate_adventure(AdventureDefinition(raw))
+
+        message = str(context.exception)
+        self.assertIn("ability_scores missing", message)
+        self.assertIn("saving_throw_proficiencies has unknown abilities: luck", message)
+
     def test_validate_adventure_reports_invalid_clue_checks(self) -> None:
         raw = create_adventure_template("Broken Road")
         raw["clues"][0]["check"] = {"skill": "goblin lore", "dc": -1, "mode": "lucky"}

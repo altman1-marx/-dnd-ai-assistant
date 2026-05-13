@@ -51,7 +51,16 @@ class AdventureImporterTests(unittest.TestCase):
     def test_campaign_from_adventure_imports_monsters_with_generated_ids(self) -> None:
         raw = create_adventure_template("Moonlit Road")
         raw["encounters"][0]["monsters"] = [
-            {"name": "Lantern Sprite", "armor_class": 13, "max_hp": 7, "attack_bonus": 4, "damage": "1d4+2"}
+            {
+                "name": "Lantern Sprite",
+                "armor_class": 13,
+                "max_hp": 7,
+                "ability_scores": {"str": 6, "dex": 16, "con": 10, "int": 12, "wis": 10, "cha": 14},
+                "saving_throw_proficiencies": ["dex"],
+                "proficiency_bonus": 2,
+                "attack_bonus": 4,
+                "damage": "1d4+2",
+            }
         ]
 
         campaign = campaign_from_adventure(AdventureDefinition(raw))
@@ -59,6 +68,7 @@ class AdventureImporterTests(unittest.TestCase):
 
         self.assertEqual(monster.name, "Lantern Sprite")
         self.assertTrue(monster.id.startswith("mon_"))
+        self.assertEqual(monster.saving_throw_modifier("dex"), 5)
 
 
 if __name__ == "__main__":

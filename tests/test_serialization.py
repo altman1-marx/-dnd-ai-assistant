@@ -39,6 +39,37 @@ class SerializationTests(unittest.TestCase):
         encounter = next(iter(restored.encounters.values()))
         self.assertTrue(any(monster.name == "Ash Goblin" for encounter in restored.encounters.values() for monster in encounter.monsters))
 
+    def test_campaign_round_trip_monster_saves(self) -> None:
+        sample = build_sample_campaign(seed=1)
+        sample.tools.add_encounter(
+            sample.campaign.id,
+            title="Ash Goblin Ambush",
+            location_id=sample.location.id,
+            monsters=[
+                Monster(
+                    name="Ash Goblin Scout",
+                    armor_class=13,
+                    max_hp=7,
+                    current_hp=7,
+                    ability_scores={"str": 8, "dex": 14, "con": 10, "int": 10, "wis": 9, "cha": 8},
+                    saving_throw_proficiencies={"dex"},
+                    proficiency_bonus=2,
+                )
+            ],
+        )
+
+        restored = campaign_from_dict(campaign_to_dict(sample.campaign))
+        monster = next(
+            monster
+            for encounter in restored.encounters.values()
+            for monster in encounter.monsters
+            if monster.name == "Ash Goblin Scout"
+        )
+
+        self.assertEqual(monster.ability_scores["dex"], 14)
+        self.assertEqual(monster.saving_throw_proficiencies, {"dex"})
+        self.assertEqual(monster.saving_throw_modifier("dex"), 4)
+
     def test_campaign_round_trip_clue_check(self) -> None:
         sample = build_sample_campaign(seed=1)
         sample.campaign.add_clue(

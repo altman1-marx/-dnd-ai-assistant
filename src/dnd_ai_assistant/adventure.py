@@ -30,6 +30,7 @@ REQUIRED_ENCOUNTER_KEYS = ("id", "title", "location_id", "difficulty")
 REQUIRED_MONSTER_KEYS = ("name", "armor_class", "max_hp")
 REQUIRED_ENDING_KEYS = ("id", "title", "summary")
 REQUIRED_OPENING_KEYS = ("player_text", "dm_notes")
+ABILITY_NAMES = ("str", "dex", "con", "int", "wis", "cha")
 
 
 @dataclass(frozen=True)
@@ -275,6 +276,11 @@ def _validate_encounter_monsters(encounters: list[dict], errors: list[str]) -> N
                 REQUIRED_MONSTER_KEYS,
                 errors,
             )
+            _validate_optional_monster_abilities(
+                f"encounters[{encounter_index}].monsters[{monster_index}]",
+                monster,
+                errors,
+            )
 
 
 def _collect_unique_ids(name: str, items: list[dict], errors: list[str]) -> set[str]:
@@ -318,6 +324,35 @@ def _validate_optional_check(name: str, check: object, errors: list[str]) -> Non
             RollMode(check["mode"])
         except ValueError:
             errors.append(f"{name}.mode must be normal, advantage, or disadvantage.")
+
+
+def _validate_optional_monster_abilities(name: str, monster: dict, errors: list[str]) -> None:
+    ability_scores = monster.get("ability_scores")
+    if ability_scores is not None:
+        if not isinstance(ability_scores, dict):
+            errors.append(f"{name}.ability_scores must be an object.")
+        else:
+            missing = set(ABILITY_NAMES) - set(ability_scores)
+            if missing:
+                errors.append(f"{name}.ability_scores missing: {', '.join(sorted(missing))}")
+            for ability, score in ability_scores.items():
+                if ability not in ABILITY_NAMES:
+                    errors.append(f"{name}.ability_scores has unknown ability: {ability}")
+                elif not isinstance(score, int) or score < 1 or score > 30:
+                    errors.append(f"{name}.ability_scores.{ability} must be an integer from 1 to 30.")
+
+    saving_throws = monster.get("saving_throw_proficiencies")
+    if saving_throws is not None:
+        if not isinstance(saving_throws, list):
+            errors.append(f"{name}.saving_throw_proficiencies must be a list.")
+        else:
+            unknown = sorted(save for save in saving_throws if save not in ABILITY_NAMES)
+            if unknown:
+                errors.append(f"{name}.saving_throw_proficiencies has unknown abilities: {', '.join(unknown)}")
+
+    proficiency = monster.get("proficiency_bonus")
+    if proficiency is not None and (not isinstance(proficiency, int) or proficiency < 0):
+        errors.append(f"{name}.proficiency_bonus must be a non-negative integer.")
 
 
 def _validate_connections(adventure: AdventureDefinition, location_ids: set[str], errors: list[str]) -> None:

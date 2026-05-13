@@ -94,6 +94,12 @@ def _monster_from_data(data: dict) -> Monster:
         armor_class=data["armor_class"],
         max_hp=data["max_hp"],
         current_hp=data.get("current_hp", data["max_hp"]),
+        ability_scores=data.get(
+            "ability_scores",
+            {"str": 10, "dex": 10, "con": 10, "int": 10, "wis": 10, "cha": 10},
+        ),
+        saving_throw_proficiencies=set(data.get("saving_throw_proficiencies", [])),
+        proficiency_bonus=data.get("proficiency_bonus", 2),
         initiative_modifier=data.get("initiative_modifier", 0),
         attack_bonus=data.get("attack_bonus", 0),
         damage=data.get("damage", "1d4"),

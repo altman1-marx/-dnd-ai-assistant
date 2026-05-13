@@ -6,10 +6,14 @@ from enum import Enum
 from uuid import uuid4
 
 from .character import Character
+from .dnd5e import ability_modifier
 
 
 def new_id(prefix: str) -> str:
     return f"{prefix}_{uuid4().hex[:12]}"
+
+
+ABILITY_NAMES = ("str", "dex", "con", "int", "wis", "cha")
 
 
 class Visibility(str, Enum):
@@ -62,10 +66,44 @@ class Monster:
     armor_class: int
     max_hp: int
     current_hp: int
+    ability_scores: dict[str, int] = field(
+        default_factory=lambda: {"str": 10, "dex": 10, "con": 10, "int": 10, "wis": 10, "cha": 10}
+    )
+    saving_throw_proficiencies: set[str] = field(default_factory=set)
+    proficiency_bonus: int = 2
     initiative_modifier: int = 0
     attack_bonus: int = 0
     damage: str = "1d4"
     id: str = field(default_factory=lambda: new_id("mon"))
+
+    def __post_init__(self) -> None:
+        missing = set(ABILITY_NAMES) - set(self.ability_scores)
+        if missing:
+            raise ValueError(f"Missing monster ability scores: {', '.join(sorted(missing))}")
+        for ability in ABILITY_NAMES:
+            ability_modifier(self.ability_scores[ability])
+        unknown_saves = set(self.saving_throw_proficiencies) - set(ABILITY_NAMES)
+        if unknown_saves:
+            raise ValueError(f"Unknown monster saving throw proficiencies: {', '.join(sorted(unknown_saves))}")
+        if self.armor_class <= 0:
+            raise ValueError("Monster armor class must be positive.")
+        if self.max_hp <= 0:
+            raise ValueError("Monster max HP must be positive.")
+        if self.current_hp < 0:
+            raise ValueError("Monster current HP cannot be negative.")
+        if self.current_hp > self.max_hp:
+            raise ValueError("Monster current HP cannot exceed max HP.")
+        if self.proficiency_bonus < 0:
+            raise ValueError("Monster proficiency bonus cannot be negative.")
+
+    def ability_modifier(self, ability: str) -> int:
+        return ability_modifier(self.ability_scores[ability])
+
+    def saving_throw_modifier(self, ability: str) -> int:
+        modifier = self.ability_modifier(ability)
+        if ability in self.saving_throw_proficiencies:
+            modifier += self.proficiency_bonus
+        return modifier
 
 
 @dataclass

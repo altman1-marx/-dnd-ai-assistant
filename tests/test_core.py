@@ -2,7 +2,7 @@ import random
 import unittest
 
 from dnd_ai_assistant.core.character import Character
-from dnd_ai_assistant.core.campaign import Campaign, Clue, Encounter, Location, NPC
+from dnd_ai_assistant.core.campaign import Campaign, Clue, Encounter, Location, Monster, NPC
 from dnd_ai_assistant.core.dice import ConstantTerm, parse_dice_expression, roll
 from dnd_ai_assistant.core.dnd5e import RollMode, ability_modifier, proficiency_bonus, roll_attack, roll_d20_check
 
@@ -171,6 +171,33 @@ class CharacterTests(unittest.TestCase):
 
         with self.assertRaises(ValueError):
             campaign.add_location(Location("Old Road", "A muddy road.", id="loc_1"))
+
+
+class MonsterTests(unittest.TestCase):
+    def test_monster_saving_throw_modifier_uses_ability_and_proficiency(self) -> None:
+        monster = Monster(
+            name="Ash Goblin",
+            armor_class=13,
+            max_hp=7,
+            current_hp=7,
+            ability_scores={"str": 8, "dex": 14, "con": 10, "int": 10, "wis": 9, "cha": 8},
+            saving_throw_proficiencies={"dex"},
+            proficiency_bonus=2,
+        )
+
+        self.assertEqual(monster.ability_modifier("dex"), 2)
+        self.assertEqual(monster.saving_throw_modifier("dex"), 4)
+        self.assertEqual(monster.saving_throw_modifier("wis"), -1)
+
+    def test_monster_rejects_invalid_ability_scores(self) -> None:
+        with self.assertRaises(ValueError):
+            Monster(
+                name="Broken Goblin",
+                armor_class=13,
+                max_hp=7,
+                current_hp=7,
+                ability_scores={"str": 8},
+            )
 
 
 if __name__ == "__main__":
