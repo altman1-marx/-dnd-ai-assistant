@@ -39,6 +39,7 @@ class OpenAICompatibleProvider:
         config: AIProviderConfig,
         opener: Callable[[urllib.request.Request, int], object] | None = None,
         timeout: int = 60,
+        response_format: str | None = None,
     ) -> None:
         if not config.api_key.strip():
             raise ValueError("DND_AI_API_KEY is required for openai-compatible provider.")
@@ -47,6 +48,7 @@ class OpenAICompatibleProvider:
         self.config = config
         self.opener = opener or urllib.request.urlopen
         self.timeout = timeout
+        self.response_format = response_format
 
     def generate_text(self, prompt: str) -> str:
         request = urllib.request.Request(
@@ -75,11 +77,14 @@ class OpenAICompatibleProvider:
             raise ValueError("AI provider response did not include choices[0].message.content.") from exc
 
     def _request_body(self, prompt: str) -> dict:
-        return {
+        body = {
             "model": self.config.model,
             "messages": [{"role": "user", "content": prompt}],
             "temperature": 0.7,
         }
+        if self.response_format == "json_object":
+            body["response_format"] = {"type": "json_object"}
+        return body
 
 
 def load_ai_provider_config(
@@ -99,13 +104,17 @@ def build_provider(
     mock_response_text: str | None = None,
     base_url: str | None = None,
     model: str | None = None,
+    response_format: str | None = None,
 ) -> AIProvider:
     if provider_name == "mock":
         if mock_response_text is None:
             raise ValueError("--mock-response is required when --provider mock is used.")
         return MockProvider(mock_response_text)
     if provider_name == "openai-compatible":
-        return OpenAICompatibleProvider(load_ai_provider_config(base_url=base_url, model=model))
+        return OpenAICompatibleProvider(
+            load_ai_provider_config(base_url=base_url, model=model),
+            response_format=response_format,
+        )
     raise ValueError(f"Unsupported AI provider: {provider_name}")
 
 

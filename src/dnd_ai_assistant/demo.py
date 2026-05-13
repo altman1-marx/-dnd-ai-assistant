@@ -328,6 +328,11 @@ def main() -> int:
     generate_adventure.add_argument("--puzzle-ratio", default="medium", help="Desired puzzle ratio.")
     generate_adventure.add_argument("--review-format", choices=("text", "json"), default="text")
     generate_adventure.add_argument("--max-attempts", type=int, default=1, help="Retry with repair prompts on invalid model output.")
+    generate_adventure.add_argument(
+        "--json-response-format",
+        action="store_true",
+        help="Request OpenAI-compatible JSON object response_format when supported.",
+    )
 
     initiative = subparsers.add_parser("initiative", help="Run a small initiative tracker demo.")
     initiative.add_argument("--seed", type=int, default=1, help="Random seed for reproducible rolls.")
@@ -429,6 +434,7 @@ def main() -> int:
             mock_response_text=mock_response_text,
             base_url=args.base_url,
             model=args.model,
+            response_format="json_object" if args.json_response_format else None,
         )
         request = AdventureRequest(
             premise=args.premise,

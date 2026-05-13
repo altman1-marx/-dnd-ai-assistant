@@ -56,6 +56,7 @@ class AIProviderTests(unittest.TestCase):
             AIProviderConfig(api_key="secret", model="test-model", base_url="https://example.test/v1"),
             opener=opener,
             timeout=12,
+            response_format="json_object",
         )
 
         output = provider.generate_text("Build an adventure.")
@@ -64,6 +65,7 @@ class AIProviderTests(unittest.TestCase):
         self.assertEqual(captured["url"], "https://example.test/v1/chat/completions")
         self.assertEqual(captured["timeout"], 12)
         self.assertEqual(captured["body"]["model"], "test-model")
+        self.assertEqual(captured["body"]["response_format"], {"type": "json_object"})
         self.assertEqual(captured["body"]["messages"][0]["content"], "Build an adventure.")
         self.assertEqual(captured["authorization"], "Bearer secret")
 

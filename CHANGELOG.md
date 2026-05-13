@@ -36,3 +36,4 @@
 - Added `generate-adventure` CLI workflow for provider-backed adventure generation.
 - Improved OpenAI-compatible provider handling for Windows env files and incomplete HTTP responses.
 - Added retry-and-repair prompts for invalid AI adventure output.
+- Added optional JSON object response format for OpenAI-compatible generation.

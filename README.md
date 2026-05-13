@@ -231,7 +231,7 @@ python -m dnd_ai_assistant.demo compile-adventure-output ai_response.txt --adven
 
 ```powershell
 python -m dnd_ai_assistant.demo generate-adventure --provider mock --mock-response ai_response.txt --premise "A bell rings under a ruined chapel." --adventure-output adventures\generated.json --campaign-output output\generated_campaign.json
-python -m dnd_ai_assistant.demo generate-adventure --provider openai-compatible --premise "A bell rings under a ruined chapel." --model your-model-name --adventure-output adventures\generated.json --campaign-output output\generated_campaign.json --max-attempts 2
+python -m dnd_ai_assistant.demo generate-adventure --provider openai-compatible --premise "A bell rings under a ruined chapel." --model your-model-name --adventure-output adventures\generated.json --campaign-output output\generated_campaign.json --max-attempts 2 --json-response-format
 ```
 
 保存一次跑团后的战役状态：
