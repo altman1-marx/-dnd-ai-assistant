@@ -9,11 +9,18 @@ from .core.dnd5e import RollMode, roll_d20_check
 from .core.skills import skill_label
 
 
+QUEST_COMPLETE_STATUS = "completed"
+QUEST_FAILED_STATUS = "failed"
+
+
 DEFAULT_RUNTIME_ACTIONS = {
     "look": {"aliases": ["look", "look around", "where am i"], "handler": "look"},
     "inspect": {"aliases": ["inspect", "search", "investigate"], "handler": "inspect"},
     "talk": {"aliases": ["talk", "speak", "ask"], "handler": "talk"},
     "encounter": {"aliases": ["fight", "start encounter", "encounter"], "handler": "encounter"},
+    "quests": {"aliases": ["quests", "quest log"], "handler": "quests"},
+    "complete_quest": {"aliases": ["complete quest", "finish quest"], "handler": "complete_quest"},
+    "fail_quest": {"aliases": ["fail quest", "abandon quest"], "handler": "fail_quest"},
     "move": {"aliases": ["go", "move", "travel"], "handler": "move"},
     "log": {"aliases": ["log"], "handler": "log"},
     "help": {"aliases": ["help", "?"], "handler": "help"},
@@ -81,6 +88,13 @@ def handle_adventure_action(runtime: AdventureRuntime, action: str) -> bool:
         return talk_to_npc(runtime, target)
     if handler == "encounter":
         return start_location_encounter(runtime)
+    if handler == "quests":
+        describe_quests(runtime)
+        return True
+    if handler == "complete_quest":
+        return set_quest_status(runtime, action_match.get("argument", ""), QUEST_COMPLETE_STATUS)
+    if handler == "fail_quest":
+        return set_quest_status(runtime, action_match.get("argument", ""), QUEST_FAILED_STATUS)
     if handler == "log":
         runtime.narrate("DM: Session log:")
         for event in runtime.campaign.session_log:
@@ -179,6 +193,34 @@ def start_location_encounter(runtime: AdventureRuntime) -> bool:
     return True
 
 
+def describe_quests(runtime: AdventureRuntime) -> None:
+    if not runtime.campaign.quests:
+        runtime.narrate("DM: There are no quests in this campaign.")
+        return
+
+    runtime.narrate("DM: Quests:")
+    for quest in runtime.campaign.quests.values():
+        runtime.narrate(f"- [{quest.status}] {quest.title}: {quest.summary}")
+
+
+def set_quest_status(runtime: AdventureRuntime, target: str, status: str) -> bool:
+    quest = _match_quest(runtime.campaign, target)
+    if quest is None:
+        if target:
+            runtime.narrate("DM: Quest not found.")
+        else:
+            runtime.narrate("DM: Which quest?")
+        return True
+
+    before = quest.status
+    quest.status = status
+    runtime.campaign.record_event(
+        SessionEvent(actor="DM", content=f"Quest status changed: {quest.title} {before} -> {status}.")
+    )
+    runtime.narrate(f"DM: Quest updated - {quest.title}: {before} -> {status}.")
+    return True
+
+
 def current_location(campaign: Campaign) -> Location:
     if campaign.current_location_id is None:
         raise ValueError("Campaign has no current location.")
@@ -217,6 +259,17 @@ def _match_npc(npcs: list[NPC], target: str) -> NPC | None:
         name = npc.name.lower()
         if normalized == npc.id.lower() or normalized == name or normalized in name:
             return npc
+    return None
+
+
+def _match_quest(campaign: Campaign, target: str):
+    normalized = target.strip().lower()
+    if not normalized and len(campaign.quests) == 1:
+        return next(iter(campaign.quests.values()))
+    for quest in campaign.quests.values():
+        title = quest.title.lower()
+        if normalized == quest.id.lower() or normalized == title or normalized in title:
+            return quest
     return None
 
 
@@ -280,7 +333,7 @@ def _match_runtime_action(campaign: Campaign, normalized: str) -> dict:
             alias_text = str(alias).strip().lower()
             if not alias_text:
                 continue
-            if handler in {"move", "talk"} and normalized.startswith(alias_text + " "):
+            if handler in {"move", "talk", "complete_quest", "fail_quest"} and normalized.startswith(alias_text + " "):
                 return {"name": action_name, "handler": handler, "argument": normalized[len(alias_text) :].strip()}
             if normalized == alias_text:
                 return {"name": action_name, "handler": handler}

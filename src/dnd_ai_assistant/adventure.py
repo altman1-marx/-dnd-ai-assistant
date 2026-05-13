@@ -31,7 +31,19 @@ REQUIRED_MONSTER_KEYS = ("name", "armor_class", "max_hp")
 REQUIRED_ENDING_KEYS = ("id", "title", "summary")
 REQUIRED_OPENING_KEYS = ("player_text", "dm_notes")
 ABILITY_NAMES = ("str", "dex", "con", "int", "wis", "cha")
-SUPPORTED_RUNTIME_HANDLERS = {"look", "inspect", "talk", "encounter", "move", "log", "help", "quit"}
+SUPPORTED_RUNTIME_HANDLERS = {
+    "look",
+    "inspect",
+    "talk",
+    "encounter",
+    "quests",
+    "complete_quest",
+    "fail_quest",
+    "move",
+    "log",
+    "help",
+    "quit",
+}
 
 
 @dataclass(frozen=True)

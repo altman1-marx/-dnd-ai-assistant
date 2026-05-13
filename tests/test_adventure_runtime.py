@@ -112,6 +112,44 @@ class AdventureRuntimeTests(unittest.TestCase):
 
         self.assertIn("no active encounter", runtime.flush())
 
+    def test_quests_action_lists_quest_status(self) -> None:
+        campaign = campaign_from_adventure(AdventureDefinition(create_adventure_template("Moonlit Road")))
+        runtime = AdventureRuntime(campaign)
+
+        handle_adventure_action(runtime, "quests")
+        output = runtime.flush()
+
+        self.assertIn("Quests:", output)
+        self.assertIn("[active] Find the Missing Travelers", output)
+
+    def test_complete_quest_updates_status_and_records_event(self) -> None:
+        campaign = campaign_from_adventure(AdventureDefinition(create_adventure_template("Moonlit Road")))
+        runtime = AdventureRuntime(campaign)
+
+        handle_adventure_action(runtime, "complete quest missing travelers")
+        output = runtime.flush()
+
+        self.assertEqual(campaign.quests["quest_find_travelers"].status, "completed")
+        self.assertIn("active -> completed", output)
+        self.assertTrue(any("Quest status changed" in event.content for event in campaign.session_log))
+
+    def test_fail_quest_updates_status(self) -> None:
+        campaign = campaign_from_adventure(AdventureDefinition(create_adventure_template("Moonlit Road")))
+        runtime = AdventureRuntime(campaign)
+
+        handle_adventure_action(runtime, "abandon quest")
+
+        self.assertEqual(campaign.quests["quest_find_travelers"].status, "failed")
+        self.assertIn("active -> failed", runtime.flush())
+
+    def test_complete_quest_reports_missing_target(self) -> None:
+        campaign = campaign_from_adventure(AdventureDefinition(create_adventure_template("Moonlit Road")))
+        runtime = AdventureRuntime(campaign)
+
+        handle_adventure_action(runtime, "complete quest dragon")
+
+        self.assertIn("Quest not found", runtime.flush())
+
     def test_move_rejects_unconnected_location(self) -> None:
         campaign = campaign_from_adventure(AdventureDefinition(create_adventure_template("Moonlit Road")))
         runtime = AdventureRuntime(campaign)
