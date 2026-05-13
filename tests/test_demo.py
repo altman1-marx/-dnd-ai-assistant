@@ -1,3 +1,4 @@
+import json
 import unittest
 import tempfile
 from pathlib import Path
@@ -7,6 +8,7 @@ from dnd_ai_assistant.adventure import AdventureDefinition, create_adventure_tem
 from dnd_ai_assistant.adventure_importer import campaign_from_adventure
 from dnd_ai_assistant.core.serialization import load_campaign, save_campaign
 from dnd_ai_assistant.demo import main, run_combat_demo, run_initiative_demo, run_quickstart, run_scripted_scene, summarize_state
+from dnd_ai_assistant.scenario import create_scene_template
 
 
 class DemoTests(unittest.TestCase):
@@ -39,6 +41,20 @@ class DemoTests(unittest.TestCase):
 
         self.assertIn("The chapel is cold.", output)
         self.assertIn("Black ash clings", output)
+
+    def test_scripted_scene_uses_data_driven_action_handlers(self) -> None:
+        raw = create_scene_template("Data Road")
+        raw["text"]["listen"] = "You hear a bell under the floor."
+        raw["actions"]["listen"] = {"aliases": ["listen", "hear"], "handler": "say_text", "text": "listen"}
+        raw["actions"]["inspect"]["aliases"] = ["study rope"]
+
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "scene.json"
+            path.write_text(json.dumps(raw), encoding="utf-8")
+            output = run_scripted_scene(seed=1, actions=["listen", "study rope"], scene_path=path)
+
+        self.assertIn("You hear a bell under the floor.", output)
+        self.assertIn("Describe the first inspection result.", output)
 
     def test_scripted_scene_can_save_state(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

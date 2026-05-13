@@ -2,7 +2,7 @@ import unittest
 import tempfile
 from pathlib import Path
 
-from dnd_ai_assistant.scenario import SceneDefinition, load_scene, validate_scene, write_scene_template
+from dnd_ai_assistant.scenario import SceneDefinition, create_scene_template, load_scene, validate_scene, write_scene_template
 
 
 class ScenarioTests(unittest.TestCase):
@@ -30,6 +30,19 @@ class ScenarioTests(unittest.TestCase):
 
         self.assertEqual(scene.campaign["title"], "Goblin Road")
         self.assertEqual(scene.hero["name"], "Example Hero")
+        self.assertEqual(scene.actions["inspect"]["handler"], "inspect_clue")
+
+    def test_validate_scene_reports_invalid_action_references(self) -> None:
+        raw = create_scene_template("Broken Road")
+        raw["actions"]["inspect"]["check_id"] = "missing_check"
+        raw["actions"]["look"]["text"] = "missing_text"
+
+        with self.assertRaises(ValueError) as context:
+            validate_scene(SceneDefinition(raw))
+
+        message = str(context.exception)
+        self.assertIn("actions.look.text references unknown text: missing_text", message)
+        self.assertIn("actions.inspect.check_id references unknown check: missing_check", message)
 
 
 if __name__ == "__main__":

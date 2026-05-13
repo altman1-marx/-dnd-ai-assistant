@@ -124,6 +124,7 @@ def validate_scene(scene: SceneDefinition) -> list[str]:
                 skill_ability(check["skill"])
             except ValueError as exc:
                 errors.append(str(exc))
+    _validate_actions(scene, errors)
 
     if errors:
         raise ValueError("; ".join(errors))
@@ -221,12 +222,29 @@ def create_scene_template(title: str) -> dict:
             }
         },
         "actions": {
-            "look": ["look", "around"],
-            "inspect": ["inspect", "rope", "bell"],
-            "open": ["open", "stair", "door"],
-            "log": ["log"],
-            "help": ["help", "?"],
-            "quit": ["quit", "exit"],
+            "look": {"aliases": ["look", "around"], "handler": "say_text", "text": "look"},
+            "inspect": {
+                "aliases": ["inspect", "rope", "bell"],
+                "handler": "inspect_clue",
+                "check_id": "inspect_rope",
+                "first_text": "inspect_first",
+                "success_text": "inspect_success",
+                "failure_text": "inspect_failure",
+                "repeat_text": "inspect_repeat",
+                "state_key": "inspected",
+            },
+            "open": {
+                "aliases": ["open", "stair", "door"],
+                "handler": "open_path",
+                "requires_state": "inspected",
+                "locked_text": "stairway_locked",
+                "open_text": "stairway_open",
+                "repeat_text": "stairway_repeat",
+                "state_key": "opened_path",
+            },
+            "log": {"aliases": ["log"], "handler": "log"},
+            "help": {"aliases": ["help", "?"], "handler": "help"},
+            "quit": {"aliases": ["quit", "exit"], "handler": "quit"},
         },
     }
 
@@ -236,3 +254,30 @@ def write_scene_template(path: str | Path, title: str) -> None:
     output_path.parent.mkdir(parents=True, exist_ok=True)
     scene = create_scene_template(title)
     output_path.write_text(json.dumps(scene, ensure_ascii=False, indent=2), encoding="utf-8")
+
+
+def _validate_actions(scene: SceneDefinition, errors: list[str]) -> None:
+    if not isinstance(scene.actions, dict):
+        errors.append("actions must be an object.")
+        return
+    for action_name, action in scene.actions.items():
+        if isinstance(action, list):
+            if not all(isinstance(alias, str) for alias in action):
+                errors.append(f"actions.{action_name} aliases must be strings.")
+            continue
+        if not isinstance(action, dict):
+            errors.append(f"actions.{action_name} must be a list or object.")
+            continue
+        aliases = action.get("aliases", [])
+        if not isinstance(aliases, list) or not all(isinstance(alias, str) for alias in aliases):
+            errors.append(f"actions.{action_name}.aliases must be a list of strings.")
+        handler = action.get("handler", action_name)
+        if handler not in {"say_text", "inspect_clue", "open_path", "log", "help", "quit"}:
+            errors.append(f"actions.{action_name}.handler is unsupported: {handler}")
+        check_id = action.get("check_id")
+        if check_id is not None and check_id not in scene.checks:
+            errors.append(f"actions.{action_name}.check_id references unknown check: {check_id}")
+        for key in ("text", "first_text", "success_text", "failure_text", "repeat_text", "locked_text", "open_text"):
+            text_key = action.get(key)
+            if text_key is not None and text_key not in scene.text:
+                errors.append(f"actions.{action_name}.{key} references unknown text: {text_key}")

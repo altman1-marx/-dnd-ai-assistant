@@ -21,6 +21,7 @@ class SceneSession:
     scene: SceneDefinition
     inspected: bool = False
     opened_path: bool = False
+    state: dict[str, bool] = field(default_factory=dict)
     transcript: list[str] = field(default_factory=list)
 
     def narrate(self, line: str) -> None:
@@ -126,7 +127,7 @@ def describe_scene(session: SceneSession) -> None:
 
 
 def matches_action(session: SceneSession, action_name: str, normalized: str) -> bool:
-    aliases = session.scene.actions.get(action_name, [])
+    aliases = _action_aliases(session, action_name)
     return any(alias.lower() in normalized for alias in aliases)
 
 
@@ -137,37 +138,45 @@ def handle_player_action(session: SceneSession, action: str) -> bool:
     session.narrate(f"Player: {action}")
     session.tools.record_event(session.campaign.id, actor=session.hero.name, content=action)
 
-    if matches_action(session, "quit", normalized):
+    action_name = _match_action_name(session, normalized)
+    action_rule = _action_rule(session, action_name) if action_name is not None else {}
+    handler = action_rule.get("handler", action_name)
+
+    if handler == "quit":
         session.narrate(f"DM: {session.scene.text['pause']}")
         return False
-    if matches_action(session, "help", normalized):
+    if handler == "help":
         session.narrate("DM: Available actions: look around, inspect rope, open stairway, log, quit.")
         return True
-    if matches_action(session, "log", normalized):
+    if handler == "log":
         session.narrate("DM: Session log:")
         for event in session.campaign.session_log:
             session.narrate(f"- [{event.actor}] {event.content}")
         return True
-    if matches_action(session, "look", normalized):
-        session.narrate(f"DM: {session.scene.text['look']}")
+    if handler == "say_text":
+        text_key = action_rule.get("text", action_name)
+        session.narrate(f"DM: {session.scene.text[text_key]}")
         return True
-    if matches_action(session, "inspect", normalized):
-        return resolve_inspection(session)
-    if matches_action(session, "open", normalized):
-        return resolve_open_path(session)
+    if handler == "inspect_clue":
+        return resolve_inspection(session, action_rule)
+    if handler == "open_path":
+        return resolve_open_path(session, action_rule)
 
     session.narrate(f"DM: {session.scene.text['unknown']}")
     return True
 
 
-def resolve_inspection(session: SceneSession) -> bool:
-    if session.inspected:
-        session.narrate(f"DM: {session.scene.text['inspect_repeat']}")
+def resolve_inspection(session: SceneSession, action_rule: dict | None = None) -> bool:
+    action_rule = action_rule or {}
+    state_key = action_rule.get("state_key", "inspected")
+    if _get_state(session, state_key):
+        repeat_text = action_rule.get("repeat_text", "inspect_repeat")
+        session.narrate(f"DM: {session.scene.text[repeat_text]}")
         return True
 
-    session.inspected = True
+    _set_state(session, state_key, True)
     session.tools.reveal_clue(session.campaign.id, session.clue.id)
-    check_data = session.scene.checks["inspect_rope"]
+    check_data = session.scene.checks[action_rule.get("check_id", "inspect_rope")]
     skill_name = check_data.get("skill")
     if skill_name is not None:
         check = session.tools.roll_skill_check(
@@ -188,31 +197,92 @@ def resolve_inspection(session: SceneSession) -> bool:
             dc=check_data["dc"],
             mode=RollMode(check_data["mode"]),
         ).data
-    session.narrate(f"DM: {session.scene.text['inspect_first']}")
+    first_text = action_rule.get("first_text", "inspect_first")
+    success_text = action_rule.get("success_text", "inspect_success")
+    failure_text = action_rule.get("failure_text", "inspect_failure")
+    session.narrate(f"DM: {session.scene.text[first_text]}")
     session.narrate(
         f"System: {check_data['label']} with {check.mode.value} vs DC {check.dc} -> "
         f"rolls {check.d20_rolls}, total {check.total}."
     )
     if check.success:
-        session.narrate(f"DM: {session.scene.text['inspect_success']}")
+        session.narrate(f"DM: {session.scene.text[success_text]}")
     else:
-        session.narrate(f"DM: {session.scene.text['inspect_failure']}")
+        session.narrate(f"DM: {session.scene.text[failure_text]}")
     return True
 
 
-def resolve_open_path(session: SceneSession) -> bool:
-    if not session.inspected:
-        session.narrate(f"DM: {session.scene.text['stairway_locked']}")
+def resolve_open_path(session: SceneSession, action_rule: dict | None = None) -> bool:
+    action_rule = action_rule or {}
+    required_state = action_rule.get("requires_state", "inspected")
+    state_key = action_rule.get("state_key", "opened_path")
+    if not _get_state(session, required_state):
+        locked_text = action_rule.get("locked_text", "stairway_locked")
+        session.narrate(f"DM: {session.scene.text[locked_text]}")
         return True
-    if session.opened_path:
-        session.narrate(f"DM: {session.scene.text['stairway_repeat']}")
+    if _get_state(session, state_key):
+        repeat_text = action_rule.get("repeat_text", "stairway_repeat")
+        session.narrate(f"DM: {session.scene.text[repeat_text]}")
         return True
 
-    session.opened_path = True
+    _set_state(session, state_key, True)
     session.tools.record_event(
         session.campaign.id,
         actor="DM",
         content="The sealed path opened after the clue was found.",
     )
-    session.narrate(f"DM: {session.scene.text['stairway_open']}")
+    open_text = action_rule.get("open_text", "stairway_open")
+    session.narrate(f"DM: {session.scene.text[open_text]}")
     return True
+
+
+def _match_action_name(session: SceneSession, normalized: str) -> str | None:
+    for action_name in session.scene.actions:
+        if matches_action(session, action_name, normalized):
+            return action_name
+    return None
+
+
+def _action_rule(session: SceneSession, action_name: str | None) -> dict:
+    if action_name is None:
+        return {}
+    action = session.scene.actions.get(action_name, {})
+    if isinstance(action, dict):
+        return action
+    return _legacy_action_rule(action_name)
+
+
+def _action_aliases(session: SceneSession, action_name: str) -> list[str]:
+    action = session.scene.actions.get(action_name, [])
+    if isinstance(action, dict):
+        return list(action.get("aliases", []))
+    return list(action)
+
+
+def _legacy_action_rule(action_name: str) -> dict:
+    handlers = {
+        "look": {"handler": "say_text", "text": "look"},
+        "inspect": {"handler": "inspect_clue"},
+        "open": {"handler": "open_path"},
+        "log": {"handler": "log"},
+        "help": {"handler": "help"},
+        "quit": {"handler": "quit"},
+    }
+    return handlers.get(action_name, {})
+
+
+def _get_state(session: SceneSession, key: str) -> bool:
+    if key == "inspected":
+        return session.inspected
+    if key == "opened_path":
+        return session.opened_path
+    return session.state.get(key, False)
+
+
+def _set_state(session: SceneSession, key: str, value: bool) -> None:
+    if key == "inspected":
+        session.inspected = value
+    elif key == "opened_path":
+        session.opened_path = value
+    else:
+        session.state[key] = value
