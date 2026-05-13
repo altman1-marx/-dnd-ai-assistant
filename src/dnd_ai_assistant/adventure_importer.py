@@ -37,6 +37,7 @@ def campaign_from_adventure(adventure: AdventureDefinition) -> Campaign:
                 role=npc_data["role"],
                 public_description=npc_data["public_description"],
                 dm_secret=npc_data.get("dm_secret", ""),
+                dialogue=npc_data.get("dialogue", npc_data["public_description"]),
                 attitude=npc_data.get("attitude", "neutral"),
                 location_id=npc_data.get("location_id"),
             )
@@ -134,6 +135,7 @@ def _default_runtime_actions() -> dict[str, dict]:
     return {
         "look": {"aliases": ["look", "look around", "where am i"], "handler": "look"},
         "inspect": {"aliases": ["inspect", "search", "investigate"], "handler": "inspect"},
+        "talk": {"aliases": ["talk", "speak", "ask"], "handler": "talk"},
         "move": {"aliases": ["go", "move", "travel"], "handler": "move"},
         "log": {"aliases": ["log"], "handler": "log"},
         "help": {"aliases": ["help", "?"], "handler": "help"},

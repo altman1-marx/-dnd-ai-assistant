@@ -23,6 +23,7 @@ class AdventureImporterTests(unittest.TestCase):
         self.assertEqual(campaign.locations["loc_village_square"].connected_location_ids, ["loc_old_road"])
         self.assertEqual(campaign.locations["loc_moonlit_glade"].requires_clue_ids, ["clue_moon_ash"])
         self.assertIn("npc_mayor_elin", campaign.npcs)
+        self.assertIn("missing travelers", campaign.npcs["npc_mayor_elin"].dialogue)
         self.assertIn("clue_moon_ash", campaign.clues)
         self.assertEqual(campaign.clues["clue_moon_ash"].check["skill"], "survival")
         self.assertIn("quest_find_travelers", campaign.quests)
@@ -90,6 +91,7 @@ class AdventureImporterTests(unittest.TestCase):
         self.assertEqual(campaign.runtime_actions["study"]["handler"], "inspect")
         self.assertEqual(campaign.runtime_actions["travel"]["aliases"], ["travel"])
         self.assertEqual(campaign.runtime_actions["look"]["handler"], "look")
+        self.assertEqual(campaign.runtime_actions["talk"]["handler"], "talk")
 
 
 if __name__ == "__main__":

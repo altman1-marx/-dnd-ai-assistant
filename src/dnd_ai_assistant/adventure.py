@@ -31,7 +31,7 @@ REQUIRED_MONSTER_KEYS = ("name", "armor_class", "max_hp")
 REQUIRED_ENDING_KEYS = ("id", "title", "summary")
 REQUIRED_OPENING_KEYS = ("player_text", "dm_notes")
 ABILITY_NAMES = ("str", "dex", "con", "int", "wis", "cha")
-SUPPORTED_RUNTIME_HANDLERS = {"look", "inspect", "move", "log", "help", "quit"}
+SUPPORTED_RUNTIME_HANDLERS = {"look", "inspect", "talk", "move", "log", "help", "quit"}
 
 
 @dataclass(frozen=True)
@@ -198,6 +198,7 @@ def create_adventure_template(title: str) -> dict:
                 "role": "worried quest giver",
                 "public_description": "A tired mayor clutching a list of missing travelers.",
                 "dm_secret": "She once promised the fey protection and forgot the bargain.",
+                "dialogue": "Please find the missing travelers before the lights take anyone else.",
                 "location_id": "loc_village_square",
             }
         ],

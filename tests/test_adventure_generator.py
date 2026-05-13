@@ -46,6 +46,7 @@ class AdventureGeneratorTests(unittest.TestCase):
         self.assertIn('"check"', prompt)
         self.assertIn('"requires_clue_ids"', prompt)
         self.assertIn('"runtime_actions"', prompt)
+        self.assertIn('"dialogue"', prompt)
         self.assertIn("Party level: 2", prompt)
 
     def test_extract_json_object_accepts_markdown_fenced_json(self) -> None:

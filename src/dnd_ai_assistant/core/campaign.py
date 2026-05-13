@@ -38,6 +38,7 @@ class NPC:
     role: str
     public_description: str
     dm_secret: str = ""
+    dialogue: str = ""
     attitude: str = "neutral"
     location_id: str | None = None
     id: str = field(default_factory=lambda: new_id("npc"))

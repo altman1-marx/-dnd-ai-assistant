@@ -56,6 +56,36 @@ class AdventureRuntimeTests(unittest.TestCase):
 
         self.assertIn("Available actions", runtime.flush())
 
+    def test_talk_action_speaks_with_current_location_npc(self) -> None:
+        campaign = campaign_from_adventure(AdventureDefinition(create_adventure_template("Moonlit Road")))
+        runtime = AdventureRuntime(campaign)
+
+        handle_adventure_action(runtime, "talk mayor")
+        output = runtime.flush()
+
+        self.assertIn("Mayor Elin:", output)
+        self.assertIn("missing travelers", output)
+        self.assertTrue(any(event.actor == "Mayor Elin" for event in campaign.session_log))
+
+    def test_talk_action_reports_missing_npc(self) -> None:
+        campaign = campaign_from_adventure(AdventureDefinition(create_adventure_template("Moonlit Road")))
+        runtime = AdventureRuntime(campaign)
+
+        handle_adventure_action(runtime, "talk stranger")
+
+        self.assertIn("not here", runtime.flush())
+
+    def test_talk_action_reports_empty_location(self) -> None:
+        campaign = campaign_from_adventure(AdventureDefinition(create_adventure_template("Moonlit Road")))
+        campaign.clues["clue_moon_ash"].discovered = True
+        runtime = AdventureRuntime(campaign)
+
+        handle_adventure_action(runtime, "go old road")
+        runtime.flush()
+        handle_adventure_action(runtime, "talk")
+
+        self.assertIn("no one here", runtime.flush())
+
     def test_move_rejects_unconnected_location(self) -> None:
         campaign = campaign_from_adventure(AdventureDefinition(create_adventure_template("Moonlit Road")))
         runtime = AdventureRuntime(campaign)

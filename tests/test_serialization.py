@@ -32,6 +32,16 @@ class SerializationTests(unittest.TestCase):
 
         self.assertEqual(restored.runtime_actions["study"]["handler"], "inspect")
 
+    def test_campaign_round_trip_npc_dialogue(self) -> None:
+        sample = build_sample_campaign(seed=1)
+        npc = next(iter(sample.campaign.npcs.values()))
+        npc.dialogue = "Stay close to the road."
+
+        restored = campaign_from_dict(campaign_to_dict(sample.campaign))
+        restored_npc = next(iter(restored.npcs.values()))
+
+        self.assertEqual(restored_npc.dialogue, "Stay close to the road.")
+
     def test_campaign_round_trip_location_required_clues(self) -> None:
         sample = build_sample_campaign(seed=1)
         clue = next(iter(sample.campaign.clues.values()))

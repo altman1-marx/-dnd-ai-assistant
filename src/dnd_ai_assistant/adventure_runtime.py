@@ -12,6 +12,7 @@ from .core.skills import skill_label
 DEFAULT_RUNTIME_ACTIONS = {
     "look": {"aliases": ["look", "look around", "where am i"], "handler": "look"},
     "inspect": {"aliases": ["inspect", "search", "investigate"], "handler": "inspect"},
+    "talk": {"aliases": ["talk", "speak", "ask"], "handler": "talk"},
     "move": {"aliases": ["go", "move", "travel"], "handler": "move"},
     "log": {"aliases": ["log"], "handler": "log"},
     "help": {"aliases": ["help", "?"], "handler": "help"},
@@ -74,6 +75,9 @@ def handle_adventure_action(runtime: AdventureRuntime, action: str) -> bool:
     if handler == "inspect":
         reveal_location_clues(runtime)
         return True
+    if handler == "talk":
+        target = action_match.get("argument", "")
+        return talk_to_npc(runtime, target)
     if handler == "log":
         runtime.narrate("DM: Session log:")
         for event in runtime.campaign.session_log:
@@ -107,6 +111,27 @@ def reveal_location_clues(runtime: AdventureRuntime) -> None:
         clue.discovered = True
         runtime.campaign.record_event(SessionEvent(actor="DM", content=f"Clue revealed: {clue.title}"))
         runtime.narrate(f"DM: Clue found - {clue.title}: {clue.public_text}")
+
+
+def talk_to_npc(runtime: AdventureRuntime, target: str = "") -> bool:
+    location = current_location(runtime.campaign)
+    npcs = _npcs_at(runtime.campaign, location.id)
+    if not npcs:
+        runtime.narrate("DM: There is no one here to talk to.")
+        return True
+
+    npc = _match_npc(npcs, target)
+    if npc is None:
+        if target:
+            runtime.narrate("DM: That person is not here.")
+        else:
+            runtime.narrate("DM: Who do you want to talk to? " + ", ".join(npc.name for npc in npcs) + ".")
+        return True
+
+    line = npc.dialogue or npc.public_description
+    runtime.campaign.record_event(SessionEvent(actor=npc.name, content=line))
+    runtime.narrate(f"{npc.name}: {line}")
+    return True
 
 
 def move_to(runtime: AdventureRuntime, destination: str) -> bool:
@@ -154,6 +179,17 @@ def _missing_required_clues(campaign: Campaign, location: Location) -> list[str]
 
 def _npcs_at(campaign: Campaign, location_id: str) -> list[NPC]:
     return [npc for npc in campaign.npcs.values() if npc.location_id == location_id]
+
+
+def _match_npc(npcs: list[NPC], target: str) -> NPC | None:
+    normalized = target.strip().lower()
+    if not normalized and len(npcs) == 1:
+        return npcs[0]
+    for npc in npcs:
+        name = npc.name.lower()
+        if normalized == npc.id.lower() or normalized == name or normalized in name:
+            return npc
+    return None
 
 
 def _discovered_clues_at(campaign: Campaign, location_id: str) -> list[Clue]:
@@ -216,7 +252,7 @@ def _match_runtime_action(campaign: Campaign, normalized: str) -> dict:
             alias_text = str(alias).strip().lower()
             if not alias_text:
                 continue
-            if handler == "move" and normalized.startswith(alias_text + " "):
+            if handler in {"move", "talk"} and normalized.startswith(alias_text + " "):
                 return {"name": action_name, "handler": handler, "argument": normalized[len(alias_text) :].strip()}
             if normalized == alias_text:
                 return {"name": action_name, "handler": handler}

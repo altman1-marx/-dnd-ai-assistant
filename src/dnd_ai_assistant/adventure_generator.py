@@ -186,6 +186,7 @@ def _schema_instructions() -> str:
                     "role": "string",
                     "public_description": "string",
                     "dm_secret": "string",
+                    "dialogue": "short in-character line",
                     "location_id": "location_id",
                 }
             ],
@@ -245,6 +246,7 @@ def _schema_instructions() -> str:
             "runtime_actions": {
                 "look": {"aliases": ["look", "look around"], "handler": "look"},
                 "inspect": {"aliases": ["inspect", "search"], "handler": "inspect"},
+                "talk": {"aliases": ["talk", "speak", "ask"], "handler": "talk"},
                 "move": {"aliases": ["go", "move", "travel"], "handler": "move"},
                 "log": {"aliases": ["log"], "handler": "log"},
                 "help": {"aliases": ["help", "?"], "handler": "help"},

@@ -141,6 +141,7 @@ def campaign_to_dict(campaign: Campaign) -> dict:
                 "role": npc.role,
                 "public_description": npc.public_description,
                 "dm_secret": npc.dm_secret,
+                "dialogue": npc.dialogue,
                 "attitude": npc.attitude,
                 "location_id": npc.location_id,
             }
@@ -245,6 +246,7 @@ def campaign_from_dict(data: dict) -> Campaign:
                 role=npc["role"],
                 public_description=npc["public_description"],
                 dm_secret=npc.get("dm_secret", ""),
+                dialogue=npc.get("dialogue", ""),
                 attitude=npc.get("attitude", "neutral"),
                 location_id=npc.get("location_id"),
             )
