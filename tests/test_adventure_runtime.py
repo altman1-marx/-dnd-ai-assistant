@@ -181,6 +181,51 @@ class AdventureRuntimeTests(unittest.TestCase):
         self.assertEqual(campaign.active_combat["resources"]["Kael"]["movement"], 20)
         self.assertIn("20 feet remaining", movement_output)
 
+    def test_attack_action_hits_target_and_spends_action(self) -> None:
+        campaign = campaign_from_adventure(AdventureDefinition(create_adventure_template("Moonlit Road")))
+        campaign.add_character(_scout())
+        campaign.active_combat = {
+            "round": 1,
+            "turn": "Lantern Sprite",
+            "initiative": [
+                {
+                    "name": "Lantern Sprite",
+                    "initiative_total": 18,
+                    "armor_class": 13,
+                    "current_hp": 7,
+                    "attack_bonus": 20,
+                    "damage": "1d4+2",
+                },
+                {"name": "Kael", "initiative_total": 12, "armor_class": 14, "current_hp": 12},
+            ],
+            "resources": {
+                "Lantern Sprite": {"action": True, "bonus_action": True, "reaction": True, "movement": 30},
+                "Kael": {"action": True, "bonus_action": True, "reaction": True, "movement": 30},
+            },
+        }
+        runtime = AdventureRuntime(campaign, rng=random.Random(1))
+
+        handle_adventure_action(runtime, "attack kael")
+        output = runtime.flush()
+
+        self.assertIn("attacks Kael", output)
+        self.assertLess(campaign.characters["Kael"].current_hp, campaign.characters["Kael"].max_hp)
+        self.assertFalse(campaign.active_combat["resources"]["Lantern Sprite"]["action"])
+
+    def test_attack_action_reports_missing_target(self) -> None:
+        campaign = campaign_from_adventure(AdventureDefinition(create_adventure_template("Moonlit Road")))
+        campaign.active_combat = {
+            "round": 1,
+            "turn": "Kael",
+            "initiative": [{"name": "Kael", "initiative_total": 18, "armor_class": 14, "current_hp": 12}],
+            "resources": {"Kael": {"action": True, "bonus_action": True, "reaction": True, "movement": 30}},
+        }
+        runtime = AdventureRuntime(campaign)
+
+        handle_adventure_action(runtime, "attack dragon")
+
+        self.assertIn("Target is not in active combat", runtime.flush())
+
     def test_end_turn_resets_next_turn_resources(self) -> None:
         campaign = campaign_from_adventure(AdventureDefinition(create_adventure_template("Moonlit Road")))
         campaign.active_combat = {

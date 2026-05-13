@@ -7,7 +7,7 @@ from .core.combat import CombatState
 from .core.campaign import Campaign, Encounter, Location, NPC, Clue, SessionEvent
 from .core.character import Character
 from .core.config import DEFAULT_RULES_CONFIG
-from .core.dnd5e import RollMode, roll_d20_check
+from .core.dnd5e import RollMode, roll_attack, roll_d20_check
 from .core.initiative import Combatant
 from .core.skills import skill_label
 
@@ -27,6 +27,7 @@ DEFAULT_RUNTIME_ACTIONS = {
     "use_bonus_action": {"aliases": ["use bonus action"], "handler": "use_bonus_action"},
     "use_reaction": {"aliases": ["use reaction"], "handler": "use_reaction"},
     "spend_movement": {"aliases": ["spend movement", "use movement"], "handler": "spend_movement"},
+    "attack": {"aliases": ["attack", "strike"], "handler": "attack"},
     "resolve_encounter": {"aliases": ["resolve encounter", "end encounter"], "handler": "resolve_encounter"},
     "quests": {"aliases": ["quests", "quest log"], "handler": "quests"},
     "complete_quest": {"aliases": ["complete quest", "finish quest"], "handler": "complete_quest"},
@@ -115,6 +116,9 @@ def handle_adventure_action(runtime: AdventureRuntime, action: str) -> bool:
         return True
     if handler == "spend_movement":
         spend_active_combat_movement(runtime, action_match.get("argument", ""))
+        return True
+    if handler == "attack":
+        attack_active_combat_target(runtime, action_match.get("argument", ""))
         return True
     if handler == "resolve_encounter":
         return resolve_active_encounter(runtime)
@@ -324,6 +328,50 @@ def spend_active_combat_movement(runtime: AdventureRuntime, amount_text: str) ->
     runtime.narrate(f"DM: {turn} moves {amount} feet, {resources['movement']} feet remaining.")
 
 
+def attack_active_combat_target(runtime: AdventureRuntime, target: str) -> None:
+    combat = runtime.campaign.active_combat
+    if combat is None:
+        runtime.narrate("DM: There is no active combat.")
+        return
+    if not target.strip():
+        runtime.narrate("DM: Who is the target?")
+        return
+    attacker = _active_combatant(combat, combat.get("turn", ""))
+    defender = _active_combatant(combat, target)
+    if attacker is None:
+        runtime.narrate("DM: Current attacker is not in initiative.")
+        return
+    if defender is None:
+        runtime.narrate("DM: Target is not in active combat.")
+        return
+    if attacker["name"] == defender["name"]:
+        runtime.narrate("DM: A combatant cannot attack itself.")
+        return
+    if not _active_resources(combat).setdefault(attacker["name"], _default_turn_resources()).get("action", True):
+        runtime.narrate(f"DM: {attacker['name']} has already used action.")
+        return
+
+    attack = roll_attack(
+        attack_bonus=attacker.get("attack_bonus", 0),
+        target_ac=defender.get("armor_class", 10),
+        damage_expression=attacker.get("damage", "1d4"),
+        rng=runtime.rng,
+    )
+    _active_resources(combat)[attacker["name"]]["action"] = False
+    if attack.hit and attack.damage is not None:
+        before = defender.get("current_hp", 0)
+        defender["current_hp"] = max(0, before - attack.damage.total)
+        _sync_combat_hp(runtime.campaign, defender["name"], defender["current_hp"])
+        content = (
+            f"{attacker['name']} attacks {defender['name']}: {attack.attack.total} vs AC {defender.get('armor_class')}, "
+            f"hit for {attack.damage.total} damage: HP {before} -> {defender['current_hp']}."
+        )
+    else:
+        content = f"{attacker['name']} attacks {defender['name']}: {attack.attack.total} vs AC {defender.get('armor_class')}, miss."
+    runtime.campaign.record_event(SessionEvent(actor="DM", content=content))
+    runtime.narrate(f"DM: {content}")
+
+
 def resolve_active_encounter(runtime: AdventureRuntime) -> bool:
     combat = runtime.campaign.active_combat
     if combat is None:
@@ -485,6 +533,7 @@ def _combat_summary(encounter: Encounter, combat: CombatState) -> dict:
                 "is_player": combatant.is_player,
                 "armor_class": combatant.armor_class,
                 "current_hp": combatant.current_hp,
+                **_attack_profile(encounter, combatant.name),
             }
             for combatant in combat.tracker.combatants
         ],
@@ -513,6 +562,33 @@ def _reset_turn_resources(combat: dict, name: str) -> None:
     resources["action"] = True
     resources["bonus_action"] = True
     resources["movement"] = DEFAULT_RULES_CONFIG.default_movement_speed
+
+
+def _attack_profile(encounter: Encounter, name: str) -> dict:
+    for monster in encounter.monsters:
+        if monster.name == name:
+            return {"attack_bonus": monster.attack_bonus, "damage": monster.damage, "damage_type": monster.damage_type}
+    return {"attack_bonus": 0, "damage": "1d4", "damage_type": "untyped"}
+
+
+def _active_combatant(combat: dict, name: str) -> dict | None:
+    normalized = name.strip().lower()
+    for combatant in combat.get("initiative", []):
+        combatant_name = combatant["name"].lower()
+        if normalized == combatant_name or normalized in combatant_name:
+            return combatant
+    return None
+
+
+def _sync_combat_hp(campaign: Campaign, name: str, hp: int) -> None:
+    if name in campaign.characters:
+        campaign.characters[name].current_hp = hp
+        return
+    for encounter in campaign.encounters.values():
+        for monster in encounter.monsters:
+            if monster.name == name:
+                monster.current_hp = hp
+                return
 
 
 def _passes_clue_check(runtime: AdventureRuntime, clue: Clue) -> bool:
@@ -570,6 +646,7 @@ def _match_runtime_action(campaign: Campaign, normalized: str) -> dict:
                 "complete_quest",
                 "fail_quest",
                 "spend_movement",
+                "attack",
             } and normalized.startswith(alias_text + " "):
                 return {"name": action_name, "handler": handler, "argument": normalized[len(alias_text) :].strip()}
             if normalized == alias_text:

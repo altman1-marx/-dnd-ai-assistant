@@ -42,6 +42,7 @@ SUPPORTED_RUNTIME_HANDLERS = {
     "use_bonus_action",
     "use_reaction",
     "spend_movement",
+    "attack",
     "resolve_encounter",
     "quests",
     "complete_quest",
