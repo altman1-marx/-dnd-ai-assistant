@@ -31,6 +31,7 @@ REQUIRED_MONSTER_KEYS = ("name", "armor_class", "max_hp")
 REQUIRED_ENDING_KEYS = ("id", "title", "summary")
 REQUIRED_OPENING_KEYS = ("player_text", "dm_notes")
 ABILITY_NAMES = ("str", "dex", "con", "int", "wis", "cha")
+SUPPORTED_RUNTIME_HANDLERS = {"look", "inspect", "move", "log", "help", "quit"}
 
 
 @dataclass(frozen=True)
@@ -145,6 +146,7 @@ def validate_adventure(adventure: AdventureDefinition) -> list[str]:
             location_ids,
             errors,
         )
+    _validate_runtime_actions(adventure.raw.get("runtime_actions"), errors)
 
     if location_ids:
         _validate_connections(adventure, location_ids, errors)
@@ -320,6 +322,24 @@ def _validate_required_clues(name: str, clue_ids: object, known_clue_ids: set[st
             errors.append(f"{name} entries must be clue id strings.")
         elif clue_id not in known_clue_ids:
             errors.append(f"Unknown clue id for {name}: {clue_id}")
+
+
+def _validate_runtime_actions(actions: object, errors: list[str]) -> None:
+    if actions is None:
+        return
+    if not isinstance(actions, dict):
+        errors.append("runtime_actions must be an object.")
+        return
+    for action_name, action in actions.items():
+        if not isinstance(action, dict):
+            errors.append(f"runtime_actions.{action_name} must be an object.")
+            continue
+        aliases = action.get("aliases", [])
+        if not isinstance(aliases, list) or not all(isinstance(alias, str) for alias in aliases):
+            errors.append(f"runtime_actions.{action_name}.aliases must be a list of strings.")
+        handler = action.get("handler", action_name)
+        if handler not in SUPPORTED_RUNTIME_HANDLERS:
+            errors.append(f"runtime_actions.{action_name}.handler is unsupported: {handler}")
 
 
 def _validate_optional_check(name: str, check: object, errors: list[str]) -> None:

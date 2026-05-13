@@ -9,6 +9,16 @@ from .core.dnd5e import RollMode, roll_d20_check
 from .core.skills import skill_label
 
 
+DEFAULT_RUNTIME_ACTIONS = {
+    "look": {"aliases": ["look", "look around", "where am i"], "handler": "look"},
+    "inspect": {"aliases": ["inspect", "search", "investigate"], "handler": "inspect"},
+    "move": {"aliases": ["go", "move", "travel"], "handler": "move"},
+    "log": {"aliases": ["log"], "handler": "log"},
+    "help": {"aliases": ["help", "?"], "handler": "help"},
+    "quit": {"aliases": ["quit", "exit"], "handler": "quit"},
+}
+
+
 @dataclass
 class AdventureRuntime:
     campaign: Campaign
@@ -49,25 +59,34 @@ def handle_adventure_action(runtime: AdventureRuntime, action: str) -> bool:
     runtime.narrate(f"Player: {action}")
     runtime.campaign.record_event(SessionEvent(actor="Player", content=action))
 
-    if normalized in {"quit", "exit"}:
+    action_match = _match_runtime_action(runtime.campaign, normalized)
+    handler = action_match["handler"]
+
+    if handler == "quit":
         runtime.narrate("DM: The adventure pauses here.")
         return False
-    if normalized in {"look", "look around", "where am i", "观察", "查看"}:
+    if handler == "help":
+        runtime.narrate("DM: Available actions: " + ", ".join(_runtime_action_names(runtime.campaign)) + ".")
+        return True
+    if handler == "look":
         describe_current_location(runtime)
         return True
-    if normalized in {"inspect", "search", "investigate", "检查", "调查", "搜索"}:
+    if handler == "inspect":
         reveal_location_clues(runtime)
         return True
-    if normalized in {"log", "日志"}:
+    if handler == "log":
         runtime.narrate("DM: Session log:")
         for event in runtime.campaign.session_log:
             runtime.narrate(f"- [{event.actor}] {event.content}")
         return True
-    if normalized.startswith("go ") or normalized.startswith("move "):
-        destination = normalized.split(" ", 1)[1].strip()
+    if handler == "move":
+        destination = action_match.get("argument", "")
+        if not destination:
+            runtime.narrate("DM: Where do you want to go?")
+            return True
         return move_to(runtime, destination)
 
-    runtime.narrate("DM: This adventure runtime only knows look, go <location>, log, and quit for now.")
+    runtime.narrate("DM: This adventure runtime does not know how to resolve that yet.")
     return True
 
 
@@ -179,3 +198,26 @@ def _passes_clue_check(runtime: AdventureRuntime, clue: Clue) -> bool:
 
 def _first_character(campaign: Campaign) -> Character | None:
     return next(iter(campaign.characters.values()), None)
+
+
+def _runtime_actions(campaign: Campaign) -> dict[str, dict]:
+    return campaign.runtime_actions or DEFAULT_RUNTIME_ACTIONS
+
+
+def _runtime_action_names(campaign: Campaign) -> list[str]:
+    return sorted(_runtime_actions(campaign))
+
+
+def _match_runtime_action(campaign: Campaign, normalized: str) -> dict:
+    for action_name, action in _runtime_actions(campaign).items():
+        handler = action.get("handler", action_name)
+        aliases = action.get("aliases", [action_name])
+        for alias in aliases:
+            alias_text = str(alias).strip().lower()
+            if not alias_text:
+                continue
+            if handler == "move" and normalized.startswith(alias_text + " "):
+                return {"name": action_name, "handler": handler, "argument": normalized[len(alias_text) :].strip()}
+            if normalized == alias_text:
+                return {"name": action_name, "handler": handler}
+    return {"name": "", "handler": ""}

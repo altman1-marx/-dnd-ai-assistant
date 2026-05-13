@@ -49,6 +49,19 @@ class AdventureTests(unittest.TestCase):
             str(context.exception),
         )
 
+    def test_validate_adventure_reports_invalid_runtime_actions(self) -> None:
+        raw = create_adventure_template("Broken Road")
+        raw["runtime_actions"] = {
+            "listen": {"aliases": "listen", "handler": "unsupported"},
+        }
+
+        with self.assertRaises(ValueError) as context:
+            validate_adventure(AdventureDefinition(raw))
+
+        message = str(context.exception)
+        self.assertIn("runtime_actions.listen.aliases must be a list of strings", message)
+        self.assertIn("runtime_actions.listen.handler is unsupported: unsupported", message)
+
     def test_validate_adventure_reports_unreachable_locations(self) -> None:
         raw = create_adventure_template("Broken Road")
         raw["locations"].append(

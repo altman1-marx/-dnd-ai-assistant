@@ -31,6 +31,31 @@ class AdventureRuntimeTests(unittest.TestCase):
         self.assertIn("Old Road", output)
         self.assertTrue(any("Moved to location: Old Road" in event.content for event in campaign.session_log))
 
+    def test_runtime_uses_campaign_action_aliases(self) -> None:
+        raw = create_adventure_template("Moonlit Road")
+        raw["runtime_actions"] = {
+            "study": {"aliases": ["study"], "handler": "inspect"},
+            "travel": {"aliases": ["travel"], "handler": "move"},
+            "quit": {"aliases": ["stop"], "handler": "quit"},
+        }
+        campaign = campaign_from_adventure(AdventureDefinition(raw))
+        runtime = AdventureRuntime(campaign)
+
+        handle_adventure_action(runtime, "study")
+        runtime.flush()
+        handle_adventure_action(runtime, "travel old road")
+
+        self.assertTrue(campaign.clues["clue_moon_ash"].discovered)
+        self.assertEqual(campaign.current_location_id, "loc_old_road")
+
+    def test_help_lists_runtime_actions(self) -> None:
+        campaign = campaign_from_adventure(AdventureDefinition(create_adventure_template("Moonlit Road")))
+        runtime = AdventureRuntime(campaign)
+
+        handle_adventure_action(runtime, "help")
+
+        self.assertIn("Available actions", runtime.flush())
+
     def test_move_rejects_unconnected_location(self) -> None:
         campaign = campaign_from_adventure(AdventureDefinition(create_adventure_template("Moonlit Road")))
         runtime = AdventureRuntime(campaign)

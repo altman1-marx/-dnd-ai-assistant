@@ -14,6 +14,7 @@ def campaign_from_adventure(adventure: AdventureDefinition) -> Campaign:
         public_lore=campaign_data.get("public_hook", ""),
         dm_secrets=_combine_dm_secrets(adventure),
         current_location_id=adventure.start_location_id,
+        runtime_actions=_runtime_actions_from_adventure(adventure),
     )
 
     for location_data in adventure.locations:
@@ -120,3 +121,21 @@ def _combine_dm_secrets(adventure: AdventureDefinition) -> str:
     for ending in adventure.endings:
         parts.append(f"Ending - {ending['title']}: {ending['summary']}")
     return "\n".join(parts)
+
+
+def _runtime_actions_from_adventure(adventure: AdventureDefinition) -> dict[str, dict]:
+    actions = _default_runtime_actions()
+    if "runtime_actions" in adventure.raw:
+        actions.update(adventure.raw["runtime_actions"])
+    return actions
+
+
+def _default_runtime_actions() -> dict[str, dict]:
+    return {
+        "look": {"aliases": ["look", "look around", "where am i"], "handler": "look"},
+        "inspect": {"aliases": ["inspect", "search", "investigate"], "handler": "inspect"},
+        "move": {"aliases": ["go", "move", "travel"], "handler": "move"},
+        "log": {"aliases": ["log"], "handler": "log"},
+        "help": {"aliases": ["help", "?"], "handler": "help"},
+        "quit": {"aliases": ["quit", "exit"], "handler": "quit"},
+    }

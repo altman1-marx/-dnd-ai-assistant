@@ -24,6 +24,14 @@ class SerializationTests(unittest.TestCase):
         self.assertEqual(len(restored.session_log), len(sample.campaign.session_log))
         self.assertTrue(next(iter(restored.clues.values())).discovered)
 
+    def test_campaign_round_trip_runtime_actions(self) -> None:
+        sample = build_sample_campaign(seed=1)
+        sample.campaign.runtime_actions = {"study": {"aliases": ["study"], "handler": "inspect"}}
+
+        restored = campaign_from_dict(campaign_to_dict(sample.campaign))
+
+        self.assertEqual(restored.runtime_actions["study"]["handler"], "inspect")
+
     def test_campaign_round_trip_location_required_clues(self) -> None:
         sample = build_sample_campaign(seed=1)
         clue = next(iter(sample.campaign.clues.values()))

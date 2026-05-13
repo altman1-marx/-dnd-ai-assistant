@@ -146,6 +146,7 @@ class Campaign:
     public_lore: str = ""
     dm_secrets: str = ""
     current_location_id: str | None = None
+    runtime_actions: dict[str, dict] = field(default_factory=dict)
     id: str = field(default_factory=lambda: new_id("camp"))
     characters: dict[str, Character] = field(default_factory=dict)
     locations: dict[str, Location] = field(default_factory=dict)

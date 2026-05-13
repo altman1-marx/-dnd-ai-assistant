@@ -17,6 +17,7 @@ class AdventureImporterTests(unittest.TestCase):
         self.assertEqual(campaign.title, "Moonlit Road")
         self.assertEqual(campaign.party_level, 1)
         self.assertEqual(campaign.current_location_id, "loc_village_square")
+        self.assertEqual(campaign.runtime_actions["move"]["handler"], "move")
         self.assertEqual(len(campaign.locations), 3)
         self.assertIn("loc_village_square", campaign.locations)
         self.assertEqual(campaign.locations["loc_village_square"].connected_location_ids, ["loc_old_road"])
@@ -76,6 +77,19 @@ class AdventureImporterTests(unittest.TestCase):
         self.assertEqual(monster.saving_throw_modifier("dex"), 5)
         self.assertEqual(monster.damage_resistances, {"fire"})
         self.assertEqual(monster.damage_type, "fire")
+
+    def test_campaign_from_adventure_preserves_custom_runtime_actions(self) -> None:
+        raw = create_adventure_template("Moonlit Road")
+        raw["runtime_actions"] = {
+            "study": {"aliases": ["study", "examine"], "handler": "inspect"},
+            "travel": {"aliases": ["travel"], "handler": "move"},
+        }
+
+        campaign = campaign_from_adventure(AdventureDefinition(raw))
+
+        self.assertEqual(campaign.runtime_actions["study"]["handler"], "inspect")
+        self.assertEqual(campaign.runtime_actions["travel"]["aliases"], ["travel"])
+        self.assertEqual(campaign.runtime_actions["look"]["handler"], "look")
 
 
 if __name__ == "__main__":
