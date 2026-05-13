@@ -71,6 +71,7 @@ def build_scene_session(seed: int, scene_path: str | Path | None = None) -> Scen
         public_description=location_data["public_description"],
         dm_notes=location_data.get("dm_notes", ""),
     ).data
+    campaign.current_location_id = location.id
     npc_data = scene.npc
     tools.add_npc(
         campaign.id,

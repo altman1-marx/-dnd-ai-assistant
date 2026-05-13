@@ -37,3 +37,4 @@
 - Improved OpenAI-compatible provider handling for Windows env files and incomplete HTTP responses.
 - Added retry-and-repair prompts for invalid AI adventure output.
 - Added optional JSON object response format for OpenAI-compatible generation.
+- Added campaign current location state and basic adventure runtime movement.

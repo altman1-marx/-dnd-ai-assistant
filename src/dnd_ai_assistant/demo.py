@@ -10,6 +10,7 @@ from .adventure_generator import AdventureRequest, build_adventure_prompt, gener
 from .adventure_importer import campaign_from_adventure
 from .adventure_map import render_mermaid_map, render_text_map
 from .adventure_review import render_adventure_review, render_adventure_review_json
+from .adventure_runtime import AdventureRuntime, describe_current_location, handle_adventure_action
 from .ai_provider import build_provider
 from .core.dnd5e import RollMode
 from .core.initiative import Combatant, InitiativeTracker
@@ -347,6 +348,16 @@ def main() -> int:
     state = subparsers.add_parser("state-summary", help="Print a saved campaign state summary.")
     state.add_argument("path", help="Path to a saved campaign JSON file.")
 
+    adventure_play = subparsers.add_parser("play-adventure-state", help="Run generic actions against a campaign state.")
+    adventure_play.add_argument("path", help="Path to a saved campaign JSON file.")
+    adventure_play.add_argument("--save-state", default=None, help="Where to save updated campaign state.")
+    adventure_play.add_argument(
+        "--action",
+        action="append",
+        default=[],
+        help="Run a non-interactive action. Repeat to script the adventure runtime.",
+    )
+
     args = parser.parse_args()
     if args.command == "quickstart":
         print(run_quickstart(args.seed))
@@ -469,6 +480,30 @@ def main() -> int:
     if args.command == "state-summary":
         print(summarize_state(args.path))
         return 0
+    if args.command == "play-adventure-state":
+        campaign = load_campaign(args.path)
+        runtime = AdventureRuntime(campaign)
+        describe_current_location(runtime)
+        if args.action:
+            for action in args.action:
+                if not handle_adventure_action(runtime, action):
+                    break
+            if args.save_state is not None:
+                save_campaign(campaign, args.save_state)
+                runtime.narrate(f"System: Saved campaign state to {args.save_state}.")
+            print(runtime.flush())
+            return 0
+        print(runtime.flush())
+        while True:
+            action = input("> ")
+            if not handle_adventure_action(runtime, action):
+                print(runtime.flush())
+                if args.save_state is not None:
+                    save_campaign(campaign, args.save_state)
+                    print(f"System: Saved campaign state to {args.save_state}.")
+                return 0
+            if runtime.transcript:
+                print(runtime.flush())
 
     parser.print_help()
     return 0

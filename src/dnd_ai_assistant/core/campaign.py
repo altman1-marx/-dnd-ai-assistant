@@ -96,6 +96,7 @@ class Campaign:
     party_level: int = 1
     public_lore: str = ""
     dm_secrets: str = ""
+    current_location_id: str | None = None
     id: str = field(default_factory=lambda: new_id("camp"))
     characters: dict[str, Character] = field(default_factory=dict)
     locations: dict[str, Location] = field(default_factory=dict)

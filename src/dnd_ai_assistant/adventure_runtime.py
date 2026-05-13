@@ -1,0 +1,109 @@
+from __future__ import annotations
+
+from dataclasses import dataclass, field
+
+from .core.campaign import Campaign, Encounter, Location, NPC, Clue, SessionEvent
+
+
+@dataclass
+class AdventureRuntime:
+    campaign: Campaign
+    transcript: list[str] = field(default_factory=list)
+
+    def narrate(self, line: str) -> None:
+        self.transcript.append(line)
+
+    def flush(self) -> str:
+        output = "\n".join(self.transcript)
+        self.transcript.clear()
+        return output
+
+
+def describe_current_location(runtime: AdventureRuntime) -> None:
+    location = current_location(runtime.campaign)
+    runtime.narrate(f"DM: {location.name}")
+    runtime.narrate(f"DM: {location.public_description}")
+    exits = [runtime.campaign.locations[location_id].name for location_id in location.connected_location_ids]
+    if exits:
+        runtime.narrate(f"DM: Exits: {', '.join(exits)}.")
+    npcs = _npcs_at(runtime.campaign, location.id)
+    if npcs:
+        runtime.narrate("DM: People here: " + ", ".join(npc.name for npc in npcs) + ".")
+    clues = _discovered_clues_at(runtime.campaign, location.id)
+    if clues:
+        runtime.narrate("DM: Known clues here: " + ", ".join(clue.title for clue in clues) + ".")
+    encounters = _encounters_at(runtime.campaign, location.id)
+    if encounters:
+        runtime.narrate("DM: Potential encounters: " + ", ".join(encounter.title for encounter in encounters) + ".")
+
+
+def handle_adventure_action(runtime: AdventureRuntime, action: str) -> bool:
+    normalized = action.strip().lower()
+    if not normalized:
+        return True
+    runtime.narrate(f"Player: {action}")
+    runtime.campaign.record_event(SessionEvent(actor="Player", content=action))
+
+    if normalized in {"quit", "exit"}:
+        runtime.narrate("DM: The adventure pauses here.")
+        return False
+    if normalized in {"look", "look around", "where am i", "观察", "查看"}:
+        describe_current_location(runtime)
+        return True
+    if normalized in {"log", "日志"}:
+        runtime.narrate("DM: Session log:")
+        for event in runtime.campaign.session_log:
+            runtime.narrate(f"- [{event.actor}] {event.content}")
+        return True
+    if normalized.startswith("go ") or normalized.startswith("move "):
+        destination = normalized.split(" ", 1)[1].strip()
+        return move_to(runtime, destination)
+
+    runtime.narrate("DM: This adventure runtime only knows look, go <location>, log, and quit for now.")
+    return True
+
+
+def move_to(runtime: AdventureRuntime, destination: str) -> bool:
+    current = current_location(runtime.campaign)
+    destination_id = _match_connected_location(runtime.campaign, current, destination)
+    if destination_id is None:
+        runtime.narrate("DM: You cannot reach that location from here.")
+        return True
+    runtime.campaign.current_location_id = destination_id
+    new_location = runtime.campaign.locations[destination_id]
+    runtime.campaign.record_event(SessionEvent(actor="DM", content=f"Moved to location: {new_location.name}"))
+    describe_current_location(runtime)
+    return True
+
+
+def current_location(campaign: Campaign) -> Location:
+    if campaign.current_location_id is None:
+        raise ValueError("Campaign has no current location.")
+    try:
+        return campaign.locations[campaign.current_location_id]
+    except KeyError as exc:
+        raise ValueError(f"Unknown current location id: {campaign.current_location_id}") from exc
+
+
+def _match_connected_location(campaign: Campaign, current: Location, destination: str) -> str | None:
+    for location_id in current.connected_location_ids:
+        location = campaign.locations[location_id]
+        if destination == location_id.lower() or destination in location.name.lower():
+            return location_id
+    return None
+
+
+def _npcs_at(campaign: Campaign, location_id: str) -> list[NPC]:
+    return [npc for npc in campaign.npcs.values() if npc.location_id == location_id]
+
+
+def _discovered_clues_at(campaign: Campaign, location_id: str) -> list[Clue]:
+    return [clue for clue in campaign.clues.values() if clue.location_id == location_id and clue.discovered]
+
+
+def _encounters_at(campaign: Campaign, location_id: str) -> list[Encounter]:
+    return [
+        encounter
+        for encounter in campaign.encounters.values()
+        if encounter.location_id == location_id and not encounter.resolved
+    ]

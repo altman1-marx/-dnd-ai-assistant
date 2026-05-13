@@ -1,8 +1,12 @@
 import unittest
 import tempfile
 from pathlib import Path
+from unittest.mock import patch
 
-from dnd_ai_assistant.demo import run_combat_demo, run_initiative_demo, run_quickstart, run_scripted_scene, summarize_state
+from dnd_ai_assistant.adventure import AdventureDefinition, create_adventure_template
+from dnd_ai_assistant.adventure_importer import campaign_from_adventure
+from dnd_ai_assistant.core.serialization import load_campaign, save_campaign
+from dnd_ai_assistant.demo import main, run_combat_demo, run_initiative_demo, run_quickstart, run_scripted_scene, summarize_state
 
 
 class DemoTests(unittest.TestCase):
@@ -77,6 +81,28 @@ class DemoTests(unittest.TestCase):
 
             self.assertTrue(path.exists())
             self.assertIn("Saved campaign state", output)
+
+    def test_play_adventure_state_cli_moves_and_saves(self) -> None:
+        campaign = campaign_from_adventure(AdventureDefinition(create_adventure_template("Moonlit Road")))
+        with tempfile.TemporaryDirectory() as tmp:
+            state_path = Path(tmp) / "campaign.json"
+            save_campaign(campaign, state_path)
+            argv = [
+                "dnd-ai-assistant",
+                "play-adventure-state",
+                str(state_path),
+                "--action",
+                "go old road",
+                "--save-state",
+                str(state_path),
+            ]
+
+            with patch("sys.argv", argv), patch("builtins.print"):
+                exit_code = main()
+            loaded = load_campaign(state_path)
+
+        self.assertEqual(exit_code, 0)
+        self.assertEqual(loaded.current_location_id, "loc_old_road")
 
 
 if __name__ == "__main__":

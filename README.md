@@ -234,6 +234,12 @@ python -m dnd_ai_assistant.demo generate-adventure --provider mock --mock-respon
 python -m dnd_ai_assistant.demo generate-adventure --provider openai-compatible --premise "A bell rings under a ruined chapel." --model your-model-name --adventure-output adventures\generated.json --campaign-output output\generated_campaign.json --max-attempts 2 --json-response-format
 ```
 
+运行导入后的冒险状态：
+
+```powershell
+python -m dnd_ai_assistant.demo play-adventure-state output\generated_campaign.json --action "look" --action "go old road" --save-state output\generated_campaign.json
+```
+
 保存一次跑团后的战役状态：
 
 ```powershell

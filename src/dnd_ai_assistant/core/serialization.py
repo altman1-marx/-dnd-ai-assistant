@@ -114,6 +114,7 @@ def campaign_to_dict(campaign: Campaign) -> dict:
         "party_level": campaign.party_level,
         "public_lore": campaign.public_lore,
         "dm_secrets": campaign.dm_secrets,
+        "current_location_id": campaign.current_location_id,
         "characters": {name: character_to_dict(character) for name, character in campaign.characters.items()},
         "locations": {
             item_id: {
@@ -204,6 +205,7 @@ def campaign_from_dict(data: dict) -> Campaign:
         party_level=data.get("party_level", 1),
         public_lore=data.get("public_lore", ""),
         dm_secrets=data.get("dm_secrets", ""),
+        current_location_id=data.get("current_location_id"),
     )
     for character in data.get("characters", {}).values():
         campaign.add_character(character_from_dict(character))

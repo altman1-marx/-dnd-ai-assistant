@@ -19,6 +19,7 @@ class SerializationTests(unittest.TestCase):
 
         self.assertEqual(restored.title, sample.campaign.title)
         self.assertIn("Kael", restored.characters)
+        self.assertEqual(restored.current_location_id, sample.campaign.current_location_id)
         self.assertEqual(len(restored.locations), 1)
         self.assertEqual(len(restored.session_log), len(sample.campaign.session_log))
         self.assertTrue(next(iter(restored.clues.values())).discovered)

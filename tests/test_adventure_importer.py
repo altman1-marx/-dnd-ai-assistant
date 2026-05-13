@@ -16,6 +16,7 @@ class AdventureImporterTests(unittest.TestCase):
 
         self.assertEqual(campaign.title, "Moonlit Road")
         self.assertEqual(campaign.party_level, 1)
+        self.assertEqual(campaign.current_location_id, "loc_village_square")
         self.assertEqual(len(campaign.locations), 3)
         self.assertIn("loc_village_square", campaign.locations)
         self.assertEqual(campaign.locations["loc_village_square"].connected_location_ids, ["loc_old_road"])

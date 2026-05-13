@@ -13,6 +13,7 @@ def campaign_from_adventure(adventure: AdventureDefinition) -> Campaign:
         tone=campaign_data["tone"],
         public_lore=campaign_data.get("public_hook", ""),
         dm_secrets=_combine_dm_secrets(adventure),
+        current_location_id=adventure.start_location_id,
     )
 
     for location_data in adventure.locations:
