@@ -34,3 +34,4 @@
 - Added review finding codes and severity levels.
 - Added pluggable AI providers for mock and OpenAI-compatible text generation.
 - Added `generate-adventure` CLI workflow for provider-backed adventure generation.
+- Improved OpenAI-compatible provider handling for Windows env files and incomplete HTTP responses.

@@ -1,4 +1,5 @@
 import json
+import http.client
 import tempfile
 import unittest
 import urllib.error
@@ -91,6 +92,18 @@ class AIProviderTests(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, "insufficient_quota"):
             provider.generate_text("prompt")
 
+    def test_openai_compatible_provider_formats_incomplete_reads(self) -> None:
+        def opener(request, timeout):
+            raise http.client.IncompleteRead(b"")
+
+        provider = OpenAICompatibleProvider(
+            AIProviderConfig(api_key="secret", model="test-model", base_url="https://example.test/v1"),
+            opener=opener,
+        )
+
+        with self.assertRaisesRegex(RuntimeError, "complete JSON body"):
+            provider.generate_text("prompt")
+
     def test_load_ai_provider_config_reads_env_file_without_printing_key(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / ".env.local"
@@ -104,6 +117,19 @@ class AIProviderTests(unittest.TestCase):
         self.assertEqual(config.api_key, "secret")
         self.assertEqual(config.model, "test-model")
         self.assertEqual(config.base_url, "https://example.test/v1")
+
+    def test_load_ai_provider_config_handles_utf8_bom_env_files(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / ".env.local"
+            path.write_text(
+                "DND_AI_API_KEY=secret\nDND_AI_MODEL=test-model\n",
+                encoding="utf-8-sig",
+            )
+
+            config = load_ai_provider_config(env_file=path)
+
+        self.assertEqual(config.api_key, "secret")
+        self.assertEqual(config.model, "test-model")
 
     def test_build_provider_requires_mock_response_for_mock_provider(self) -> None:
         with self.assertRaises(ValueError):

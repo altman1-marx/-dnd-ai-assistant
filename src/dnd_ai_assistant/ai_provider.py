@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+import http.client
 import urllib.error
 import urllib.request
 from dataclasses import dataclass
@@ -65,6 +66,8 @@ class OpenAICompatibleProvider:
             raise RuntimeError(_format_http_error(exc.code, detail)) from exc
         except urllib.error.URLError as exc:
             raise RuntimeError(f"AI provider request failed: {exc.reason}") from exc
+        except http.client.IncompleteRead as exc:
+            raise RuntimeError("AI provider response ended before a complete JSON body was received.") from exc
 
         try:
             return payload["choices"][0]["message"]["content"]
@@ -111,7 +114,7 @@ def _load_env_file(path: str | Path) -> dict[str, str]:
     if not env_path.exists():
         return {}
     values: dict[str, str] = {}
-    for line in env_path.read_text(encoding="utf-8").splitlines():
+    for line in env_path.read_text(encoding="utf-8-sig").splitlines():
         stripped = line.strip()
         if not stripped or stripped.startswith("#") or "=" not in stripped:
             continue
