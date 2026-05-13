@@ -4,8 +4,10 @@ import random
 from dataclasses import dataclass, field
 from enum import Enum
 
+from .character import Character
 from .config import DEFAULT_RULES_CONFIG
 from .initiative import Combatant, InitiativeTracker
+from .spells import Spell
 
 
 class ActionResource(str, Enum):
@@ -22,19 +24,24 @@ class TurnResources:
     reaction: bool = True
     movement: int = DEFAULT_RULES_CONFIG.default_movement_speed
 
-    def spend(self, resource: ActionResource, amount: int = 0) -> None:
+    def ensure_available(self, resource: ActionResource, amount: int = 0) -> None:
         if resource == ActionResource.MOVEMENT:
             if amount <= 0:
                 raise ValueError("Movement amount must be positive.")
             if amount > self.movement:
                 raise ValueError("Not enough movement remaining.")
-            self.movement -= amount
             return
-
         if amount:
             raise ValueError("Only movement accepts an amount.")
         if not getattr(self, resource.value):
             raise ValueError(f"{resource.value} already spent.")
+
+    def spend(self, resource: ActionResource, amount: int = 0) -> None:
+        self.ensure_available(resource, amount)
+        if resource == ActionResource.MOVEMENT:
+            self.movement -= amount
+            return
+
         setattr(self, resource.value, False)
 
     def reset_for_turn(self, movement_speed: int = DEFAULT_RULES_CONFIG.default_movement_speed) -> None:
@@ -85,6 +92,19 @@ class CombatState:
     def spend(self, resource: ActionResource, amount: int = 0) -> None:
         self.current_resources().spend(resource, amount)
 
+    def cast_spell(self, caster: Character, spell_name: str, slot_level: int | None = None) -> Spell:
+        if caster.name != self.current().name:
+            raise ValueError(f"It is not {caster.name}'s turn.")
+        if caster.spellcasting is None:
+            raise ValueError(f"{caster.name} cannot cast spells.")
+
+        spell = caster.spellcasting.spell_named(spell_name)
+        resource = action_resource_for_spell(spell)
+        self.current_resources().ensure_available(resource)
+        cast_spell = caster.spellcasting.cast_spell(spell.name, slot_level=slot_level)
+        self.current_resources().spend(resource)
+        return cast_spell
+
     def end_turn(self) -> Combatant:
         previous_round = self.tracker.round_number
         next_combatant = self.tracker.advance()
@@ -93,3 +113,12 @@ class CombatState:
                 resources.reset_for_round()
         self.current_resources().reset_for_turn(self.current_speed())
         return next_combatant
+
+
+def action_resource_for_spell(spell: Spell) -> ActionResource:
+    casting_time = spell.casting_time.strip().lower()
+    if "bonus action" in casting_time:
+        return ActionResource.BONUS_ACTION
+    if "reaction" in casting_time:
+        return ActionResource.REACTION
+    return ActionResource.ACTION

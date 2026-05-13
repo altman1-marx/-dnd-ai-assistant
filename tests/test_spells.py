@@ -19,6 +19,22 @@ class SpellcastingTests(unittest.TestCase):
         spellcasting.recover_slots(1)
         self.assertEqual(spellcasting.available_slots(1), 2)
 
+    def test_spellcasting_cast_spell_expends_slot_and_tracks_concentration(self) -> None:
+        spellcasting = Spellcasting(
+            ability="wis",
+            slots_by_level={1: 2, 2: 1},
+            known_spells=[Spell("Bless", 1, concentration=True), Spell("Light", 0)],
+        )
+
+        spell = spellcasting.cast_spell("Bless", slot_level=2)
+        cantrip = spellcasting.cast_spell("Light")
+
+        self.assertEqual(spell.name, "Bless")
+        self.assertEqual(cantrip.level, 0)
+        self.assertEqual(spellcasting.available_slots(2), 0)
+        self.assertEqual(spellcasting.available_slots(1), 2)
+        self.assertEqual(spellcasting.concentration_spell_name, "Bless")
+
     def test_spellcasting_rejects_over_expended_slots(self) -> None:
         with self.assertRaises(ValueError):
             Spellcasting(ability="int", slots_by_level={1: 1}, expended_slots_by_level={1: 2})

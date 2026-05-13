@@ -53,6 +53,24 @@ class Spellcasting:
         self._validate_slot_level(level)
         return self.slots_by_level.get(level, 0) - self.expended_slots_by_level.get(level, 0)
 
+    def spell_named(self, name: str) -> Spell:
+        normalized = name.strip().lower()
+        for spell in self.known_spells:
+            if spell.name.lower() == normalized:
+                return spell
+        raise ValueError(f"Unknown spell: {name}")
+
+    def cast_spell(self, name: str, slot_level: int | None = None) -> Spell:
+        spell = self.spell_named(name)
+        if spell.level > 0:
+            effective_slot_level = slot_level if slot_level is not None else spell.level
+            if effective_slot_level < spell.level:
+                raise ValueError("Spell slot level cannot be lower than spell level.")
+            self.expend_slot(effective_slot_level)
+        if spell.concentration:
+            self.concentration_spell_name = spell.name
+        return spell
+
     def expend_slot(self, level: int) -> None:
         if self.available_slots(level) <= 0:
             raise ValueError(f"No level {level} spell slots remaining.")
