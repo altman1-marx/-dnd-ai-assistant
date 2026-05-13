@@ -19,6 +19,20 @@ class InitiativeTests(unittest.TestCase):
         self.assertEqual(tracker.order(), ["Goblin", "Kael", "Cultist"])
         self.assertEqual(tracker.current().name, "Goblin")
 
+    def test_roll_missing_initiative_preserves_existing_rolls(self) -> None:
+        tracker = InitiativeTracker(
+            [
+                Combatant("A", initiative_modifier=0, initiative_roll=20),
+                Combatant("B", initiative_modifier=0),
+            ]
+        )
+
+        tracker.roll_missing_initiative(random.Random(1))
+
+        self.assertEqual(tracker.combatants[0].name, "A")
+        self.assertEqual(tracker.combatants[0].initiative_roll, 20)
+        self.assertEqual(tracker.combatants[1].initiative_roll, 5)
+
     def test_advance_wraps_rounds(self) -> None:
         tracker = InitiativeTracker([Combatant("A", initiative_roll=10), Combatant("B", initiative_roll=5)])
         tracker.sort()
@@ -32,4 +46,3 @@ class InitiativeTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
-

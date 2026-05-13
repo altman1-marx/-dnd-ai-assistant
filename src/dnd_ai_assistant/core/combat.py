@@ -70,7 +70,7 @@ class CombatState:
         if all(combatant.initiative_roll is not None for combatant in tracker.combatants):
             tracker.sort()
         else:
-            tracker.roll_initiative(rng)
+            tracker.roll_missing_initiative(rng)
         speeds = movement_speeds or {}
         state = cls(tracker=tracker, movement_speeds=speeds)
         for combatant in tracker.combatants:

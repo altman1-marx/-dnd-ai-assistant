@@ -37,6 +37,13 @@ class InitiativeTracker:
             combatant.initiative_roll = roll("1d20", rng).total
         self.sort()
 
+    def roll_missing_initiative(self, rng: random.Random | None = None) -> None:
+        rng = rng or random.Random()
+        for combatant in self.combatants:
+            if combatant.initiative_roll is None:
+                combatant.initiative_roll = roll("1d20", rng).total
+        self.sort()
+
     def sort(self) -> None:
         self.combatants.sort(
             key=lambda combatant: (combatant.initiative_total, combatant.initiative_modifier, combatant.name),
@@ -61,4 +68,3 @@ class InitiativeTracker:
 
     def order(self) -> list[str]:
         return [combatant.name for combatant in self.combatants]
-

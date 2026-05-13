@@ -26,6 +26,16 @@ class CombatStateTests(unittest.TestCase):
         self.assertFalse(resources.action)
         self.assertEqual(resources.movement, 20)
 
+    def test_combat_state_preserves_existing_initiative_rolls(self) -> None:
+        state = CombatState.from_combatants(
+            [Combatant("A", initiative_roll=20), Combatant("B")],
+            rng=random.Random(1),
+        )
+
+        self.assertEqual(state.tracker.combatants[0].name, "A")
+        self.assertEqual(state.tracker.combatants[0].initiative_roll, 20)
+        self.assertEqual(state.resources["B"].movement, 30)
+
     def test_turn_resources_reset_on_next_turn_but_reaction_resets_each_round(self) -> None:
         state = CombatState.from_combatants(
             [Combatant("A", initiative_roll=10), Combatant("B", initiative_roll=5)]
