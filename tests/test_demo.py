@@ -75,6 +75,17 @@ class DemoTests(unittest.TestCase):
         self.assertIn("Current location: Old Chapel", summary)
         self.assertIn("Clues: 1/1 discovered", summary)
 
+    def test_state_summary_shows_active_combat(self) -> None:
+        campaign = campaign_from_adventure(AdventureDefinition(create_adventure_template("Moonlit Road")))
+        campaign.active_combat = {"encounter_id": "enc_lantern_sprites", "round": 1, "turn": "Kael"}
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "state.json"
+            save_campaign(campaign, path)
+            summary = summarize_state(path)
+
+        self.assertIn("Active combat:", summary)
+        self.assertIn("Turn: Kael", summary)
+
     def test_initiative_demo_prints_order_and_turns(self) -> None:
         output = run_initiative_demo(seed=1, rounds=1)
 

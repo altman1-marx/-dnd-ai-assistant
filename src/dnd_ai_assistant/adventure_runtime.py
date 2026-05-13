@@ -3,9 +3,11 @@ from __future__ import annotations
 import random
 from dataclasses import dataclass, field
 
+from .core.combat import CombatState
 from .core.campaign import Campaign, Encounter, Location, NPC, Clue, SessionEvent
 from .core.character import Character
 from .core.dnd5e import RollMode, roll_d20_check
+from .core.initiative import Combatant
 from .core.skills import skill_label
 
 
@@ -195,6 +197,12 @@ def start_location_encounter(runtime: AdventureRuntime) -> bool:
         runtime.narrate("DM: No monsters are listed for this encounter.")
     if encounter.reward:
         runtime.narrate(f"DM: Reward: {encounter.reward}")
+    combatants = _combatants_for_encounter(runtime.campaign, encounter)
+    if combatants:
+        combat = CombatState.from_combatants(combatants, rng=runtime.rng)
+        runtime.campaign.active_combat = _combat_summary(encounter, combat)
+        runtime.narrate("DM: Initiative order: " + ", ".join(_initiative_line(combatant) for combatant in combat.tracker.combatants) + ".")
+        runtime.narrate(f"DM: Current turn: {combat.current().name}.")
     return True
 
 
@@ -295,6 +303,53 @@ def _encounters_at(campaign: Campaign, location_id: str) -> list[Encounter]:
         for encounter in campaign.encounters.values()
         if encounter.location_id == location_id and not encounter.resolved
     ]
+
+
+def _combatants_for_encounter(campaign: Campaign, encounter: Encounter) -> list[Combatant]:
+    combatants = [
+        Combatant(
+            name=character.name,
+            initiative_modifier=character.ability_modifier("dex"),
+            armor_class=character.armor_class,
+            current_hp=character.current_hp,
+            is_player=True,
+        )
+        for character in campaign.characters.values()
+    ]
+    combatants.extend(
+        Combatant(
+            name=monster.name,
+            initiative_modifier=monster.initiative_modifier,
+            armor_class=monster.armor_class,
+            current_hp=monster.current_hp,
+        )
+        for monster in encounter.monsters
+    )
+    return combatants
+
+
+def _combat_summary(encounter: Encounter, combat: CombatState) -> dict:
+    return {
+        "encounter_id": encounter.id,
+        "round": combat.tracker.round_number,
+        "turn": combat.current().name,
+        "initiative": [
+            {
+                "name": combatant.name,
+                "initiative_roll": combatant.initiative_roll,
+                "initiative_modifier": combatant.initiative_modifier,
+                "initiative_total": combatant.initiative_total,
+                "is_player": combatant.is_player,
+                "armor_class": combatant.armor_class,
+                "current_hp": combatant.current_hp,
+            }
+            for combatant in combat.tracker.combatants
+        ],
+    }
+
+
+def _initiative_line(combatant: Combatant) -> str:
+    return f"{combatant.name} {combatant.initiative_total}"
 
 
 def _passes_clue_check(runtime: AdventureRuntime, clue: Clue) -> bool:

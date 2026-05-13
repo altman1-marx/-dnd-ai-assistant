@@ -231,6 +231,16 @@ def summarize_state(path: str | Path) -> str:
             f"Session events: {len(campaign.session_log)}",
         ]
     )
+    if campaign.active_combat is not None:
+        lines.extend(
+            [
+                "",
+                "Active combat:",
+                f"- Encounter: {campaign.active_combat.get('encounter_id', '<unknown>')}",
+                f"- Round: {campaign.active_combat.get('round', 1)}",
+                f"- Turn: {campaign.active_combat.get('turn', '<unknown>')}",
+            ]
+        )
     if campaign.session_log:
         lines.append("")
         lines.append("Recent events:")

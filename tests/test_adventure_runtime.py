@@ -104,6 +104,27 @@ class AdventureRuntimeTests(unittest.TestCase):
         self.assertIn("Lantern Sprite (AC 13, HP 7/7)", output)
         self.assertTrue(any("Encounter started: Lantern Sprites" in event.content for event in campaign.session_log))
 
+    def test_encounter_action_creates_active_combat(self) -> None:
+        raw = create_adventure_template("Moonlit Road")
+        raw["encounters"][0]["monsters"] = [
+            {"name": "Lantern Sprite", "armor_class": 13, "max_hp": 7, "current_hp": 7, "initiative_modifier": 2}
+        ]
+        campaign = campaign_from_adventure(AdventureDefinition(raw))
+        campaign.add_character(_scout())
+        campaign.clues["clue_moon_ash"].discovered = True
+        runtime = AdventureRuntime(campaign, rng=random.Random(1))
+
+        handle_adventure_action(runtime, "go old road")
+        runtime.flush()
+        handle_adventure_action(runtime, "fight")
+        output = runtime.flush()
+
+        self.assertIsNotNone(campaign.active_combat)
+        self.assertEqual(campaign.active_combat["encounter_id"], "enc_lantern_sprites")
+        self.assertIn("Lantern Sprite", [entry["name"] for entry in campaign.active_combat["initiative"]])
+        self.assertIn("Initiative order", output)
+        self.assertIn("Current turn", output)
+
     def test_encounter_action_reports_when_none_present(self) -> None:
         campaign = campaign_from_adventure(AdventureDefinition(create_adventure_template("Moonlit Road")))
         runtime = AdventureRuntime(campaign)

@@ -32,6 +32,19 @@ class SerializationTests(unittest.TestCase):
 
         self.assertEqual(restored.runtime_actions["study"]["handler"], "inspect")
 
+    def test_campaign_round_trip_active_combat(self) -> None:
+        sample = build_sample_campaign(seed=1)
+        sample.campaign.active_combat = {
+            "encounter_id": "enc_1",
+            "round": 1,
+            "turn": "Kael",
+            "initiative": [{"name": "Kael", "initiative_total": 18}],
+        }
+
+        restored = campaign_from_dict(campaign_to_dict(sample.campaign))
+
+        self.assertEqual(restored.active_combat["turn"], "Kael")
+
     def test_campaign_round_trip_npc_dialogue(self) -> None:
         sample = build_sample_campaign(seed=1)
         npc = next(iter(sample.campaign.npcs.values()))
