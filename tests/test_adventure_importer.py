@@ -92,6 +92,7 @@ class AdventureImporterTests(unittest.TestCase):
         self.assertEqual(campaign.runtime_actions["travel"]["aliases"], ["travel"])
         self.assertEqual(campaign.runtime_actions["look"]["handler"], "look")
         self.assertEqual(campaign.runtime_actions["talk"]["handler"], "talk")
+        self.assertEqual(campaign.runtime_actions["encounter"]["handler"], "encounter")
 
 
 if __name__ == "__main__":

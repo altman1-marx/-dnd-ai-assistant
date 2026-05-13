@@ -13,6 +13,7 @@ DEFAULT_RUNTIME_ACTIONS = {
     "look": {"aliases": ["look", "look around", "where am i"], "handler": "look"},
     "inspect": {"aliases": ["inspect", "search", "investigate"], "handler": "inspect"},
     "talk": {"aliases": ["talk", "speak", "ask"], "handler": "talk"},
+    "encounter": {"aliases": ["fight", "start encounter", "encounter"], "handler": "encounter"},
     "move": {"aliases": ["go", "move", "travel"], "handler": "move"},
     "log": {"aliases": ["log"], "handler": "log"},
     "help": {"aliases": ["help", "?"], "handler": "help"},
@@ -78,6 +79,8 @@ def handle_adventure_action(runtime: AdventureRuntime, action: str) -> bool:
     if handler == "talk":
         target = action_match.get("argument", "")
         return talk_to_npc(runtime, target)
+    if handler == "encounter":
+        return start_location_encounter(runtime)
     if handler == "log":
         runtime.narrate("DM: Session log:")
         for event in runtime.campaign.session_log:
@@ -148,6 +151,31 @@ def move_to(runtime: AdventureRuntime, destination: str) -> bool:
     runtime.campaign.current_location_id = destination_id
     runtime.campaign.record_event(SessionEvent(actor="DM", content=f"Moved to location: {new_location.name}"))
     describe_current_location(runtime)
+    return True
+
+
+def start_location_encounter(runtime: AdventureRuntime) -> bool:
+    location = current_location(runtime.campaign)
+    encounters = _encounters_at(runtime.campaign, location.id)
+    if not encounters:
+        runtime.narrate("DM: There is no active encounter here.")
+        return True
+
+    encounter = encounters[0]
+    runtime.campaign.record_event(SessionEvent(actor="DM", content=f"Encounter started: {encounter.title}"))
+    runtime.narrate(f"DM: Encounter - {encounter.title} ({encounter.difficulty}).")
+    if encounter.trigger:
+        runtime.narrate(f"DM: Trigger: {encounter.trigger}")
+    if encounter.monsters:
+        monsters = ", ".join(
+            f"{monster.name} (AC {monster.armor_class}, HP {monster.current_hp}/{monster.max_hp})"
+            for monster in encounter.monsters
+        )
+        runtime.narrate(f"DM: Monsters: {monsters}.")
+    else:
+        runtime.narrate("DM: No monsters are listed for this encounter.")
+    if encounter.reward:
+        runtime.narrate(f"DM: Reward: {encounter.reward}")
     return True
 
 

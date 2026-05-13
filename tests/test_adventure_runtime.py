@@ -86,6 +86,32 @@ class AdventureRuntimeTests(unittest.TestCase):
 
         self.assertIn("no one here", runtime.flush())
 
+    def test_encounter_action_shows_current_location_encounter(self) -> None:
+        raw = create_adventure_template("Moonlit Road")
+        raw["encounters"][0]["monsters"] = [
+            {"name": "Lantern Sprite", "armor_class": 13, "max_hp": 7, "current_hp": 7}
+        ]
+        campaign = campaign_from_adventure(AdventureDefinition(raw))
+        campaign.clues["clue_moon_ash"].discovered = True
+        runtime = AdventureRuntime(campaign)
+
+        handle_adventure_action(runtime, "go old road")
+        runtime.flush()
+        handle_adventure_action(runtime, "fight")
+        output = runtime.flush()
+
+        self.assertIn("Encounter - Lantern Sprites", output)
+        self.assertIn("Lantern Sprite (AC 13, HP 7/7)", output)
+        self.assertTrue(any("Encounter started: Lantern Sprites" in event.content for event in campaign.session_log))
+
+    def test_encounter_action_reports_when_none_present(self) -> None:
+        campaign = campaign_from_adventure(AdventureDefinition(create_adventure_template("Moonlit Road")))
+        runtime = AdventureRuntime(campaign)
+
+        handle_adventure_action(runtime, "fight")
+
+        self.assertIn("no active encounter", runtime.flush())
+
     def test_move_rejects_unconnected_location(self) -> None:
         campaign = campaign_from_adventure(AdventureDefinition(create_adventure_template("Moonlit Road")))
         runtime = AdventureRuntime(campaign)

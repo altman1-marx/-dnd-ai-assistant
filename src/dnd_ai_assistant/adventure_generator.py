@@ -247,6 +247,7 @@ def _schema_instructions() -> str:
                 "look": {"aliases": ["look", "look around"], "handler": "look"},
                 "inspect": {"aliases": ["inspect", "search"], "handler": "inspect"},
                 "talk": {"aliases": ["talk", "speak", "ask"], "handler": "talk"},
+                "encounter": {"aliases": ["fight", "start encounter", "encounter"], "handler": "encounter"},
                 "move": {"aliases": ["go", "move", "travel"], "handler": "move"},
                 "log": {"aliases": ["log"], "handler": "log"},
                 "help": {"aliases": ["help", "?"], "handler": "help"},
