@@ -221,6 +221,7 @@ def summarize_state(path: str | Path) -> str:
     lines.extend(
         [
             "",
+            f"Current location: {_current_location_summary(campaign)}",
             f"Locations: {len(campaign.locations)}",
             f"NPCs: {len(campaign.npcs)}",
             f"Clues: {sum(1 for clue in campaign.clues.values() if clue.discovered)}/{len(campaign.clues)} discovered",
@@ -235,6 +236,15 @@ def summarize_state(path: str | Path) -> str:
         for event in campaign.session_log[-5:]:
             lines.append(f"- [{event.actor}] {event.content}")
     return "\n".join(lines)
+
+
+def _current_location_summary(campaign) -> str:
+    if campaign.current_location_id is None:
+        return "(none)"
+    location = campaign.locations.get(campaign.current_location_id)
+    if location is None:
+        return f"(unknown: {campaign.current_location_id})"
+    return location.name
 
 
 def main() -> int:

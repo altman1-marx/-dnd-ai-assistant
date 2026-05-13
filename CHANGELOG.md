@@ -39,3 +39,4 @@
 - Added optional JSON object response format for OpenAI-compatible generation.
 - Added campaign current location state and basic adventure runtime movement.
 - Added generic adventure runtime clue discovery.
+- Added current location to saved campaign summaries.

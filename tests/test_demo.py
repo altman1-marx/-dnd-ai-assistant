@@ -56,6 +56,7 @@ class DemoTests(unittest.TestCase):
 
         self.assertIn("Campaign: The Bell Beneath Ashford", summary)
         self.assertIn("Characters: 1", summary)
+        self.assertIn("Current location: Old Chapel", summary)
         self.assertIn("Clues: 1/1 discovered", summary)
 
     def test_initiative_demo_prints_order_and_turns(self) -> None:
