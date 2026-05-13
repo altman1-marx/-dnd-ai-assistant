@@ -298,6 +298,49 @@ class AdventureRuntimeTests(unittest.TestCase):
         self.assertEqual(campaign.active_combat["initiative"][1]["current_hp"], 10)
         self.assertIn("0 poison damage (8 before adjustments)", output)
 
+    def test_attack_action_resolves_encounter_when_hostiles_are_defeated(self) -> None:
+        raw = create_adventure_template("Moonlit Road")
+        raw["encounters"][0]["monsters"] = [
+            {"name": "Lantern Sprite", "armor_class": 10, "max_hp": 1, "current_hp": 1}
+        ]
+        campaign = campaign_from_adventure(AdventureDefinition(raw))
+        campaign.add_character(_scout())
+        campaign.active_combat = {
+            "encounter_id": "enc_lantern_sprites",
+            "round": 1,
+            "turn": "Kael",
+            "initiative": [
+                {
+                    "name": "Kael",
+                    "initiative_total": 18,
+                    "is_player": True,
+                    "armor_class": 14,
+                    "current_hp": 12,
+                    "attack_bonus": 20,
+                    "damage": "8",
+                },
+                {
+                    "name": "Lantern Sprite",
+                    "initiative_total": 12,
+                    "is_player": False,
+                    "armor_class": 10,
+                    "current_hp": 1,
+                },
+            ],
+            "resources": {
+                "Kael": {"action": True, "bonus_action": True, "reaction": True, "movement": 30},
+                "Lantern Sprite": {"action": True, "bonus_action": True, "reaction": True, "movement": 30},
+            },
+        }
+        runtime = AdventureRuntime(campaign, rng=random.Random(1))
+
+        handle_adventure_action(runtime, "attack sprite")
+        output = runtime.flush()
+
+        self.assertIsNone(campaign.active_combat)
+        self.assertTrue(campaign.encounters["enc_lantern_sprites"].resolved)
+        self.assertIn("All hostile combatants are defeated", output)
+
     def test_cast_spell_spends_slot_and_action_resource(self) -> None:
         campaign = campaign_from_adventure(AdventureDefinition(create_adventure_template("Moonlit Road")))
         campaign.add_character(_caster())
