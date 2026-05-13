@@ -28,6 +28,7 @@ class Location:
     public_description: str
     dm_notes: str = ""
     connected_location_ids: list[str] = field(default_factory=list)
+    requires_clue_ids: list[str] = field(default_factory=list)
     id: str = field(default_factory=lambda: new_id("loc"))
 
 

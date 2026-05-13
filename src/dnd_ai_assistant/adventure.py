@@ -108,7 +108,7 @@ def validate_adventure(adventure: AdventureDefinition) -> list[str]:
 
     location_ids = _collect_unique_ids("locations", adventure.locations, errors)
     _collect_unique_ids("npcs", adventure.npcs, errors)
-    _collect_unique_ids("clues", adventure.clues, errors)
+    clue_ids = _collect_unique_ids("clues", adventure.clues, errors)
     _collect_unique_ids("quests", adventure.quests, errors)
     _collect_unique_ids("encounters", adventure.encounters, errors)
     _collect_unique_ids("endings", adventure.endings, errors)
@@ -124,6 +124,13 @@ def validate_adventure(adventure: AdventureDefinition) -> list[str]:
 
     _validate_location_reference("start_location_id", adventure.start_location_id, location_ids, errors)
     _validate_location_reference("final_location_id", adventure.final_location_id, location_ids, errors)
+    for location in adventure.locations:
+        _validate_required_clues(
+            f"locations.{location.get('id', '<missing>')}.requires_clue_ids",
+            location.get("requires_clue_ids", []),
+            clue_ids,
+            errors,
+        )
     for npc in adventure.npcs:
         _validate_location_reference(f"npcs.{npc.get('id', '<missing>')}.location_id", npc.get("location_id"), location_ids, errors)
     for clue in adventure.clues:
@@ -179,6 +186,7 @@ def create_adventure_template(title: str) -> dict:
                 "public_description": "A silver clearing where roots coil around a cracked stone arch.",
                 "dm_notes": "The arch is the source of the fey disturbance.",
                 "connections": ["loc_old_road"],
+                "requires_clue_ids": ["clue_moon_ash"],
             },
         ],
         "npcs": [
@@ -301,6 +309,17 @@ def _validate_location_reference(name: str, location_id: object, location_ids: s
         return
     if location_id not in location_ids:
         errors.append(f"Unknown location id for {name}: {location_id}")
+
+
+def _validate_required_clues(name: str, clue_ids: object, known_clue_ids: set[str], errors: list[str]) -> None:
+    if not isinstance(clue_ids, list):
+        errors.append(f"{name} must be a list.")
+        return
+    for clue_id in clue_ids:
+        if not isinstance(clue_id, str):
+            errors.append(f"{name} entries must be clue id strings.")
+        elif clue_id not in known_clue_ids:
+            errors.append(f"Unknown clue id for {name}: {clue_id}")
 
 
 def _validate_optional_check(name: str, check: object, errors: list[str]) -> None:

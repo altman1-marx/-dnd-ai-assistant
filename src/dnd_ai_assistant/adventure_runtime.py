@@ -96,8 +96,12 @@ def move_to(runtime: AdventureRuntime, destination: str) -> bool:
     if destination_id is None:
         runtime.narrate("DM: You cannot reach that location from here.")
         return True
-    runtime.campaign.current_location_id = destination_id
     new_location = runtime.campaign.locations[destination_id]
+    missing_clues = _missing_required_clues(runtime.campaign, new_location)
+    if missing_clues:
+        runtime.narrate("DM: Something still blocks the way. Find more clues before going there.")
+        return True
+    runtime.campaign.current_location_id = destination_id
     runtime.campaign.record_event(SessionEvent(actor="DM", content=f"Moved to location: {new_location.name}"))
     describe_current_location(runtime)
     return True
@@ -118,6 +122,15 @@ def _match_connected_location(campaign: Campaign, current: Location, destination
         if destination == location_id.lower() or destination in location.name.lower():
             return location_id
     return None
+
+
+def _missing_required_clues(campaign: Campaign, location: Location) -> list[str]:
+    missing: list[str] = []
+    for clue_id in location.requires_clue_ids:
+        clue = campaign.clues.get(clue_id)
+        if clue is None or not clue.discovered:
+            missing.append(clue_id)
+    return missing
 
 
 def _npcs_at(campaign: Campaign, location_id: str) -> list[NPC]:

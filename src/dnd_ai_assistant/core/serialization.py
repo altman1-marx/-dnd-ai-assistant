@@ -129,6 +129,7 @@ def campaign_to_dict(campaign: Campaign) -> dict:
                 "public_description": location.public_description,
                 "dm_notes": location.dm_notes,
                 "connected_location_ids": location.connected_location_ids,
+                "requires_clue_ids": location.requires_clue_ids,
             }
             for item_id, location in campaign.locations.items()
         },
@@ -231,6 +232,7 @@ def campaign_from_dict(data: dict) -> Campaign:
                 public_description=location["public_description"],
                 dm_notes=location.get("dm_notes", ""),
                 connected_location_ids=list(location.get("connected_location_ids", [])),
+                requires_clue_ids=list(location.get("requires_clue_ids", [])),
             )
         )
     for npc in data.get("npcs", {}).values():

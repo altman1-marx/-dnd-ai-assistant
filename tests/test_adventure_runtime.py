@@ -40,6 +40,31 @@ class AdventureRuntimeTests(unittest.TestCase):
         self.assertEqual(campaign.current_location_id, "loc_village_square")
         self.assertIn("cannot reach", runtime.flush())
 
+    def test_move_rejects_location_when_required_clue_is_missing(self) -> None:
+        campaign = campaign_from_adventure(AdventureDefinition(create_adventure_template("Moonlit Road")))
+        runtime = AdventureRuntime(campaign)
+
+        handle_adventure_action(runtime, "go old road")
+        runtime.flush()
+        handle_adventure_action(runtime, "go moonlit glade")
+        output = runtime.flush()
+
+        self.assertEqual(campaign.current_location_id, "loc_old_road")
+        self.assertIn("Find more clues", output)
+
+    def test_move_allows_location_when_required_clue_is_discovered(self) -> None:
+        campaign = campaign_from_adventure(AdventureDefinition(create_adventure_template("Moonlit Road")))
+        runtime = AdventureRuntime(campaign)
+
+        handle_adventure_action(runtime, "inspect")
+        runtime.flush()
+        handle_adventure_action(runtime, "go old road")
+        runtime.flush()
+        handle_adventure_action(runtime, "go moonlit glade")
+
+        self.assertEqual(campaign.current_location_id, "loc_moonlit_glade")
+        self.assertIn("Moonlit Glade", runtime.flush())
+
     def test_inspect_reveals_current_location_clues(self) -> None:
         campaign = campaign_from_adventure(AdventureDefinition(create_adventure_template("Moonlit Road")))
         runtime = AdventureRuntime(campaign)

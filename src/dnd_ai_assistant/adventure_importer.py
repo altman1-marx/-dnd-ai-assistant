@@ -24,6 +24,7 @@ def campaign_from_adventure(adventure: AdventureDefinition) -> Campaign:
                 public_description=location_data["public_description"],
                 dm_notes=location_data.get("dm_notes", ""),
                 connected_location_ids=list(location_data.get("connections", [])),
+                requires_clue_ids=list(location_data.get("requires_clue_ids", [])),
             )
         )
 

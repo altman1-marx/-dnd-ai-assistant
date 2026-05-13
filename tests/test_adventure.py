@@ -37,6 +37,18 @@ class AdventureTests(unittest.TestCase):
 
         self.assertIn("Unknown location id for clues.clue_moon_ash.location_id", str(context.exception))
 
+    def test_validate_adventure_reports_unknown_location_gate_clues(self) -> None:
+        raw = create_adventure_template("Broken Road")
+        raw["locations"][1]["requires_clue_ids"] = ["clue_missing"]
+
+        with self.assertRaises(ValueError) as context:
+            validate_adventure(AdventureDefinition(raw))
+
+        self.assertIn(
+            "Unknown clue id for locations.loc_old_road.requires_clue_ids: clue_missing",
+            str(context.exception),
+        )
+
     def test_validate_adventure_reports_unreachable_locations(self) -> None:
         raw = create_adventure_template("Broken Road")
         raw["locations"].append(

@@ -176,6 +176,7 @@ def _schema_instructions() -> str:
                     "public_description": "string",
                     "dm_notes": "string",
                     "connections": ["location_id"],
+                    "requires_clue_ids": ["clue_id"],
                 }
             ],
             "npcs": [
