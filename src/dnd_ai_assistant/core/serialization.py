@@ -146,6 +146,7 @@ def campaign_to_dict(campaign: Campaign) -> dict:
                 "dm_secret": clue.dm_secret,
                 "discovered": clue.discovered,
                 "location_id": clue.location_id,
+                "check": clue.check,
             }
             for item_id, clue in campaign.clues.items()
         },
@@ -240,6 +241,7 @@ def campaign_from_dict(data: dict) -> Campaign:
                 dm_secret=clue.get("dm_secret", ""),
                 discovered=clue.get("discovered", False),
                 location_id=clue.get("location_id"),
+                check=clue.get("check"),
             )
         )
     for quest in data.get("quests", {}).values():

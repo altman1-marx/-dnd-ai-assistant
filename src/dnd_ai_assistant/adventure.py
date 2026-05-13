@@ -5,6 +5,9 @@ from collections import deque
 from dataclasses import dataclass
 from pathlib import Path
 
+from .core.dnd5e import RollMode
+from .core.skills import skill_ability
+
 
 REQUIRED_TOP_LEVEL_KEYS = (
     "campaign",
@@ -126,6 +129,7 @@ def validate_adventure(adventure: AdventureDefinition) -> list[str]:
         _validate_location_reference(
             f"clues.{clue.get('id', '<missing>')}.location_id", clue.get("location_id"), location_ids, errors
         )
+        _validate_optional_check(f"clues.{clue.get('id', '<missing>')}.check", clue.get("check"), errors)
     for encounter in adventure.encounters:
         _validate_location_reference(
             f"encounters.{encounter.get('id', '<missing>')}.location_id",
@@ -193,6 +197,7 @@ def create_adventure_template(title: str) -> dict:
                 "public_text": "Silver ash clings to footprints heading toward the old road.",
                 "dm_secret": "The ash falls from the cracked arch in the glade.",
                 "location_id": "loc_village_square",
+                "check": {"skill": "survival", "dc": 10, "mode": "normal", "label": "Survival"},
             }
         ],
         "quests": [
@@ -290,6 +295,29 @@ def _validate_location_reference(name: str, location_id: object, location_ids: s
         return
     if location_id not in location_ids:
         errors.append(f"Unknown location id for {name}: {location_id}")
+
+
+def _validate_optional_check(name: str, check: object, errors: list[str]) -> None:
+    if check is None:
+        return
+    if not isinstance(check, dict):
+        errors.append(f"{name} must be an object.")
+        return
+    for key in ("skill", "dc"):
+        if key not in check:
+            errors.append(f"Missing {name} key: {key}")
+    if "skill" in check:
+        try:
+            skill_ability(check["skill"])
+        except ValueError as exc:
+            errors.append(str(exc))
+    if "dc" in check and (not isinstance(check["dc"], int) or check["dc"] < 0):
+        errors.append(f"{name}.dc must be a non-negative integer.")
+    if "mode" in check:
+        try:
+            RollMode(check["mode"])
+        except ValueError:
+            errors.append(f"{name}.mode must be normal, advantage, or disadvantage.")
 
 
 def _validate_connections(adventure: AdventureDefinition, location_ids: set[str], errors: list[str]) -> None:

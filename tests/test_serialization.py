@@ -2,7 +2,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from dnd_ai_assistant.core.campaign import Monster
+from dnd_ai_assistant.core.campaign import Clue, Monster
 from dnd_ai_assistant.core.character import Character
 from dnd_ai_assistant.core.serialization import campaign_from_dict, campaign_to_dict, load_campaign, save_campaign
 from dnd_ai_assistant.core.spells import Spell, Spellcasting
@@ -38,6 +38,23 @@ class SerializationTests(unittest.TestCase):
         self.assertEqual(len(restored.encounters), 2)
         encounter = next(iter(restored.encounters.values()))
         self.assertTrue(any(monster.name == "Ash Goblin" for encounter in restored.encounters.values() for monster in encounter.monsters))
+
+    def test_campaign_round_trip_clue_check(self) -> None:
+        sample = build_sample_campaign(seed=1)
+        sample.campaign.add_clue(
+            Clue(
+                title="Silver Ash",
+                public_text="The ash points toward the road.",
+                location_id=sample.location.id,
+                check={"skill": "survival", "dc": 12, "mode": "normal", "label": "Survival"},
+            )
+        )
+
+        restored = campaign_from_dict(campaign_to_dict(sample.campaign))
+        clue = next(clue for clue in restored.clues.values() if clue.title == "Silver Ash")
+
+        self.assertEqual(clue.check["skill"], "survival")
+        self.assertEqual(clue.check["dc"], 12)
 
     def test_campaign_save_and_load_file(self) -> None:
         sample = build_sample_campaign(seed=1)

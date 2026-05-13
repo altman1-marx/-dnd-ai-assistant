@@ -49,6 +49,7 @@ def campaign_from_adventure(adventure: AdventureDefinition) -> Campaign:
                 dm_secret=clue_data.get("dm_secret", ""),
                 discovered=clue_data.get("discovered", False),
                 location_id=clue_data.get("location_id"),
+                check=clue_data.get("check"),
             )
         )
 

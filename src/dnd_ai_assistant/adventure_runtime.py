@@ -1,14 +1,19 @@
 from __future__ import annotations
 
+import random
 from dataclasses import dataclass, field
 
 from .core.campaign import Campaign, Encounter, Location, NPC, Clue, SessionEvent
+from .core.character import Character
+from .core.dnd5e import RollMode, roll_d20_check
+from .core.skills import skill_label
 
 
 @dataclass
 class AdventureRuntime:
     campaign: Campaign
     transcript: list[str] = field(default_factory=list)
+    rng: random.Random = field(default_factory=random.Random)
 
     def narrate(self, line: str) -> None:
         self.transcript.append(line)
@@ -77,6 +82,9 @@ def reveal_location_clues(runtime: AdventureRuntime) -> None:
         runtime.narrate("DM: You find no new clues here.")
         return
     for clue in hidden_clues:
+        if not _passes_clue_check(runtime, clue):
+            runtime.narrate("DM: You do not find anything new yet.")
+            continue
         clue.discovered = True
         runtime.campaign.record_event(SessionEvent(actor="DM", content=f"Clue revealed: {clue.title}"))
         runtime.narrate(f"DM: Clue found - {clue.title}: {clue.public_text}")
@@ -126,3 +134,35 @@ def _encounters_at(campaign: Campaign, location_id: str) -> list[Encounter]:
         for encounter in campaign.encounters.values()
         if encounter.location_id == location_id and not encounter.resolved
     ]
+
+
+def _passes_clue_check(runtime: AdventureRuntime, clue: Clue) -> bool:
+    if clue.check is None:
+        return True
+    character = _first_character(runtime.campaign)
+    if character is None:
+        return True
+
+    skill = str(clue.check.get("skill", "perception"))
+    dc = int(clue.check.get("dc", 10))
+    mode = RollMode(str(clue.check.get("mode", RollMode.NORMAL.value)))
+    label = str(clue.check.get("label", skill_label(skill)))
+    modifier = character.skill_modifier(skill)
+    result = roll_d20_check(modifier=modifier, dc=dc, mode=mode, rng=runtime.rng)
+    outcome = "success" if result.success else "failure"
+
+    runtime.narrate(
+        f"System: {character.name} rolls {label} ({mode.value}) vs DC {dc}: "
+        f"{list(result.d20_rolls)} + {modifier} = {result.total} ({outcome})."
+    )
+    runtime.campaign.record_event(
+        SessionEvent(
+            actor="System",
+            content=f"{character.name} rolled {label} {result.total} vs DC {dc}: {outcome}.",
+        )
+    )
+    return bool(result.success)
+
+
+def _first_character(campaign: Campaign) -> Character | None:
+    return next(iter(campaign.characters.values()), None)

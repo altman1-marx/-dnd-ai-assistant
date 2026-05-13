@@ -22,6 +22,7 @@ class AdventureImporterTests(unittest.TestCase):
         self.assertEqual(campaign.locations["loc_village_square"].connected_location_ids, ["loc_old_road"])
         self.assertIn("npc_mayor_elin", campaign.npcs)
         self.assertIn("clue_moon_ash", campaign.clues)
+        self.assertEqual(campaign.clues["clue_moon_ash"].check["skill"], "survival")
         self.assertIn("quest_find_travelers", campaign.quests)
         self.assertIn("enc_lantern_sprites", campaign.encounters)
 

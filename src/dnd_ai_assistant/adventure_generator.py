@@ -56,6 +56,7 @@ def build_adventure_prompt(request: AdventureRequest) -> str:
             "- Include at least one clue, one quest, one encounter, and one ending.",
             "- Keep player-facing text spoiler-free.",
             "- Put secrets and twists only in dm_secret, dm_notes, or opening.dm_notes.",
+            "- Use clue.check for clues that should require a DND 5e skill check; omit it for obvious clues.",
             "- Use stable ids like loc_old_chapel, npc_mayor_voss, clue_black_ash.",
             "- Make all location references point to existing location ids.",
         ]
@@ -194,6 +195,12 @@ def _schema_instructions() -> str:
                     "public_text": "string",
                     "dm_secret": "string",
                     "location_id": "location_id",
+                    "check": {
+                        "skill": "skill name",
+                        "dc": "integer",
+                        "mode": "normal|advantage|disadvantage",
+                        "label": "string",
+                    },
                 }
             ],
             "quests": [{"id": "string", "title": "string", "summary": "string"}],

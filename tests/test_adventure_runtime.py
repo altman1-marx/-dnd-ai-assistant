@@ -1,8 +1,10 @@
+import random
 import unittest
 
 from dnd_ai_assistant.adventure import AdventureDefinition, create_adventure_template
 from dnd_ai_assistant.adventure_importer import campaign_from_adventure
 from dnd_ai_assistant.adventure_runtime import AdventureRuntime, describe_current_location, handle_adventure_action
+from dnd_ai_assistant.core.character import Character
 
 
 class AdventureRuntimeTests(unittest.TestCase):
@@ -60,11 +62,54 @@ class AdventureRuntimeTests(unittest.TestCase):
 
         self.assertIn("no new clues", runtime.flush())
 
+    def test_inspect_uses_clue_skill_check_when_character_exists(self) -> None:
+        raw = create_adventure_template("Moonlit Road")
+        raw["clues"][0]["check"] = {"skill": "survival", "dc": 10, "mode": "normal", "label": "Survival"}
+        campaign = campaign_from_adventure(AdventureDefinition(raw))
+        campaign.add_character(_scout())
+        runtime = AdventureRuntime(campaign, rng=random.Random(1))
+
+        handle_adventure_action(runtime, "inspect")
+        output = runtime.flush()
+
+        self.assertTrue(campaign.clues["clue_moon_ash"].discovered)
+        self.assertIn("rolls Survival", output)
+        self.assertIn("success", output)
+
+    def test_inspect_keeps_checked_clue_hidden_on_failure(self) -> None:
+        raw = create_adventure_template("Moonlit Road")
+        raw["clues"][0]["check"] = {"skill": "survival", "dc": 20, "mode": "normal", "label": "Survival"}
+        campaign = campaign_from_adventure(AdventureDefinition(raw))
+        campaign.add_character(_scout())
+        runtime = AdventureRuntime(campaign, rng=random.Random(1))
+
+        handle_adventure_action(runtime, "inspect")
+        output = runtime.flush()
+
+        self.assertFalse(campaign.clues["clue_moon_ash"].discovered)
+        self.assertIn("failure", output)
+        self.assertIn("do not find anything new", output)
+
     def test_quit_stops_runtime(self) -> None:
         campaign = campaign_from_adventure(AdventureDefinition(create_adventure_template("Moonlit Road")))
         runtime = AdventureRuntime(campaign)
 
         self.assertFalse(handle_adventure_action(runtime, "quit"))
+
+
+def _scout() -> Character:
+    return Character(
+        name="Kael",
+        player_name="Player",
+        class_name="Ranger",
+        level=1,
+        ancestry="Human",
+        ability_scores={"str": 10, "dex": 14, "con": 12, "int": 10, "wis": 16, "cha": 8},
+        armor_class=14,
+        max_hp=12,
+        current_hp=12,
+        skill_proficiencies={"survival"},
+    )
 
 
 if __name__ == "__main__":

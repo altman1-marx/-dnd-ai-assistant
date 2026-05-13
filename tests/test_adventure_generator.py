@@ -43,6 +43,7 @@ class AdventureGeneratorTests(unittest.TestCase):
         self.assertIn("Return only valid JSON", prompt)
         self.assertIn("A bell rings under a ruined chapel.", prompt)
         self.assertIn('"start_location_id"', prompt)
+        self.assertIn('"check"', prompt)
         self.assertIn("Party level: 2", prompt)
 
     def test_extract_json_object_accepts_markdown_fenced_json(self) -> None:

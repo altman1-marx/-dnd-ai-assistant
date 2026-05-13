@@ -80,6 +80,18 @@ class AdventureTests(unittest.TestCase):
 
         self.assertIn("Missing encounters[0].monsters[0] key: armor_class", str(context.exception))
 
+    def test_validate_adventure_reports_invalid_clue_checks(self) -> None:
+        raw = create_adventure_template("Broken Road")
+        raw["clues"][0]["check"] = {"skill": "goblin lore", "dc": -1, "mode": "lucky"}
+
+        with self.assertRaises(ValueError) as context:
+            validate_adventure(AdventureDefinition(raw))
+
+        message = str(context.exception)
+        self.assertIn("Unsupported DND 5e skill: goblin lore", message)
+        self.assertIn("clues.clue_moon_ash.check.dc must be a non-negative integer", message)
+        self.assertIn("clues.clue_moon_ash.check.mode must be normal, advantage, or disadvantage", message)
+
 
 if __name__ == "__main__":
     unittest.main()

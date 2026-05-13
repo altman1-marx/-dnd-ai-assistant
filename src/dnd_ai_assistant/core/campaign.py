@@ -44,6 +44,7 @@ class Clue:
     dm_secret: str = ""
     discovered: bool = False
     location_id: str | None = None
+    check: dict | None = None
     id: str = field(default_factory=lambda: new_id("clue"))
 
 
