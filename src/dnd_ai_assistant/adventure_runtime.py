@@ -7,6 +7,7 @@ from .core.combat import CombatState
 from .core.campaign import Campaign, Encounter, Location, NPC, Clue, SessionEvent
 from .core.character import Character
 from .core.config import DEFAULT_RULES_CONFIG
+from .core.damage import adjusted_damage_amount
 from .core.dnd5e import RollMode, roll_attack, roll_d20_check
 from .core.initiative import Combatant
 from .core.skills import skill_label
@@ -360,11 +361,14 @@ def attack_active_combat_target(runtime: AdventureRuntime, target: str) -> None:
     _active_resources(combat)[attacker["name"]]["action"] = False
     if attack.hit and attack.damage is not None:
         before = defender.get("current_hp", 0)
-        defender["current_hp"] = max(0, before - attack.damage.total)
-        _sync_combat_hp(runtime.campaign, defender["name"], defender["current_hp"])
+        damage_type = attacker.get("damage_type", "untyped")
+        damage_amount = _apply_combat_damage(runtime.campaign, defender, attack.damage.total, damage_type)
+        adjustment = ""
+        if damage_amount != attack.damage.total:
+            adjustment = f" ({attack.damage.total} before adjustments)"
         content = (
             f"{attacker['name']} attacks {defender['name']}: {attack.attack.total} vs AC {defender.get('armor_class')}, "
-            f"hit for {attack.damage.total} damage: HP {before} -> {defender['current_hp']}."
+            f"hit for {damage_amount} {damage_type} damage{adjustment}: HP {before} -> {defender['current_hp']}."
         )
     else:
         content = f"{attacker['name']} attacks {defender['name']}: {attack.attack.total} vs AC {defender.get('armor_class')}, miss."
@@ -534,6 +538,7 @@ def _combat_summary(encounter: Encounter, combat: CombatState) -> dict:
                 "armor_class": combatant.armor_class,
                 "current_hp": combatant.current_hp,
                 **_attack_profile(encounter, combatant.name),
+                **_defense_profile(encounter, combatant.name),
             }
             for combatant in combat.tracker.combatants
         ],
@@ -571,6 +576,17 @@ def _attack_profile(encounter: Encounter, name: str) -> dict:
     return {"attack_bonus": 0, "damage": "1d4", "damage_type": "untyped"}
 
 
+def _defense_profile(encounter: Encounter, name: str) -> dict:
+    for monster in encounter.monsters:
+        if monster.name == name:
+            return {
+                "damage_resistances": sorted(monster.damage_resistances),
+                "damage_vulnerabilities": sorted(monster.damage_vulnerabilities),
+                "damage_immunities": sorted(monster.damage_immunities),
+            }
+    return {"damage_resistances": [], "damage_vulnerabilities": [], "damage_immunities": []}
+
+
 def _active_combatant(combat: dict, name: str) -> dict | None:
     normalized = name.strip().lower()
     for combatant in combat.get("initiative", []):
@@ -580,15 +596,36 @@ def _active_combatant(combat: dict, name: str) -> dict | None:
     return None
 
 
-def _sync_combat_hp(campaign: Campaign, name: str, hp: int) -> None:
-    if name in campaign.characters:
-        campaign.characters[name].current_hp = hp
-        return
+def _apply_combat_damage(campaign: Campaign, combatant: dict, amount: int, damage_type: str | None) -> int:
+    character = campaign.characters.get(combatant["name"])
+    if character is not None:
+        adjusted = character.apply_damage(amount, damage_type)
+        combatant["current_hp"] = character.current_hp
+        return adjusted
+
     for encounter in campaign.encounters.values():
         for monster in encounter.monsters:
-            if monster.name == name:
-                monster.current_hp = hp
-                return
+            if monster.name == combatant["name"]:
+                adjusted = adjusted_damage_amount(
+                    amount,
+                    damage_type,
+                    monster.damage_immunities,
+                    monster.damage_resistances,
+                    monster.damage_vulnerabilities,
+                )
+                monster.current_hp = max(0, monster.current_hp - adjusted)
+                combatant["current_hp"] = monster.current_hp
+                return adjusted
+
+    adjusted = adjusted_damage_amount(
+        amount,
+        damage_type,
+        set(combatant.get("damage_immunities", [])),
+        set(combatant.get("damage_resistances", [])),
+        set(combatant.get("damage_vulnerabilities", [])),
+    )
+    combatant["current_hp"] = max(0, combatant.get("current_hp", 0) - adjusted)
+    return adjusted
 
 
 def _passes_clue_check(runtime: AdventureRuntime, clue: Clue) -> bool:

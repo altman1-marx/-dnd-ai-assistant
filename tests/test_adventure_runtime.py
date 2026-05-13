@@ -226,6 +226,77 @@ class AdventureRuntimeTests(unittest.TestCase):
 
         self.assertIn("Target is not in active combat", runtime.flush())
 
+    def test_attack_action_respects_character_damage_resistance(self) -> None:
+        campaign = campaign_from_adventure(AdventureDefinition(create_adventure_template("Moonlit Road")))
+        scout = _scout()
+        scout.damage_resistances.add("fire")
+        campaign.add_character(scout)
+        campaign.active_combat = {
+            "round": 1,
+            "turn": "Lantern Sprite",
+            "initiative": [
+                {
+                    "name": "Lantern Sprite",
+                    "initiative_total": 18,
+                    "armor_class": 13,
+                    "current_hp": 7,
+                    "attack_bonus": 20,
+                    "damage": "8",
+                    "damage_type": "fire",
+                },
+                {"name": "Kael", "initiative_total": 12, "armor_class": 14, "current_hp": 12},
+            ],
+            "resources": {
+                "Lantern Sprite": {"action": True, "bonus_action": True, "reaction": True, "movement": 30},
+                "Kael": {"action": True, "bonus_action": True, "reaction": True, "movement": 30},
+            },
+        }
+        runtime = AdventureRuntime(campaign, rng=random.Random(1))
+
+        handle_adventure_action(runtime, "attack kael")
+        output = runtime.flush()
+
+        self.assertEqual(campaign.characters["Kael"].current_hp, 8)
+        self.assertEqual(campaign.active_combat["initiative"][1]["current_hp"], 8)
+        self.assertIn("4 fire damage (8 before adjustments)", output)
+
+    def test_attack_action_respects_combatant_damage_immunity(self) -> None:
+        campaign = campaign_from_adventure(AdventureDefinition(create_adventure_template("Moonlit Road")))
+        campaign.add_character(_scout())
+        campaign.active_combat = {
+            "round": 1,
+            "turn": "Kael",
+            "initiative": [
+                {
+                    "name": "Kael",
+                    "initiative_total": 18,
+                    "armor_class": 14,
+                    "current_hp": 12,
+                    "attack_bonus": 20,
+                    "damage": "8",
+                    "damage_type": "poison",
+                },
+                {
+                    "name": "Training Dummy",
+                    "initiative_total": 12,
+                    "armor_class": 10,
+                    "current_hp": 10,
+                    "damage_immunities": ["poison"],
+                },
+            ],
+            "resources": {
+                "Kael": {"action": True, "bonus_action": True, "reaction": True, "movement": 30},
+                "Training Dummy": {"action": True, "bonus_action": True, "reaction": True, "movement": 30},
+            },
+        }
+        runtime = AdventureRuntime(campaign, rng=random.Random(1))
+
+        handle_adventure_action(runtime, "attack dummy")
+        output = runtime.flush()
+
+        self.assertEqual(campaign.active_combat["initiative"][1]["current_hp"], 10)
+        self.assertIn("0 poison damage (8 before adjustments)", output)
+
     def test_end_turn_resets_next_turn_resources(self) -> None:
         campaign = campaign_from_adventure(AdventureDefinition(create_adventure_template("Moonlit Road")))
         campaign.active_combat = {
