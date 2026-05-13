@@ -50,6 +50,9 @@ def handle_adventure_action(runtime: AdventureRuntime, action: str) -> bool:
     if normalized in {"look", "look around", "where am i", "观察", "查看"}:
         describe_current_location(runtime)
         return True
+    if normalized in {"inspect", "search", "investigate", "检查", "调查", "搜索"}:
+        reveal_location_clues(runtime)
+        return True
     if normalized in {"log", "日志"}:
         runtime.narrate("DM: Session log:")
         for event in runtime.campaign.session_log:
@@ -61,6 +64,22 @@ def handle_adventure_action(runtime: AdventureRuntime, action: str) -> bool:
 
     runtime.narrate("DM: This adventure runtime only knows look, go <location>, log, and quit for now.")
     return True
+
+
+def reveal_location_clues(runtime: AdventureRuntime) -> None:
+    location = current_location(runtime.campaign)
+    hidden_clues = [
+        clue
+        for clue in runtime.campaign.clues.values()
+        if clue.location_id == location.id and not clue.discovered
+    ]
+    if not hidden_clues:
+        runtime.narrate("DM: You find no new clues here.")
+        return
+    for clue in hidden_clues:
+        clue.discovered = True
+        runtime.campaign.record_event(SessionEvent(actor="DM", content=f"Clue revealed: {clue.title}"))
+        runtime.narrate(f"DM: Clue found - {clue.title}: {clue.public_text}")
 
 
 def move_to(runtime: AdventureRuntime, destination: str) -> bool:

@@ -237,7 +237,7 @@ python -m dnd_ai_assistant.demo generate-adventure --provider openai-compatible 
 运行导入后的冒险状态：
 
 ```powershell
-python -m dnd_ai_assistant.demo play-adventure-state output\generated_campaign.json --action "look" --action "go old road" --save-state output\generated_campaign.json
+python -m dnd_ai_assistant.demo play-adventure-state output\generated_campaign.json --action "look" --action "inspect" --action "go old road" --save-state output\generated_campaign.json
 ```
 
 保存一次跑团后的战役状态：

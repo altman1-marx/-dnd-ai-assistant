@@ -38,6 +38,28 @@ class AdventureRuntimeTests(unittest.TestCase):
         self.assertEqual(campaign.current_location_id, "loc_village_square")
         self.assertIn("cannot reach", runtime.flush())
 
+    def test_inspect_reveals_current_location_clues(self) -> None:
+        campaign = campaign_from_adventure(AdventureDefinition(create_adventure_template("Moonlit Road")))
+        runtime = AdventureRuntime(campaign)
+
+        handle_adventure_action(runtime, "inspect")
+        output = runtime.flush()
+
+        clue = campaign.clues["clue_moon_ash"]
+        self.assertTrue(clue.discovered)
+        self.assertIn("Clue found - Moonlit Ash", output)
+        self.assertTrue(any("Clue revealed: Moonlit Ash" in event.content for event in campaign.session_log))
+
+    def test_inspect_reports_when_no_new_clues_remain(self) -> None:
+        campaign = campaign_from_adventure(AdventureDefinition(create_adventure_template("Moonlit Road")))
+        runtime = AdventureRuntime(campaign)
+
+        handle_adventure_action(runtime, "inspect")
+        runtime.flush()
+        handle_adventure_action(runtime, "inspect")
+
+        self.assertIn("no new clues", runtime.flush())
+
     def test_quit_stops_runtime(self) -> None:
         campaign = campaign_from_adventure(AdventureDefinition(create_adventure_template("Moonlit Road")))
         runtime = AdventureRuntime(campaign)
