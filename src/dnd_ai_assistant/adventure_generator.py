@@ -227,8 +227,14 @@ def _schema_instructions() -> str:
                             },
                             "saving_throw_proficiencies": ["dex"],
                             "proficiency_bonus": "integer",
+                            "damage_resistances": ["fire"],
+                            "damage_vulnerabilities": ["radiant"],
+                            "damage_immunities": ["poison"],
                             "attack_bonus": "integer",
                             "damage": "dice expression",
+                            "damage_type": (
+                                "slashing|piercing|bludgeoning|fire|cold|radiant|necrotic|poison"
+                            ),
                         }
                     ],
                 }

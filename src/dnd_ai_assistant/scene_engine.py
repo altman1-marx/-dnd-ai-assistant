@@ -109,6 +109,10 @@ def build_scene_session(seed: int, scene_path: str | Path | None = None) -> Scen
                     initiative_modifier=monster.get("initiative_modifier", 0),
                     attack_bonus=monster.get("attack_bonus", 0),
                     damage=monster.get("damage", "1d4"),
+                    damage_type=monster.get("damage_type", "untyped"),
+                    damage_resistances=set(monster.get("damage_resistances", [])),
+                    damage_vulnerabilities=set(monster.get("damage_vulnerabilities", [])),
+                    damage_immunities=set(monster.get("damage_immunities", [])),
                 )
                 for monster in encounter_data.get("monsters", [])
             ],

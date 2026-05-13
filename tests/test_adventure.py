@@ -89,6 +89,7 @@ class AdventureTests(unittest.TestCase):
                 "max_hp": 7,
                 "ability_scores": {"str": 8, "dex": 14},
                 "saving_throw_proficiencies": ["luck"],
+                "damage_resistances": "fire",
             }
         ]
 
@@ -98,6 +99,7 @@ class AdventureTests(unittest.TestCase):
         message = str(context.exception)
         self.assertIn("ability_scores missing", message)
         self.assertIn("saving_throw_proficiencies has unknown abilities: luck", message)
+        self.assertIn("damage_resistances must be a list", message)
 
     def test_validate_adventure_reports_invalid_clue_checks(self) -> None:
         raw = create_adventure_template("Broken Road")

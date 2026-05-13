@@ -145,6 +145,19 @@ class DMToolsTests(unittest.TestCase):
         self.assertIn("Kael took 6 damage", campaign.session_log[0].content)
         self.assertIn("Kael healed 4", campaign.session_log[1].content)
 
+    def test_apply_damage_respects_damage_type_adjustments(self) -> None:
+        tools = DMTools(rng=random.Random(1))
+        campaign = tools.create_campaign("Roadside Ambush", party_level=2).data
+        character = sample_character()
+        character.damage_resistances.add("fire")
+        tools.add_character(campaign.id, character)
+
+        damage = tools.apply_damage(campaign.id, "Kael", 9, damage_type="fire")
+
+        self.assertTrue(damage.ok)
+        self.assertEqual(campaign.characters["Kael"].current_hp, 14)
+        self.assertIn("Kael took 4 fire damage (from 9)", campaign.session_log[0].content)
+
     def test_attack_character_rolls_attack_and_damage(self) -> None:
         tools = DMTools(rng=random.Random(1))
         campaign = tools.create_campaign("Roadside Ambush", party_level=2).data
@@ -161,6 +174,27 @@ class DMToolsTests(unittest.TestCase):
         self.assertTrue(result.ok)
         self.assertEqual(campaign.characters["Kael"].current_hp, 11)
         self.assertIn("hit for 7 damage", campaign.session_log[0].content)
+
+    def test_attack_character_respects_damage_type_adjustments(self) -> None:
+        tools = DMTools(rng=random.Random(1))
+        campaign = tools.create_campaign("Roadside Ambush", party_level=2).data
+        character = sample_character()
+        character.damage_resistances.add("fire")
+        tools.add_character(campaign.id, character)
+
+        result = tools.attack_character(
+            campaign_id=campaign.id,
+            attacker_name="Ash Goblin",
+            target_name="Kael",
+            attack_bonus=11,
+            damage_expression="1d6+2",
+            damage_type="fire",
+        )
+
+        self.assertTrue(result.ok)
+        self.assertEqual(campaign.characters["Kael"].current_hp, 15)
+        self.assertIn("hit for 3 fire damage (from 7)", campaign.session_log[0].content)
+
 
     def test_add_and_resolve_encounter(self) -> None:
         tools = DMTools(rng=random.Random(1))

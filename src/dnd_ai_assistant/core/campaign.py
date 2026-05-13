@@ -6,6 +6,7 @@ from enum import Enum
 from uuid import uuid4
 
 from .character import Character
+from .damage import normalize_damage_type, normalize_damage_types
 from .dnd5e import ability_modifier
 
 
@@ -71,9 +72,13 @@ class Monster:
     )
     saving_throw_proficiencies: set[str] = field(default_factory=set)
     proficiency_bonus: int = 2
+    damage_resistances: set[str] = field(default_factory=set)
+    damage_vulnerabilities: set[str] = field(default_factory=set)
+    damage_immunities: set[str] = field(default_factory=set)
     initiative_modifier: int = 0
     attack_bonus: int = 0
     damage: str = "1d4"
+    damage_type: str = "untyped"
     id: str = field(default_factory=lambda: new_id("mon"))
 
     def __post_init__(self) -> None:
@@ -85,6 +90,10 @@ class Monster:
         unknown_saves = set(self.saving_throw_proficiencies) - set(ABILITY_NAMES)
         if unknown_saves:
             raise ValueError(f"Unknown monster saving throw proficiencies: {', '.join(sorted(unknown_saves))}")
+        self.damage_resistances = normalize_damage_types(self.damage_resistances)
+        self.damage_vulnerabilities = normalize_damage_types(self.damage_vulnerabilities)
+        self.damage_immunities = normalize_damage_types(self.damage_immunities)
+        self.damage_type = normalize_damage_type(self.damage_type)
         if self.armor_class <= 0:
             raise ValueError("Monster armor class must be positive.")
         if self.max_hp <= 0:

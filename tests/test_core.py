@@ -86,6 +86,29 @@ class CharacterTests(unittest.TestCase):
         character.heal(7)
         self.assertEqual(character.current_hp, 7)
 
+    def test_damage_resistance_vulnerability_and_immunity(self) -> None:
+        character = Character(
+            name="Ari",
+            player_name="Player",
+            class_name="Fighter",
+            level=3,
+            ancestry="Human",
+            ability_scores={"str": 16, "dex": 12, "con": 14, "int": 10, "wis": 10, "cha": 8},
+            armor_class=16,
+            max_hp=30,
+            current_hp=30,
+            damage_resistances={"Fire"},
+            damage_vulnerabilities={"cold"},
+            damage_immunities={"poison"},
+        )
+
+        self.assertEqual(character.apply_damage(9, "fire"), 4)
+        self.assertEqual(character.current_hp, 26)
+        self.assertEqual(character.apply_damage(3, "cold"), 6)
+        self.assertEqual(character.current_hp, 20)
+        self.assertEqual(character.apply_damage(12, "poison"), 0)
+        self.assertEqual(character.current_hp, 20)
+
     def test_skill_modifier_uses_skill_ability_and_proficiency(self) -> None:
         character = Character(
             name="Ari",

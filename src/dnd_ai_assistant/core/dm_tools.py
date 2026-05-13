@@ -5,6 +5,7 @@ from dataclasses import dataclass
 
 from .campaign import Campaign, Clue, Encounter, Location, Monster, NPC, Quest, SessionEvent, Visibility
 from .character import Character
+from .damage import normalize_damage_type
 from .dnd5e import AttackRoll, D20Check, RollMode, roll_attack, roll_d20_check
 from .skills import skill_label
 from .store import InMemoryCampaignStore
@@ -217,20 +218,27 @@ class DMTools:
         )
         return ToolResult(True, f"Rolled {label} save: {outcome}", check)
 
-    def apply_damage(self, campaign_id: str, character_name: str, amount: int) -> ToolResult:
+    def apply_damage(
+        self,
+        campaign_id: str,
+        character_name: str,
+        amount: int,
+        damage_type: str = "untyped",
+    ) -> ToolResult:
         campaign = self.store.get(campaign_id)
         if character_name not in campaign.characters:
             return ToolResult(False, f"Character not found: {character_name}")
         character = campaign.characters[character_name]
         before = character.current_hp
-        character.apply_damage(amount)
+        applied = character.apply_damage(amount, damage_type)
+        damage_label = _format_damage_label(applied, amount, damage_type)
         campaign.record_event(
             SessionEvent(
                 actor="System",
-                content=f"{character_name} took {amount} damage: HP {before} -> {character.current_hp}.",
+                content=f"{character_name} took {damage_label}: HP {before} -> {character.current_hp}.",
             )
         )
-        return ToolResult(True, f"Applied {amount} damage to {character_name}.", character)
+        return ToolResult(True, f"Applied {applied} damage to {character_name}.", character)
 
     def heal_character(self, campaign_id: str, character_name: str, amount: int) -> ToolResult:
         campaign = self.store.get(campaign_id)
@@ -254,6 +262,7 @@ class DMTools:
         target_name: str,
         attack_bonus: int,
         damage_expression: str,
+        damage_type: str = "untyped",
         mode: RollMode = RollMode.NORMAL,
     ) -> ToolResult:
         campaign = self.store.get(campaign_id)
@@ -269,12 +278,20 @@ class DMTools:
         )
         if attack.hit and attack.damage is not None:
             before = target.current_hp
-            target.apply_damage(attack.damage.total)
+            applied = target.apply_damage(attack.damage.total, damage_type)
+            damage_label = _format_damage_label(applied, attack.damage.total, damage_type)
             content = (
                 f"{attacker_name} attacks {target_name}: {attack.attack.total} vs AC {target.armor_class}, "
-                f"hit for {attack.damage.total} damage: HP {before} -> {target.current_hp}."
+                f"hit for {damage_label}: HP {before} -> {target.current_hp}."
             )
         else:
             content = f"{attacker_name} attacks {target_name}: {attack.attack.total} vs AC {target.armor_class}, miss."
         campaign.record_event(SessionEvent(actor="System", content=content))
         return ToolResult(True, content, attack)
+
+
+def _format_damage_label(applied: int, rolled: int, damage_type: str) -> str:
+    normalized = normalize_damage_type(damage_type)
+    type_label = "" if normalized == "untyped" else f" {normalized}"
+    adjustment = "" if applied == rolled else f" (from {rolled})"
+    return f"{applied}{type_label} damage{adjustment}"

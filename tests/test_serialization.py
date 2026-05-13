@@ -54,6 +54,10 @@ class SerializationTests(unittest.TestCase):
                     ability_scores={"str": 8, "dex": 14, "con": 10, "int": 10, "wis": 9, "cha": 8},
                     saving_throw_proficiencies={"dex"},
                     proficiency_bonus=2,
+                    damage_resistances={"fire"},
+                    damage_vulnerabilities={"radiant"},
+                    damage_immunities={"poison"},
+                    damage_type="slashing",
                 )
             ],
         )
@@ -69,6 +73,10 @@ class SerializationTests(unittest.TestCase):
         self.assertEqual(monster.ability_scores["dex"], 14)
         self.assertEqual(monster.saving_throw_proficiencies, {"dex"})
         self.assertEqual(monster.saving_throw_modifier("dex"), 4)
+        self.assertEqual(monster.damage_resistances, {"fire"})
+        self.assertEqual(monster.damage_vulnerabilities, {"radiant"})
+        self.assertEqual(monster.damage_immunities, {"poison"})
+        self.assertEqual(monster.damage_type, "slashing")
 
     def test_campaign_round_trip_clue_check(self) -> None:
         sample = build_sample_campaign(seed=1)
@@ -113,6 +121,7 @@ class SerializationTests(unittest.TestCase):
                 armor_class=16,
                 max_hp=38,
                 current_hp=38,
+                damage_resistances={"fire"},
                 spellcasting=Spellcasting(
                     ability="wis",
                     slots_by_level={1: 4, 2: 3},
@@ -129,6 +138,7 @@ class SerializationTests(unittest.TestCase):
         self.assertIsNotNone(spellcasting)
         self.assertEqual(spellcasting.available_slots(1), 3)
         self.assertEqual(restored.characters["Leth"].spell_save_dc, 14)
+        self.assertEqual(restored.characters["Leth"].damage_resistances, {"fire"})
 
 
 if __name__ == "__main__":

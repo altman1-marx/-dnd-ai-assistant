@@ -100,9 +100,13 @@ def _monster_from_data(data: dict) -> Monster:
         ),
         saving_throw_proficiencies=set(data.get("saving_throw_proficiencies", [])),
         proficiency_bonus=data.get("proficiency_bonus", 2),
+        damage_resistances=set(data.get("damage_resistances", [])),
+        damage_vulnerabilities=set(data.get("damage_vulnerabilities", [])),
+        damage_immunities=set(data.get("damage_immunities", [])),
         initiative_modifier=data.get("initiative_modifier", 0),
         attack_bonus=data.get("attack_bonus", 0),
         damage=data.get("damage", "1d4"),
+        damage_type=data.get("damage_type", "untyped"),
         **kwargs,
     )
 

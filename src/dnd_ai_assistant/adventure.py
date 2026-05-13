@@ -354,6 +354,11 @@ def _validate_optional_monster_abilities(name: str, monster: dict, errors: list[
     if proficiency is not None and (not isinstance(proficiency, int) or proficiency < 0):
         errors.append(f"{name}.proficiency_bonus must be a non-negative integer.")
 
+    for key in ("damage_resistances", "damage_vulnerabilities", "damage_immunities"):
+        value = monster.get(key)
+        if value is not None and not isinstance(value, list):
+            errors.append(f"{name}.{key} must be a list.")
+
 
 def _validate_connections(adventure: AdventureDefinition, location_ids: set[str], errors: list[str]) -> None:
     adjacency: dict[str, set[str]] = {location_id: set() for location_id in location_ids}

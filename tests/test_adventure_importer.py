@@ -58,8 +58,12 @@ class AdventureImporterTests(unittest.TestCase):
                 "ability_scores": {"str": 6, "dex": 16, "con": 10, "int": 12, "wis": 10, "cha": 14},
                 "saving_throw_proficiencies": ["dex"],
                 "proficiency_bonus": 2,
+                "damage_resistances": ["fire"],
+                "damage_vulnerabilities": ["radiant"],
+                "damage_immunities": ["poison"],
                 "attack_bonus": 4,
                 "damage": "1d4+2",
+                "damage_type": "fire",
             }
         ]
 
@@ -69,6 +73,8 @@ class AdventureImporterTests(unittest.TestCase):
         self.assertEqual(monster.name, "Lantern Sprite")
         self.assertTrue(monster.id.startswith("mon_"))
         self.assertEqual(monster.saving_throw_modifier("dex"), 5)
+        self.assertEqual(monster.damage_resistances, {"fire"})
+        self.assertEqual(monster.damage_type, "fire")
 
 
 if __name__ == "__main__":

@@ -182,6 +182,7 @@ def run_combat_demo(
         target_name=session.hero.name,
         attack_bonus=monster.attack_bonus,
         damage_expression=monster.damage,
+        damage_type=monster.damage_type,
     )
     attack = result.data
     lines = [
