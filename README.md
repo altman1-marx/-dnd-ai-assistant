@@ -1,643 +1,176 @@
-# DND AI 跑团助手
+# DND AI Assistant
 
-一个面向 Dungeons & Dragons 跑团的 AI 辅助主持工具。项目目标是帮助没有 DM 经验的玩家快速开始一场可玩的 DND 冒险，并在跑团过程中提供剧情推进、NPC 扮演、规则辅助、骰子判定、战役记录和设定管理。
+一个面向 Dungeons & Dragons 跑团的纯 Python AI DM 助手原型。目标不是替代 DM，而是把“规则执行、战役状态、冒险生成、线索追踪、战斗回合、法术资源”等容易分心的部分交给工具，让玩家和主持人把注意力留给故事本身。
 
-本项目优先服务 DND 场景，后续可以扩展到 COC、PF2e 或自定义规则系统。
+当前项目仍保持零外部依赖，安装和测试都只需要 Python 标准库。
 
-## 项目愿景
+## 当前能力
 
-很多玩家想玩 DND，但卡在几个现实问题上：
+- D&D 5e 基础规则：骰子表达式、d20 检定、技能、豁免、攻击、暴击、伤害类型、抗性、易伤、免疫。
+- 角色与怪物模型：属性、AC、HP、技能熟练、豁免熟练、状态、物品、法术位、已知法术、专注。
+- 战斗系统：先攻排序、回合推进、行动/附赠动作/反应/移动资源、攻击、伤害结算、战斗中施法。
+- 冒险数据结构：地点、NPC、线索、任务、遭遇、结局、地点可达性和线索门校验。
+- AI 冒险生成：支持 mock provider 和 OpenAI-compatible provider，可接 OpenAI、DeepSeek、OpenRouter 或其他兼容 `/chat/completions` 的服务。
+- 冒险运行时：可导入冒险 JSON 为 campaign state，并通过 `look`、`inspect`、`talk`、`go`、`fight`、`combat`、`attack`、`cast`、`end turn` 等动作推进。
+- 序列化与审查：campaign JSON 存档、冒险质量 review、文本/mermaid 地图输出。
+- CI：GitHub Actions 自动运行测试。
 
-- 没有人愿意或有经验当 DM
-- 准备世界观、剧情、NPC、地图和遭遇很耗时
-- 新手不熟悉规则、检定、战斗和法术
-- 跑团过程中容易忘记线索、NPC 态度、任务状态和历史事件
-- AI 聊天工具可以写剧情，但缺少规则约束、长期记忆和游戏状态管理
-
-本项目希望做成一个“AI DM + 战役工作台”：
-
-- 跑团前：根据灵感生成完整冒险模组
-- 跑团中：AI 扮演 DM，描述场景、扮演 NPC、建议检定、调用骰子、记录状态
-- 跑团后：自动整理日志、线索、战利品、经验和下一章伏笔
-
-## 核心原则
-
-1. **DND 优先**
-   第一版以 DND 5e 风格为主，先覆盖常见检定、角色状态、战斗轮次、NPC 和遭遇设计，不一开始追求完整复刻所有规则书。
-
-2. **AI 不直接编骰子**
-   AI 可以判断“这里需要一个敏捷豁免”或“进行一次察觉检定”，但实际骰子结果必须由程序生成并记录。
-
-3. **AI 不控制玩家角色**
-   AI 可以描述后果、环境和 NPC 行动，但不能替玩家决定角色说什么、做什么、攻击谁或是否接受任务。
-
-4. **区分玩家可见信息和 DM 秘密**
-   世界设定、伏笔、隐藏线索、怪物真实身份、幕后黑手等必须分层存储。AI 在玩家视角输出时不能提前剧透。
-
-5. **状态优先于长聊天**
-   重要信息要落到结构化状态里，而不是只存在聊天记录中。例如角色 HP、法术位、位置、任务进度、NPC 态度、已获得线索。
-
-6. **先能跑一晚，再追求宏大**
-   第一阶段目标是稳定支持 2 到 4 名玩家完成一场 2 到 3 小时的短团。
-
-## MVP 范围
-
-第一版建议做成 Web App，先支持一个小队、一名 AI DM、一个战役房间。
-
-## 当前原型
-
-当前仓库已经从 DND 核心工具层开始实现，重点是让未来 AI DM 调用确定性的规则工具，而不是自己编结果。
-
-已包含：
-
-- `src/dnd_ai_assistant/core/dice.py`
-  - 解析和投掷 `1d20`、`2d6+3`、`d8-1` 等骰子表达式
-- `src/dnd_ai_assistant/core/dnd5e.py`
-  - 属性修正值
-  - 熟练加值
-  - 普通 / 优势 / 劣势 d20 检定
-  - 伤害骰
-  - 简单攻击命中和伤害结算
-- `src/dnd_ai_assistant/core/config.py`
-  - 常用 DC 难度阈值和默认规则配置
-- `src/dnd_ai_assistant/core/skills.py`
-  - DND 5e 技能到属性的映射
-  - 技能显示名与规范化工具，供角色和 DM 工具复用
-- `src/dnd_ai_assistant/core/initiative.py`
-  - 简单先攻排序和回合推进
-- `src/dnd_ai_assistant/core/combat.py`
-  - 战斗回合资源：动作、附赠动作、反应和移动
-  - 与先攻顺序结合的回合推进状态
-- `src/dnd_ai_assistant/core/character.py`
-  - 简化 DND 角色状态
-  - HP、AC、属性、熟练、豁免、伤害和治疗
-- `src/dnd_ai_assistant/core/spells.py`
-  - 最小法术与施法资源模型
-  - 法术位消耗/恢复、已知法术、准备法术和专注字段
-- `src/dnd_ai_assistant/core/campaign.py`
-  - 战役、地点、NPC、线索、任务、遭遇、怪物、事件日志等结构化模型
-- `src/dnd_ai_assistant/core/dm_tools.py`
-  - AI DM 未来可调用的工具层：创建战役、添加地点/NPC/线索、揭示线索、记录事件、执行检定、应用伤害和治疗
-- `src/dnd_ai_assistant/demo.py`
-  - 当前版本的命令行演示入口
-- `src/dnd_ai_assistant/scene_engine.py`
-  - 场景运行引擎：根据场景 JSON、玩家行动、检定和状态推进短场景
-- `tests/test_core.py`
-  - 核心规则的最小单元测试
-- `tests/test_dm_tools.py`
-  - 战役工具层的最小单元测试
-- `tests/test_demo.py`
-  - 命令行演示流程的最小测试
-
-运行测试：
+## 快速开始
 
 ```powershell
-cd F:\work\dnd-ai-assistant
+cd F:\Work\dnd-ai-assistant
 $env:PYTHONPATH = "src"
 python -m unittest discover -s tests
 ```
 
-或使用脚本：
+安装本地命令：
 
 ```powershell
-.\scripts\test.ps1
-```
-
-也可以以可编辑模式安装本地命令：
-
-```powershell
-cd F:\work\dnd-ai-assistant
 python -m pip install -e .
 dnd-ai-assistant --help
 ```
 
-运行当前 demo：
+也可以不安装，直接运行模块：
 
 ```powershell
-cd F:\work\dnd-ai-assistant
-$env:PYTHONPATH = "src"
 python -m dnd_ai_assistant.demo quickstart
 ```
 
-运行先攻演示：
+## 生成与导入冒险
 
-```powershell
-python -m dnd_ai_assistant.demo initiative
-python -m dnd_ai_assistant.demo initiative --seed 42 --rounds 3
-python -m dnd_ai_assistant.demo initiative --scene path\to\your_scene.json
-```
-
-运行一次场景遭遇中的攻击演示：
-
-```powershell
-python -m dnd_ai_assistant.demo combat
-python -m dnd_ai_assistant.demo combat --seed 42 --scene path\to\your_scene.json
-python -m dnd_ai_assistant.demo combat --save-state output\combat_state.json
-```
-
-指定随机种子，方便复现实验结果：
-
-```powershell
-python -m dnd_ai_assistant.demo quickstart --seed 42
-```
-
-这个 demo 会创建一个示例战役，加入一名游侠角色、一个地点、一个 NPC、一个线索和一个任务，然后进行一次带优势的察觉检定，并打印 session log。
-
-运行一个极简交互场景：
-
-```powershell
-python -m dnd_ai_assistant.demo play
-```
-
-可以输入：
-
-```text
-look around
-inspect rope
-open stairway
-log
-quit
-```
-
-默认场景也支持少量中文触发词，例如：
-
-```text
-观察四周
-检查钟绳
-打开楼梯
-退出
-```
-
-也可以用非交互方式脚本化运行，方便测试：
-
-```powershell
-python -m dnd_ai_assistant.demo play --action "look around" --action "inspect rope" --action "open stairway" --action "quit"
-```
-
-当前默认场景来自：
-
-```text
-src/dnd_ai_assistant/scenes/old_chapel.json
-```
-
-也可以指定自己的场景 JSON：
-
-```powershell
-python -m dnd_ai_assistant.demo play --scene path\to\your_scene.json
-```
-
-校验场景 JSON：
-
-```powershell
-python -m dnd_ai_assistant.demo validate-scene
-python -m dnd_ai_assistant.demo validate-scene --scene path\to\your_scene.json
-```
-
-生成一个新的场景模板：
-
-```powershell
-python -m dnd_ai_assistant.demo new-scene --output scenes\my_adventure.json --title "Goblin Road"
-```
-
-现在的场景 JSON 还很小，只覆盖一个地点、一个 NPC、一个线索、一个任务、一个遭遇和一个固定检定。它的意义是把“剧本内容”和“跑团引擎”分开，后续 AI 生成的剧本可以按同样格式落盘。
-动作触发词在 JSON 的 `actions` 字段中配置。
-
-生成完整短团冒险模板：
+创建一个冒险模板：
 
 ```powershell
 python -m dnd_ai_assistant.demo new-adventure --output adventures\moonlit_road.json --title "Moonlit Road"
 python -m dnd_ai_assistant.demo validate-adventure adventures\moonlit_road.json
-python -m dnd_ai_assistant.demo adventure-map adventures\moonlit_road.json
-python -m dnd_ai_assistant.demo adventure-map adventures\moonlit_road.json --format mermaid
 python -m dnd_ai_assistant.demo review-adventure adventures\moonlit_road.json
-python -m dnd_ai_assistant.demo review-adventure adventures\moonlit_road.json --format json
+python -m dnd_ai_assistant.demo adventure-map adventures\moonlit_road.json --format mermaid
 python -m dnd_ai_assistant.demo import-adventure adventures\moonlit_road.json --output output\moonlit_campaign.json
 ```
 
-冒险 JSON 比场景 JSON 更适合 AI 剧本创作，包含地点网络、起点、终点、NPC、线索、任务、遭遇和结局。程序会校验地点引用和从起点出发的可达性。
-导入后的 campaign state 可以继续用 `state-summary` 查看，并作为后续 AI DM 运行时状态。
-
-生成给剧本创作 AI 使用的提示词，并清理/校验 AI 返回的 JSON：
+用 AI 生成冒险前，可以先生成 prompt：
 
 ```powershell
 python -m dnd_ai_assistant.demo adventure-prompt --premise "A bell rings under a ruined chapel." --party-level 2
-python -m dnd_ai_assistant.demo clean-adventure-output ai_response.txt --output adventures\generated.json
-python -m dnd_ai_assistant.demo compile-adventure-output ai_response.txt --adventure-output adventures\generated.json --campaign-output output\generated_campaign.json
 ```
 
-当前版本不会直接调用外部 AI API；它先把提示词、JSON 抽取和 adventure 校验链稳定下来。
-
-也可以通过 provider 直接生成并导入。`mock` provider 用于本地演示和测试；`openai-compatible` provider 读取 `DND_AI_API_KEY`、`DND_AI_MODEL` 和可选的 `DND_AI_BASE_URL`：
+使用 mock provider 做本地演示：
 
 ```powershell
-python -m dnd_ai_assistant.demo generate-adventure --provider mock --mock-response ai_response.txt --premise "A bell rings under a ruined chapel." --adventure-output adventures\generated.json --campaign-output output\generated_campaign.json
-python -m dnd_ai_assistant.demo generate-adventure --provider openai-compatible --premise "A bell rings under a ruined chapel." --model your-model-name --adventure-output adventures\generated.json --campaign-output output\generated_campaign.json --max-attempts 2 --json-response-format
+python -m dnd_ai_assistant.demo generate-adventure `
+  --provider mock `
+  --mock-response ai_response.txt `
+  --premise "A bell rings under a ruined chapel." `
+  --adventure-output adventures\generated.json `
+  --campaign-output output\generated_campaign.json
 ```
 
-运行导入后的冒险状态：
+使用 OpenAI-compatible API：
 
 ```powershell
-python -m dnd_ai_assistant.demo play-adventure-state output\generated_campaign.json --action "look" --action "inspect" --action "go old road" --save-state output\generated_campaign.json
+$env:DND_AI_BASE_URL = "https://api.deepseek.com"
+$env:DND_AI_MODEL = "deepseek-chat"
+$env:DND_AI_API_KEY = "<your api key>"
+
+python -m dnd_ai_assistant.demo generate-adventure `
+  --provider openai-compatible `
+  --premise "A bell rings under a ruined chapel." `
+  --party-level 2 `
+  --player-count 4 `
+  --duration-hours 3 `
+  --tone "dark fantasy mystery" `
+  --adventure-output adventures\generated.json `
+  --campaign-output output\generated_campaign.json `
+  --max-attempts 2 `
+  --json-response-format
 ```
 
-保存一次跑团后的战役状态：
+API key 只从环境变量读取，不从命令行参数读取，避免进入 shell 历史。
+
+## 运行冒险
+
+查看存档摘要：
 
 ```powershell
-python -m dnd_ai_assistant.demo play --action "inspect rope" --action "open stairway" --action "quit" --save-state output\ashford_state.json
+python -m dnd_ai_assistant.demo state-summary output\generated_campaign.json
 ```
 
-查看保存后的状态摘要：
+非交互式推进：
 
 ```powershell
-python -m dnd_ai_assistant.demo state-summary output\ashford_state.json
+python -m dnd_ai_assistant.demo play-adventure-state output\generated_campaign.json `
+  --action "look" `
+  --action "inspect" `
+  --action "go old road" `
+  --action "fight" `
+  --action "combat" `
+  --save-state output\generated_campaign.json
 ```
 
-保存的状态包含战役基础信息、角色、地点、NPC、线索、任务和 session log。相关代码在：
+交互式运行：
+
+```powershell
+python -m dnd_ai_assistant.demo play-adventure-state output\generated_campaign.json --save-state output\generated_campaign.json
+```
+
+常用动作：
 
 ```text
-src/dnd_ai_assistant/core/serialization.py
+look
+inspect
+inspect ash
+talk mayor
+go old road
+quests
+complete quest missing travelers
+fight
+combat
+attack goblin
+cast bless
+cast healing word
+use action
+use bonus action
+use reaction
+spend movement 10
+end turn
+resolve encounter
+log
+quit
 ```
 
-当前版本可以作为 Python 库手动调用。例如：
-
-```powershell
-cd F:\work\dnd-ai-assistant
-$env:PYTHONPATH = "src"
-python
-```
-
-然后在 Python 里运行：
-
-```python
-import random
-from dnd_ai_assistant.core.character import Character
-from dnd_ai_assistant.core.dm_tools import DMTools
-from dnd_ai_assistant.core.dnd5e import RollMode
-
-tools = DMTools(rng=random.Random(1))
-campaign = tools.create_campaign(
-    title="The Bell Beneath Ashford",
-    party_level=2,
-    tone="dark fantasy investigation",
-).data
-
-hero = Character(
-    name="Kael",
-    player_name="Altman",
-    class_name="Ranger",
-    level=2,
-    ancestry="Wood Elf",
-    ability_scores={"str": 10, "dex": 16, "con": 12, "int": 10, "wis": 14, "cha": 8},
-    armor_class=15,
-    max_hp=18,
-    current_hp=18,
-    skill_proficiencies={"perception"},
-    saving_throw_proficiencies={"str", "dex"},
-)
-
-tools.add_character(campaign.id, hero)
-chapel = tools.add_location(
-    campaign.id,
-    name="Old Chapel",
-    public_description="A cracked chapel with a silent bronze bell.",
-).data
-clue = tools.add_clue(
-    campaign.id,
-    title="Ash on the Bell Rope",
-    public_text="The rope is dusted with black ash.",
-    location_id=chapel.id,
-).data
-
-tools.reveal_clue(campaign.id, clue.id)
-check = tools.roll_check(
-    campaign.id,
-    character_name="Kael",
-    modifier=5,
-    dc=15,
-    mode=RollMode.ADVANTAGE,
-).data
-
-print(check.total, check.success)
-print([event.content for event in campaign.session_log])
-```
-
-### 1. 战役创建
-
-用户输入：
-
-- 冒险主题，例如“被遗忘矿镇中的龙裔诅咒”
-- 风格：英雄奇幻、黑暗奇幻、轻松冒险、地下城探索、城市阴谋
-- 玩家人数
-- 角色等级
-- 游戏时长：一晚短团、三章短战役、长期战役开篇
-- 战斗比例：低、中、高
-- 谜题比例：低、中、高
-- 是否需要官方 DND 风格，但避免直接复制受版权保护的官方模组文本
-
-AI 生成：
-
-- 冒险标题
-- 背景概述
-- 开场钩子
-- 主要地点
-- 关键 NPC
-- 敌对势力
-- 主线目标
-- 支线任务
-- 遭遇列表
-- 宝物和奖励
-- 结局分支
-- DM 秘密
-- 玩家可见导入文本
-
-### 2. 角色卡
-
-第一版角色卡只做跑团必需字段：
-
-- 角色名
-- 玩家名
-- 种族/职业/等级
-- 属性值与修正值
-- 熟练加值
-- AC
-- HP / 最大 HP
-- 速度
-- 技能熟练
-- 豁免熟练
-- 武器/攻击动作
-- 法术位和常用法术
-- 装备
-- 背景与人物关系
-- 当前状态：倒地、中毒、魅惑、专注等
-
-### 3. 骰子与判定
-
-必须由程序执行：
-
-- `1d20`
-- `1d20 + 属性修正 + 熟练加值`
-- 优势 / 劣势
-- 攻击检定
-- 伤害骰
-- 属性检定
-- 技能检定
-- 豁免检定
-- 先攻
-- 死亡豁免
-
-AI 的职责：
-
-- 判断是否需要检定
-- 给出建议 DC
-- 说明成功、失败、大成功、大失败的叙事后果
-
-### 4. AI DM 聊天
-
-AI DM 应该能：
-
-- 描述场景
-- 扮演 NPC
-- 管理信息公开程度
-- 接受玩家行动
-- 判断是否需要检定
-- 调用骰子工具
-- 根据结果推进剧情
-- 记录关键事件
-- 在玩家偏离主线时自然地重接线索
-- 在战斗中管理怪物行动和回合顺序
-
-AI DM 不应该：
-
-- 替玩家做选择
-- 直接修改骰子结果
-- 临时改变已公开设定
-- 提前透露隐藏信息
-- 跳过关键玩家决策
-
-### 5. 战役资料库
-
-资料分层：
-
-- `public_lore`：玩家可见设定
-- `dm_secrets`：只有 DM/AI 可见的秘密
-- `locations`：地点
-- `npcs`：NPC
-- `factions`：势力
-- `quests`：任务
-- `clues`：线索
-- `encounters`：遭遇
-- `items`：物品
-- `session_log`：跑团记录
-- `current_state`：当前状态
-
-### 6. 地图和关系图
-
-第一版不做复杂 3D 或精美战棋地图，先做三类轻量视图：
-
-- 地点关系图：城镇、地下城房间、野外区域之间的连接
-- 战斗网格：简单方格、角色 token、怪物 token、障碍物
-- 线索板：线索、NPC、地点、任务之间的关系
-
-## 推荐技术路线
-
-### 前端
-
-- Next.js
-- React
-- TypeScript
-- Tailwind CSS
-- Zustand 或 Redux Toolkit 管理客户端状态
-- React Flow 绘制地点图/线索图
-
-### 后端
-
-- Python FastAPI 或 Node.js/NestJS
-- PostgreSQL
-- pgvector 用于设定和日志检索
-- WebSocket 用于多人房间实时同步
-
-### AI 层
-
-- OpenAI Responses API 或 Agents SDK
-- 工具调用：
-  - `roll_dice`
-  - `get_character`
-  - `update_character`
-  - `roll_skill_check`
-  - `roll_saving_throw`
-  - `search_lore`
-  - `record_event`
-  - `reveal_clue`
-  - `start_encounter`
-  - `advance_turn`
-  - `generate_npc`
-  - `generate_location`
-
-### 数据格式
-
-AI 生成内容应尽量使用结构化 JSON，再由前端渲染成卡片、地图和文本。
-
-示例：
-
-```json
-{
-  "adventure": {
-    "title": "The Bell Beneath Ashford",
-    "party_level": 3,
-    "tone": "dark fantasy investigation",
-    "public_hook": "A mining town has gone silent after the old chapel bell rang underground.",
-    "dm_secret": "The bell is a planar anchor used by a trapped fiend."
-  }
-}
-```
-
-## 初步数据模型
-
-```text
-Campaign
-  id
-  title
-  system
-  tone
-  party_level
-  created_at
-
-Character
-  id
-  campaign_id
-  player_name
-  character_name
-  race
-  class_name
-  level
-  stats
-  skills
-  hp
-  ac
-  inventory
-  spells
-  conditions
-
-NPC
-  id
-  campaign_id
-  name
-  role
-  public_description
-  dm_secret
-  attitude
-  location_id
-
-Location
-  id
-  campaign_id
-  name
-  public_description
-  dm_notes
-  connected_location_ids
-
-Encounter
-  id
-  campaign_id
-  title
-  location_id
-  enemies
-  difficulty
-  trigger
-  reward
-
-SessionEvent
-  id
-  campaign_id
-  actor
-  visibility
-  content
-  created_at
-```
-
-## 开发里程碑
-
-### Milestone 1: 单机原型
-
-- 创建战役
-- 根据灵感生成 DND 短团模组
-- 创建 2 到 4 张角色卡
-- AI DM 文本主持
-- 程序掷骰
-- 自动保存 session log
-
-### Milestone 2: 结构化战役工作台
-
-- NPC 列表
-- 地点列表
-- 任务列表
-- 线索列表
-- DM 秘密与玩家可见信息分离
-- AI 可检索资料库
-
-### Milestone 3: 战斗辅助
-
-- 先攻排序
-- 回合管理
-- 怪物行动建议
-- HP/状态变化
-- 简单战斗网格
-
-### Milestone 4: 多人房间
-
-- 玩家加入战役
-- 多人聊天
-- 角色权限
-- 私密信息
-- 暗骰
-- WebSocket 实时同步
-
-### Milestone 5: 内容生成增强
-
-- 地图草图
-- NPC 头像提示词
-- 道具图提示词
-- 随机遭遇表
-- 城镇/地下城生成器
-- 战役总结和下一章预告
-
-## 第一版用户流程
-
-1. 用户创建新战役
-2. 选择 DND 5e 风格
-3. 输入一句灵感
-4. AI 生成短团模组
-5. 用户编辑关键设定
-6. 玩家创建角色卡
-7. 点击“开始跑团”
-8. AI DM 描述开场
-9. 玩家输入行动
-10. AI 判断是否需要检定
-11. 程序掷骰
-12. AI 根据结果叙事
-13. 系统记录事件、状态、线索和任务进度
-
-## 重要风险
-
-- DND 官方规则和设定存在版权边界，需要避免复制官方受保护文本。
-- AI 可能生成不平衡遭遇，需要加入 CR/等级/人数的校验。
-- 长会话容易遗忘，需要结构化状态和摘要机制。
-- 多人实时同步会增加复杂度，建议后置。
-- AI DM 的自由发挥需要被工具和状态约束，否则容易跑偏。
-
-## 暂定项目名称
-
-候选名称：
-
-- Arcane Table
-- AI Dungeon Keeper
-- QuestWeaver
-- D20 Story Engine
-- EmberDM
-
-当前仓库暂用名称：`dnd-ai-assistant`
-
-## 文档
-
-- [Architecture](docs/architecture.md)
-- [Changelog](CHANGELOG.md)
+## 代码结构
+
+- `src/dnd_ai_assistant/core/dice.py`：骰子表达式解析与投骰。
+- `src/dnd_ai_assistant/core/dnd5e.py`：D&D 5e 常用规则、检定、攻击与伤害。
+- `src/dnd_ai_assistant/core/damage.py`：伤害类型、抗性、易伤、免疫调整。
+- `src/dnd_ai_assistant/core/character.py`：角色模型。
+- `src/dnd_ai_assistant/core/campaign.py`：战役、地点、NPC、线索、任务、遭遇、怪物。
+- `src/dnd_ai_assistant/core/combat.py`：先攻、回合资源、战斗中施法。
+- `src/dnd_ai_assistant/core/spells.py`：法术与法术位。
+- `src/dnd_ai_assistant/core/serialization.py`：campaign JSON 存档。
+- `src/dnd_ai_assistant/adventure.py`：冒险 JSON schema 与校验。
+- `src/dnd_ai_assistant/adventure_generator.py`：AI 冒险 prompt、JSON 抽取、生成工作流。
+- `src/dnd_ai_assistant/ai_provider.py`：可插拔 AI provider。
+- `src/dnd_ai_assistant/adventure_importer.py`：冒险导入 campaign。
+- `src/dnd_ai_assistant/adventure_runtime.py`：通用冒险运行时。
+- `src/dnd_ai_assistant/adventure_review.py`：冒险质量审查。
+- `src/dnd_ai_assistant/adventure_map.py`：地点图可视化。
+- `src/dnd_ai_assistant/demo.py`：CLI 入口。
+- `tests/`：单元测试。
+
+## 近期路线
+
+1. 继续完善 active combat：攻击目标选择、怪物行动模板、战斗结束条件、死亡/昏迷处理。
+2. 扩展施法：法术攻击、豁免 DC、范围伤害、专注被打断、治疗法术。
+3. 让 Adventure 和旧 Scene schema 收敛，减少两套格式并行。
+4. 增强数据驱动 runtime action，让 AI 生成的冒险更少依赖硬编码。
+5. 接入更完整的 AI DM 回合：根据 campaign state 生成叙述、建议检定、调用工具并写回状态。
+6. 后续再做 Web API、多人房间、地图生成器、剧本创作工作台和持久化存储。
+
+## 设计原则
+
+- 先稳规则，再接复杂体验。
+- 让 AI 生成内容，但让规则和状态由确定性代码执行。
+- 保持 provider 可替换，成本优先时可使用 DeepSeek、OpenRouter 等 OpenAI-compatible 服务。
+- 对玩家公开信息和 DM 私密信息保持分离。
+- 每个功能都尽量有测试，避免跑团中途状态崩掉。
