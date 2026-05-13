@@ -58,11 +58,11 @@ class OpenAICompatibleProvider:
             method="POST",
         )
         try:
-            with self.opener(request, self.timeout) as response:
+            with self.opener(request, timeout=self.timeout) as response:
                 payload = json.loads(response.read().decode("utf-8"))
         except urllib.error.HTTPError as exc:
             detail = exc.read().decode("utf-8", errors="replace")
-            raise RuntimeError(f"AI provider request failed with HTTP {exc.code}: {detail}") from exc
+            raise RuntimeError(_format_http_error(exc.code, detail)) from exc
         except urllib.error.URLError as exc:
             raise RuntimeError(f"AI provider request failed: {exc.reason}") from exc
 
@@ -122,3 +122,16 @@ def _load_env_file(path: str | Path) -> dict[str, str]:
 
 def _join_url(base_url: str, path: str) -> str:
     return base_url.rstrip("/") + "/" + path.lstrip("/")
+
+
+def _format_http_error(status_code: int, detail: str) -> str:
+    try:
+        payload = json.loads(detail)
+        error = payload.get("error", {})
+        code = error.get("code")
+        message = error.get("message")
+        if code or message:
+            return f"AI provider request failed with HTTP {status_code}: {code or 'unknown_error'} - {message or ''}".rstrip()
+    except json.JSONDecodeError:
+        pass
+    return f"AI provider request failed with HTTP {status_code}: {detail}"

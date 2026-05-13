@@ -1,6 +1,7 @@
 import json
 import tempfile
 import unittest
+import urllib.error
 from pathlib import Path
 
 from dnd_ai_assistant.ai_provider import (
@@ -24,6 +25,14 @@ class FakeResponse:
 
     def read(self) -> bytes:
         return json.dumps(self.payload).encode("utf-8")
+
+
+class FakeErrorBody:
+    def __init__(self, text: str) -> None:
+        self.text = text
+
+    def read(self) -> bytes:
+        return self.text.encode("utf-8")
 
 
 class AIProviderTests(unittest.TestCase):
@@ -62,6 +71,25 @@ class AIProviderTests(unittest.TestCase):
             OpenAICompatibleProvider(AIProviderConfig(api_key="", model="test-model"))
         with self.assertRaises(ValueError):
             OpenAICompatibleProvider(AIProviderConfig(api_key="secret", model=""))
+
+    def test_openai_compatible_provider_formats_json_http_errors(self) -> None:
+        def opener(request, timeout):
+            error_body = json.dumps({"error": {"code": "insufficient_quota", "message": "Quota exceeded."}})
+            raise urllib.error.HTTPError(
+                request.full_url,
+                429,
+                "Too Many Requests",
+                {},
+                FakeErrorBody(error_body),
+            )
+
+        provider = OpenAICompatibleProvider(
+            AIProviderConfig(api_key="secret", model="test-model", base_url="https://example.test/v1"),
+            opener=opener,
+        )
+
+        with self.assertRaisesRegex(RuntimeError, "insufficient_quota"):
+            provider.generate_text("prompt")
 
     def test_load_ai_provider_config_reads_env_file_without_printing_key(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
