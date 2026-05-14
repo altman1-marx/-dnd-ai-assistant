@@ -99,6 +99,7 @@ python -m dnd_ai_assistant.demo state-summary output\generated_campaign.json
 
 ```powershell
 python -m dnd_ai_assistant.demo play-adventure-state output\generated_campaign.json `
+  --seed 5 `
   --add-sample-character `
   --action "look" `
   --action "inspect" `
