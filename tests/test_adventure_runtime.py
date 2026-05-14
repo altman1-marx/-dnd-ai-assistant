@@ -403,6 +403,24 @@ class AdventureRuntimeTests(unittest.TestCase):
         self.assertEqual(campaign.active_combat["initiative"][1]["current_hp"], campaign.characters["Kael"].current_hp)
         self.assertIn("Kael heals", output)
 
+    def test_healing_spell_invalid_target_does_not_spend_resources(self) -> None:
+        campaign = campaign_from_adventure(AdventureDefinition(create_adventure_template("Moonlit Road")))
+        campaign.add_character(_caster())
+        campaign.active_combat = {
+            "round": 1,
+            "turn": "Leth",
+            "initiative": [{"name": "Leth", "initiative_total": 18, "armor_class": 16, "current_hp": 12}],
+            "resources": {"Leth": {"action": True, "bonus_action": True, "reaction": True, "movement": 30}},
+        }
+        runtime = AdventureRuntime(campaign, rng=random.Random(1))
+
+        handle_adventure_action(runtime, "cast cure wounds stranger")
+        output = runtime.flush()
+
+        self.assertTrue(campaign.active_combat["resources"]["Leth"]["action"])
+        self.assertEqual(campaign.characters["Leth"].spellcasting.available_slots(1), 2)
+        self.assertIn("healing has no valid target", output)
+
     def test_sacred_flame_forces_save_and_deals_radiant_damage(self) -> None:
         raw = create_adventure_template("Moonlit Road")
         raw["encounters"][0]["monsters"] = [
@@ -445,6 +463,24 @@ class AdventureRuntimeTests(unittest.TestCase):
         self.assertEqual(campaign.characters["Leth"].spellcasting.available_slots(1), 2)
         self.assertIn("Dexterity save", output)
         self.assertIn("radiant damage", output)
+
+    def test_sacred_flame_invalid_target_does_not_spend_resources(self) -> None:
+        campaign = campaign_from_adventure(AdventureDefinition(create_adventure_template("Moonlit Road")))
+        campaign.add_character(_caster())
+        campaign.active_combat = {
+            "round": 1,
+            "turn": "Leth",
+            "initiative": [{"name": "Leth", "initiative_total": 18, "is_player": True, "armor_class": 16, "current_hp": 24}],
+            "resources": {"Leth": {"action": True, "bonus_action": True, "reaction": True, "movement": 30}},
+        }
+        runtime = AdventureRuntime(campaign, rng=random.Random(1))
+
+        handle_adventure_action(runtime, "cast sacred flame stranger")
+        output = runtime.flush()
+
+        self.assertTrue(campaign.active_combat["resources"]["Leth"]["action"])
+        self.assertEqual(campaign.characters["Leth"].spellcasting.available_slots(1), 2)
+        self.assertIn("spell has no valid target", output)
 
     def test_failed_spell_cast_does_not_spend_action(self) -> None:
         campaign = campaign_from_adventure(AdventureDefinition(create_adventure_template("Moonlit Road")))
