@@ -8,6 +8,7 @@ class WebUITests(unittest.TestCase):
 
         self.assertIn("/health", html)
         self.assertIn("/campaigns/import", html)
+        self.assertIn("/campaigns/demo", html)
         self.assertIn("/sample-character", html)
         self.assertIn("/summary", html)
         self.assertIn("/actions", html)
@@ -17,8 +18,7 @@ class WebUITests(unittest.TestCase):
         self.assertIn("data-action=\"talk mayor\"", html)
         self.assertIn("data-action=\"go old road\"", html)
         self.assertIn("data-action=\"cast sacred flame sprite\"", html)
-        self.assertIn("DEMO_ADVENTURE", html)
-        self.assertIn("Lantern Sprite", html)
+        self.assertNotIn("DEMO_ADVENTURE", html)
 
     def test_index_does_not_depend_on_external_assets(self) -> None:
         html = Path("web/index.html").read_text(encoding="utf-8")

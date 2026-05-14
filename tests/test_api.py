@@ -11,6 +11,7 @@ from dnd_ai_assistant.api import (
     campaign_state,
     campaign_summary,
     create_handler,
+    create_demo_campaign,
     import_adventure,
     route_request,
     run_campaign_action,
@@ -25,6 +26,16 @@ class APITests(unittest.TestCase):
 
         self.assertIn(response["campaign_id"], state.campaigns)
         self.assertEqual(response["campaign"]["title"], "Moonlit Road")
+
+    def test_create_demo_campaign_includes_combat_ready_encounter(self) -> None:
+        state = APIState()
+
+        response = create_demo_campaign(state)
+
+        campaign = state.campaigns[response["campaign_id"]]
+        monster = campaign.encounters["enc_lantern_sprites"].monsters[0]
+        self.assertEqual(campaign.title, "Moonlit Road")
+        self.assertEqual(monster.name, "Lantern Sprite")
 
     def test_campaign_state_reports_missing_campaign(self) -> None:
         with self.assertRaises(APIError) as context:
@@ -109,8 +120,8 @@ class APITests(unittest.TestCase):
         imported = route_request(
             state,
             "POST",
-            "/campaigns/import",
-            {"adventure": create_adventure_template("Moonlit Road")},
+            "/campaigns/demo",
+            {},
         )
         campaign_id = imported["campaign_id"]
         fetched = route_request(state, "GET", f"/campaigns/{campaign_id}", {})

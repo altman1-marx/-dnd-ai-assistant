@@ -12,7 +12,7 @@ from .adventure_importer import campaign_from_adventure
 from .adventure_runtime import AdventureRuntime, handle_adventure_action
 from .core.campaign import Campaign
 from .core.serialization import campaign_to_dict
-from .sample_data import sample_adventure_character
+from .sample_data import sample_adventure_character, sample_adventure_template
 
 
 @dataclass
@@ -36,6 +36,10 @@ def import_adventure(state: APIState, adventure_data: dict) -> dict:
         "campaign_id": campaign.id,
         "campaign": campaign_to_dict(campaign),
     }
+
+
+def create_demo_campaign(state: APIState) -> dict:
+    return import_adventure(state, sample_adventure_template())
 
 
 def campaign_state(state: APIState, campaign_id: str) -> dict:
@@ -167,6 +171,8 @@ def route_request(state: APIState, method: str, path: str, body: dict) -> dict:
         if not isinstance(adventure, dict):
             raise APIError(400, "Missing adventure object.")
         return import_adventure(state, adventure)
+    if method == "POST" and parts == ["campaigns", "demo"]:
+        return create_demo_campaign(state)
     if method == "GET" and len(parts) == 2 and parts[0] == "campaigns":
         return campaign_state(state, parts[1])
     if method == "GET" and len(parts) == 3 and parts[0] == "campaigns" and parts[2] == "summary":
