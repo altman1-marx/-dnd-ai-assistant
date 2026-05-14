@@ -98,11 +98,17 @@ class APITests(unittest.TestCase):
 
         self.assertEqual(summary["id"], campaign_id)
         self.assertEqual(summary["current_location"]["name"], "Village Square")
+        self.assertEqual(summary["current_location"]["exits"][0]["name"], "Old Road")
+        self.assertEqual(summary["current_location"]["npcs"][0]["name"], "Mayor Elin")
         self.assertEqual(summary["characters"][0]["name"], "Leth")
+        self.assertEqual(summary["characters"][0]["spellcasting"]["slots"][0]["available"], 4)
+        self.assertTrue(any(spell["name"] == "Sacred Flame" for spell in summary["characters"][0]["spellcasting"]["known_spells"]))
         self.assertEqual(summary["quest_count"], 1)
         self.assertEqual(summary["clue_count"], 1)
         self.assertEqual(summary["active_combat"]["round"], 2)
         self.assertEqual(summary["active_combat"]["current_resources"]["movement"], 20)
+        self.assertIn("talk mayor", summary["available_actions"])
+        self.assertIn("combat", summary["available_actions"])
 
     def test_run_campaign_action_updates_campaign_and_returns_transcript(self) -> None:
         state = APIState()
@@ -113,6 +119,8 @@ class APITests(unittest.TestCase):
         self.assertTrue(response["keep_going"])
         self.assertEqual(response["campaign"]["current_location_id"], "loc_old_road")
         self.assertIn("Old Road", response["transcript"])
+        self.assertEqual(response["messages"][0]["actor"], "Player")
+        self.assertEqual(response["messages"][1]["actor"], "DM")
 
     def test_run_campaign_action_rejects_empty_action(self) -> None:
         state = APIState()

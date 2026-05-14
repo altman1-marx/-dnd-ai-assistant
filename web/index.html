@@ -282,14 +282,6 @@
         <div class="quick-actions">
           <button type="button" class="secondary" data-action="look">Look</button>
           <button type="button" class="secondary" data-action="inspect">Inspect</button>
-          <button type="button" class="secondary" data-action="talk mayor">Talk Mayor</button>
-          <button type="button" class="secondary" data-action="go old road">Go Road</button>
-          <button type="button" class="secondary" data-action="fight">Fight</button>
-          <button type="button" class="secondary" data-action="combat">Combat</button>
-          <button type="button" class="secondary" data-action="end turn">End Turn</button>
-          <button type="button" class="secondary" data-action="quests">Quests</button>
-          <button type="button" class="secondary" data-action="cast sacred flame sprite">Sacred Flame</button>
-          <button type="button" class="secondary" data-action="cast cure wounds leth">Cure Wounds</button>
         </div>
         <div class="row">
           <input id="actionInput" placeholder="Type an action, e.g. go old road" autocomplete="off" disabled>
@@ -334,6 +326,7 @@
     const sendButton = document.getElementById("sendButton");
     const sampleButton = document.getElementById("sampleButton");
     const refreshButton = document.getElementById("refreshButton");
+    const quickActions = document.querySelector(".quick-actions");
 
     document.getElementById("healthButton").addEventListener("click", checkHealth);
     document.getElementById("importButton").addEventListener("click", importAdventure);
@@ -344,9 +337,7 @@
     actionInput.addEventListener("keydown", (event) => {
       if (event.key === "Enter") sendTypedAction();
     });
-    document.querySelectorAll("[data-action]").forEach((button) => {
-      button.addEventListener("click", () => runAction(button.dataset.action));
-    });
+    bindQuickActions();
 
     setControls(false);
 
@@ -453,8 +444,11 @@
         metric("Party level", summary.party_level),
         metric("Characters", summary.characters.length),
         metric("Quests", summary.active_quest_count + "/" + summary.quest_count + " active"),
-        metric("Clues", summary.discovered_clue_count + "/" + summary.clue_count + " discovered")
+        metric("Clues", summary.discovered_clue_count + "/" + summary.clue_count + " discovered"),
+        metric("Exits", location ? location.exits.map((exit) => exit.name).join(", ") || "None" : "None"),
+        metric("NPCs", location ? location.npcs.map((npc) => npc.name).join(", ") || "None" : "None")
       ].join("");
+      renderQuickActions(summary.available_actions || []);
 
       characters.innerHTML = summary.characters.length
         ? summary.characters.map(renderCharacter).join("")
@@ -470,11 +464,16 @@
     }
 
     function renderCharacter(character) {
+      const spellcasting = character.spellcasting
+        ? "<p class=\"muted\">Slots " + character.spellcasting.slots.map((slot) => {
+            return escapeHtml("L" + slot.level + " " + slot.available + "/" + slot.total);
+          }).join(", ") + "</p><p class=\"muted\">" + character.spellcasting.known_spells.map((spell) => escapeHtml(spell.name)).join(", ") + "</p>"
+        : "";
       return "<div class=\"item\"><strong>" + escapeHtml(character.name) + "</strong><p class=\"muted\">Level "
         + escapeHtml(String(character.level)) + " " + escapeHtml(character.ancestry) + " "
         + escapeHtml(character.class_name) + "</p><p>HP "
         + escapeHtml(String(character.current_hp)) + "/" + escapeHtml(String(character.max_hp))
-        + " | AC " + escapeHtml(String(character.armor_class)) + "</p></div>";
+        + " | AC " + escapeHtml(String(character.armor_class)) + "</p>" + spellcasting + "</div>";
     }
 
     function renderCombat(activeCombat) {
@@ -510,6 +509,27 @@
       document.querySelectorAll("[data-action]").forEach((button) => {
         button.disabled = !enabled;
       });
+    }
+
+    function renderQuickActions(actions) {
+      const fallback = ["look", "inspect"];
+      const preferred = actions.length ? actions : fallback;
+      quickActions.innerHTML = preferred.map((action) => {
+        return "<button type=\"button\" class=\"secondary\" data-action=\"" + escapeHtml(action) + "\">"
+          + escapeHtml(actionLabel(action)) + "</button>";
+      }).join("");
+      bindQuickActions();
+      setControls(Boolean(state.campaignId));
+    }
+
+    function bindQuickActions() {
+      document.querySelectorAll("[data-action]").forEach((button) => {
+        button.addEventListener("click", () => runAction(button.dataset.action));
+      });
+    }
+
+    function actionLabel(action) {
+      return action.replace(/\b\w/g, (letter) => letter.toUpperCase());
     }
 
     function escapeHtml(value) {

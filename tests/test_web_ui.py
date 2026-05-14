@@ -15,9 +15,10 @@ class WebUITests(unittest.TestCase):
         self.assertIn('id="adventureFile"', html)
         self.assertIn('id="demoButton"', html)
         self.assertIn('id="actionInput"', html)
-        self.assertIn("data-action=\"talk mayor\"", html)
-        self.assertIn("data-action=\"go old road\"", html)
-        self.assertIn("data-action=\"cast sacred flame sprite\"", html)
+        self.assertIn("available_actions", html)
+        self.assertIn("renderQuickActions", html)
+        self.assertIn("spellcasting.slots", html)
+        self.assertIn("location.exits", html)
         self.assertNotIn("DEMO_ADVENTURE", html)
 
     def test_index_does_not_depend_on_external_assets(self) -> None:

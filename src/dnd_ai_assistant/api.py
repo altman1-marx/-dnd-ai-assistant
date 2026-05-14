@@ -58,6 +58,7 @@ def campaign_state(state: APIState, campaign_id: str) -> dict:
 def campaign_summary(state: APIState, campaign_id: str) -> dict:
     campaign = _campaign_or_404(state, campaign_id)
     location = campaign.locations.get(campaign.current_location_id or "")
+    active_combat = _active_combat_summary(campaign)
     return {
         "id": campaign.id,
         "title": campaign.title,
@@ -70,6 +71,21 @@ def campaign_summary(state: APIState, campaign_id: str) -> dict:
             "id": location.id,
             "name": location.name,
             "public_description": location.public_description,
+            "exits": [
+                {"id": location_id, "name": campaign.locations[location_id].name}
+                for location_id in location.connected_location_ids
+                if location_id in campaign.locations
+            ],
+            "npcs": [
+                {
+                    "id": npc.id,
+                    "name": npc.name,
+                    "role": npc.role,
+                    "public_description": npc.public_description,
+                }
+                for npc in campaign.npcs.values()
+                if npc.location_id == location.id
+            ],
         },
         "characters": [
             {
@@ -81,6 +97,7 @@ def campaign_summary(state: APIState, campaign_id: str) -> dict:
                 "armor_class": character.armor_class,
                 "current_hp": character.current_hp,
                 "max_hp": character.max_hp,
+                "spellcasting": _spellcasting_summary(character),
             }
             for character in campaign.characters.values()
         ],
@@ -88,7 +105,8 @@ def campaign_summary(state: APIState, campaign_id: str) -> dict:
         "active_quest_count": sum(1 for quest in campaign.quests.values() if quest.status == "active"),
         "clue_count": len(campaign.clues),
         "discovered_clue_count": sum(1 for clue in campaign.clues.values() if clue.discovered),
-        "active_combat": _active_combat_summary(campaign),
+        "active_combat": active_combat,
+        "available_actions": _available_actions(campaign, active_combat),
     }
 
 
@@ -114,12 +132,14 @@ def run_campaign_action(state: APIState, campaign_id: str, action: str, seed: in
     if not action.strip():
         raise APIError(400, "Action cannot be empty.")
     campaign = _campaign_or_404(state, campaign_id)
+    event_count = len(campaign.session_log)
     runtime = AdventureRuntime(campaign, rng=random.Random(seed))
     keep_going = handle_adventure_action(runtime, action)
     return {
         "campaign_id": campaign.id,
         "keep_going": keep_going,
         "transcript": runtime.flush(),
+        "messages": [_event_message(event) for event in campaign.session_log[event_count:]],
         "campaign": campaign_to_dict(campaign),
     }
 
@@ -234,4 +254,56 @@ def _active_combat_summary(campaign: Campaign) -> dict | None:
             for entry in combat.get("initiative", [])
         ],
         "current_resources": combat.get("resources", {}).get(combat.get("turn"), {}),
+    }
+
+
+def _spellcasting_summary(character) -> dict | None:
+    if character.spellcasting is None:
+        return None
+    spellcasting = character.spellcasting
+    return {
+        "ability": spellcasting.ability,
+        "slots": [
+            {
+                "level": level,
+                "total": total,
+                "expended": spellcasting.expended_slots_by_level.get(level, 0),
+                "available": spellcasting.available_slots(level),
+            }
+            for level, total in sorted(spellcasting.slots_by_level.items())
+        ],
+        "known_spells": [
+            {
+                "name": spell.name,
+                "level": spell.level,
+                "casting_time": spell.casting_time,
+                "concentration": spell.concentration,
+            }
+            for spell in spellcasting.known_spells
+        ],
+        "concentration_spell_name": spellcasting.concentration_spell_name,
+    }
+
+
+def _available_actions(campaign: Campaign, active_combat: dict | None) -> list[str]:
+    actions = ["look", "inspect", "talk", "quests", "log"]
+    location = campaign.locations.get(campaign.current_location_id or "")
+    if location is not None:
+        actions.extend(f"go {campaign.locations[location_id].name.lower()}" for location_id in location.connected_location_ids if location_id in campaign.locations)
+        if any(npc.location_id == location.id for npc in campaign.npcs.values()):
+            actions.append("talk mayor")
+        if any(encounter.location_id == location.id and not encounter.resolved for encounter in campaign.encounters.values()):
+            actions.append("fight")
+    if active_combat is not None:
+        actions.extend(["combat", "attack", "cast sacred flame", "cast cure wounds", "end turn", "resolve encounter"])
+    return list(dict.fromkeys(actions))
+
+
+def _event_message(event) -> dict:
+    return {
+        "id": event.id,
+        "actor": event.actor,
+        "content": event.content,
+        "visibility": event.visibility.value,
+        "created_at": event.created_at.isoformat(),
     }
