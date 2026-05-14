@@ -12,6 +12,7 @@ from .adventure_importer import campaign_from_adventure
 from .adventure_runtime import AdventureRuntime, handle_adventure_action
 from .core.campaign import Campaign
 from .core.serialization import campaign_to_dict
+from .sample_data import sample_adventure_character
 
 
 @dataclass
@@ -39,6 +40,61 @@ def import_adventure(state: APIState, adventure_data: dict) -> dict:
 
 def campaign_state(state: APIState, campaign_id: str) -> dict:
     return campaign_to_dict(_campaign_or_404(state, campaign_id))
+
+
+def campaign_summary(state: APIState, campaign_id: str) -> dict:
+    campaign = _campaign_or_404(state, campaign_id)
+    location = campaign.locations.get(campaign.current_location_id or "")
+    return {
+        "id": campaign.id,
+        "title": campaign.title,
+        "system": campaign.system,
+        "tone": campaign.tone,
+        "party_level": campaign.party_level,
+        "current_location": None
+        if location is None
+        else {
+            "id": location.id,
+            "name": location.name,
+            "public_description": location.public_description,
+        },
+        "characters": [
+            {
+                "name": character.name,
+                "player_name": character.player_name,
+                "class_name": character.class_name,
+                "level": character.level,
+                "ancestry": character.ancestry,
+                "armor_class": character.armor_class,
+                "current_hp": character.current_hp,
+                "max_hp": character.max_hp,
+            }
+            for character in campaign.characters.values()
+        ],
+        "quest_count": len(campaign.quests),
+        "active_quest_count": sum(1 for quest in campaign.quests.values() if quest.status == "active"),
+        "clue_count": len(campaign.clues),
+        "discovered_clue_count": sum(1 for clue in campaign.clues.values() if clue.discovered),
+        "active_combat": _active_combat_summary(campaign),
+    }
+
+
+def add_sample_character(state: APIState, campaign_id: str) -> dict:
+    campaign = _campaign_or_404(state, campaign_id)
+    character = sample_adventure_character()
+    if character.name in campaign.characters:
+        raise APIError(400, f"Character already exists: {character.name}")
+    campaign.add_character(character)
+    return {
+        "campaign_id": campaign.id,
+        "character": {
+            "name": character.name,
+            "class_name": character.class_name,
+            "level": character.level,
+            "ancestry": character.ancestry,
+        },
+        "campaign": campaign_to_dict(campaign),
+    }
 
 
 def run_campaign_action(state: APIState, campaign_id: str, action: str, seed: int = 1) -> dict:
@@ -113,6 +169,10 @@ def route_request(state: APIState, method: str, path: str, body: dict) -> dict:
         return import_adventure(state, adventure)
     if method == "GET" and len(parts) == 2 and parts[0] == "campaigns":
         return campaign_state(state, parts[1])
+    if method == "GET" and len(parts) == 3 and parts[0] == "campaigns" and parts[2] == "summary":
+        return campaign_summary(state, parts[1])
+    if method == "POST" and len(parts) == 3 and parts[0] == "campaigns" and parts[2] == "sample-character":
+        return add_sample_character(state, parts[1])
     if method == "POST" and len(parts) == 3 and parts[0] == "campaigns" and parts[2] == "actions":
         action = str(body.get("action", ""))
         seed = int(body.get("seed", 1))
@@ -136,3 +196,25 @@ def _campaign_or_404(state: APIState, campaign_id: str) -> Campaign:
     if campaign is None:
         raise APIError(404, "Campaign not found.")
     return campaign
+
+
+def _active_combat_summary(campaign: Campaign) -> dict | None:
+    combat = campaign.active_combat
+    if combat is None:
+        return None
+    return {
+        "encounter_id": combat.get("encounter_id"),
+        "round": combat.get("round", 1),
+        "turn": combat.get("turn"),
+        "initiative": [
+            {
+                "name": entry.get("name"),
+                "initiative_total": entry.get("initiative_total", 0),
+                "armor_class": entry.get("armor_class"),
+                "current_hp": entry.get("current_hp"),
+                "is_player": entry.get("is_player", False),
+            }
+            for entry in combat.get("initiative", [])
+        ],
+        "current_resources": combat.get("resources", {}).get(combat.get("turn"), {}),
+    }

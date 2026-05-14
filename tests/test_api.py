@@ -7,7 +7,9 @@ from dnd_ai_assistant.adventure import create_adventure_template
 from dnd_ai_assistant.api import (
     APIError,
     APIState,
+    add_sample_character,
     campaign_state,
+    campaign_summary,
     create_handler,
     import_adventure,
     route_request,
@@ -30,6 +32,56 @@ class APITests(unittest.TestCase):
 
         self.assertEqual(context.exception.status, 404)
         self.assertEqual(context.exception.message, "Campaign not found.")
+
+    def test_add_sample_character_updates_campaign(self) -> None:
+        state = APIState()
+        campaign_id = import_adventure(state, create_adventure_template("Moonlit Road"))["campaign_id"]
+
+        response = add_sample_character(state, campaign_id)
+
+        self.assertEqual(response["character"]["name"], "Leth")
+        self.assertIn("Leth", state.campaigns[campaign_id].characters)
+        self.assertIn("Leth", response["campaign"]["characters"])
+
+    def test_add_sample_character_rejects_duplicate(self) -> None:
+        state = APIState()
+        campaign_id = import_adventure(state, create_adventure_template("Moonlit Road"))["campaign_id"]
+        add_sample_character(state, campaign_id)
+
+        with self.assertRaises(APIError) as context:
+            add_sample_character(state, campaign_id)
+
+        self.assertEqual(context.exception.status, 400)
+        self.assertIn("Character already exists", context.exception.message)
+
+    def test_add_sample_character_reports_missing_campaign(self) -> None:
+        with self.assertRaises(APIError) as context:
+            add_sample_character(APIState(), "missing")
+
+        self.assertEqual(context.exception.status, 404)
+
+    def test_campaign_summary_returns_panel_data(self) -> None:
+        state = APIState()
+        campaign_id = import_adventure(state, create_adventure_template("Moonlit Road"))["campaign_id"]
+        add_sample_character(state, campaign_id)
+        campaign = state.campaigns[campaign_id]
+        campaign.active_combat = {
+            "encounter_id": "enc_lantern_sprites",
+            "round": 2,
+            "turn": "Leth",
+            "initiative": [{"name": "Leth", "initiative_total": 18, "armor_class": 16, "current_hp": 24, "is_player": True}],
+            "resources": {"Leth": {"action": True, "bonus_action": False, "reaction": True, "movement": 20}},
+        }
+
+        summary = campaign_summary(state, campaign_id)
+
+        self.assertEqual(summary["id"], campaign_id)
+        self.assertEqual(summary["current_location"]["name"], "Village Square")
+        self.assertEqual(summary["characters"][0]["name"], "Leth")
+        self.assertEqual(summary["quest_count"], 1)
+        self.assertEqual(summary["clue_count"], 1)
+        self.assertEqual(summary["active_combat"]["round"], 2)
+        self.assertEqual(summary["active_combat"]["current_resources"]["movement"], 20)
 
     def test_run_campaign_action_updates_campaign_and_returns_transcript(self) -> None:
         state = APIState()
@@ -62,9 +114,13 @@ class APITests(unittest.TestCase):
         )
         campaign_id = imported["campaign_id"]
         fetched = route_request(state, "GET", f"/campaigns/{campaign_id}", {})
-        action = route_request(state, "POST", f"/campaigns/{campaign_id}/actions", {"action": "inspect", "seed": 1})
+        added = route_request(state, "POST", f"/campaigns/{campaign_id}/sample-character", {})
+        summary = route_request(state, "GET", f"/campaigns/{campaign_id}/summary", {})
+        action = route_request(state, "POST", f"/campaigns/{campaign_id}/actions", {"action": "inspect", "seed": 3})
 
         self.assertEqual(fetched["id"], campaign_id)
+        self.assertEqual(added["character"]["name"], "Leth")
+        self.assertEqual(summary["characters"][0]["name"], "Leth")
         self.assertIn("Clue found", action["transcript"])
 
     def test_route_request_reports_bad_import_body(self) -> None:

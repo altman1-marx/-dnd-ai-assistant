@@ -13,11 +13,10 @@ from .adventure_review import render_adventure_review, render_adventure_review_j
 from .adventure_runtime import AdventureRuntime, describe_current_location, handle_adventure_action
 from .ai_provider import build_provider
 from .api import run_server
-from .core.character import Character
 from .core.dnd5e import RollMode
 from .core.initiative import Combatant, InitiativeTracker
 from .core.serialization import load_campaign, save_campaign
-from .core.spells import Spell, Spellcasting
+from .sample_data import sample_adventure_character
 from .scenario import DEFAULT_SCENE_PATH, SceneDefinition, load_scene, validate_scene_file, write_scene_template
 from .scene_engine import build_character, build_scene_session, describe_scene, handle_player_action
 
@@ -294,32 +293,6 @@ def _combatant_hp_summary(campaign, combatant: dict) -> str:
     return f"HP {combatant.get('current_hp', '?')}"
 
 
-def _sample_adventure_character() -> Character:
-    return Character(
-        name="Leth",
-        player_name="Sample Player",
-        class_name="Cleric",
-        level=3,
-        ancestry="Human",
-        ability_scores={"str": 10, "dex": 10, "con": 14, "int": 10, "wis": 16, "cha": 12},
-        armor_class=16,
-        max_hp=24,
-        current_hp=24,
-        skill_proficiencies={"insight", "medicine", "religion"},
-        saving_throw_proficiencies={"wis", "cha"},
-        spellcasting=Spellcasting(
-            ability="wis",
-            slots_by_level={1: 4, 2: 2},
-            known_spells=[
-                Spell("Bless", 1, concentration=True),
-                Spell("Cure Wounds", 1),
-                Spell("Healing Word", 1, casting_time="1 bonus action"),
-                Spell("Sacred Flame", 0),
-            ],
-        ),
-    )
-
-
 def main() -> int:
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8", errors="replace")
@@ -576,7 +549,7 @@ def main() -> int:
     if args.command == "play-adventure-state":
         campaign = load_campaign(args.path)
         if args.add_sample_character and not campaign.characters:
-            campaign.add_character(_sample_adventure_character())
+            campaign.add_character(sample_adventure_character())
         runtime = AdventureRuntime(campaign, rng=random.Random(args.seed))
         describe_current_location(runtime)
         if args.action:
