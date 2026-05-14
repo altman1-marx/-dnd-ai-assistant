@@ -412,6 +412,9 @@ def cast_active_combat_spell(runtime: AdventureRuntime, spell_text: str) -> None
     if not resources.get(resource_name, True):
         runtime.narrate(f"DM: {caster.name} has already used {resource_name.replace('_', ' ')}.")
         return
+    if _spell_requires_active_target(spell.name) and _active_combatant(combat, target_text) is None:
+        runtime.narrate("DM: The spell has no valid target.")
+        return
 
     try:
         cast_spell = caster.spellcasting.cast_spell(spell.name, slot_level=slot_level)
@@ -673,6 +676,8 @@ def _apply_spell_effect(
 ) -> str:
     normalized = spell_name.strip().lower()
     if normalized not in {"cure wounds", "healing word"}:
+        if normalized == "sacred flame":
+            return _apply_sacred_flame(runtime, caster, target_text)
         return ""
 
     target = _match_character(runtime.campaign, target_text) if target_text else caster
@@ -687,6 +692,45 @@ def _apply_spell_effect(
     target.heal(max(0, healing.total))
     _sync_combatant_hp(runtime.campaign.active_combat, target.name, target.current_hp)
     return f"{target.name} heals {target.current_hp - before} HP: {before} -> {target.current_hp}."
+
+
+def _apply_sacred_flame(runtime: AdventureRuntime, caster: Character, target_text: str) -> str:
+    combat = runtime.campaign.active_combat
+    if combat is None:
+        return "The spell has no active combat target."
+    target = _active_combatant(combat, target_text)
+    if target is None:
+        return "The spell has no valid target."
+
+    dc = caster.spell_save_dc or 10
+    modifier = _saving_throw_modifier(runtime.campaign, target["name"], "dex")
+    save = roll_d20_check(modifier=modifier, dc=dc, rng=runtime.rng)
+    outcome = "success" if save.success else "failure"
+    if save.success:
+        return f"{target['name']} makes a Dexterity save {save.total} vs DC {dc} ({outcome}) and takes no damage."
+
+    damage = roll_damage("1d8", runtime.rng)
+    before = target.get("current_hp", 0)
+    damage_amount = _apply_combat_damage(runtime.campaign, target, damage.total, "radiant")
+    return (
+        f"{target['name']} makes a Dexterity save {save.total} vs DC {dc} ({outcome}) "
+        f"and takes {damage_amount} radiant damage: HP {before} -> {target['current_hp']}."
+    )
+
+
+def _spell_requires_active_target(spell_name: str) -> bool:
+    return spell_name.strip().lower() in {"sacred flame"}
+
+
+def _saving_throw_modifier(campaign: Campaign, name: str, ability: str) -> int:
+    character = campaign.characters.get(name)
+    if character is not None:
+        return character.saving_throw_modifier(ability)
+    for encounter in campaign.encounters.values():
+        for monster in encounter.monsters:
+            if monster.name == name:
+                return monster.saving_throw_modifier(ability)
+    return 0
 
 
 def _signed_expression(base: str, modifier: int) -> str:
@@ -743,6 +787,8 @@ def _defense_profile(encounter: Encounter, name: str) -> dict:
 
 def _active_combatant(combat: dict, name: str) -> dict | None:
     normalized = name.strip().lower()
+    if not normalized:
+        return None
     for combatant in combat.get("initiative", []):
         combatant_name = combatant["name"].lower()
         if normalized == combatant_name or normalized in combatant_name:

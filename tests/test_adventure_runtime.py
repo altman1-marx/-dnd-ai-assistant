@@ -403,6 +403,49 @@ class AdventureRuntimeTests(unittest.TestCase):
         self.assertEqual(campaign.active_combat["initiative"][1]["current_hp"], campaign.characters["Kael"].current_hp)
         self.assertIn("Kael heals", output)
 
+    def test_sacred_flame_forces_save_and_deals_radiant_damage(self) -> None:
+        raw = create_adventure_template("Moonlit Road")
+        raw["encounters"][0]["monsters"] = [
+            {
+                "name": "Lantern Sprite",
+                "armor_class": 13,
+                "max_hp": 7,
+                "current_hp": 7,
+                "ability_scores": {"str": 8, "dex": 8, "con": 10, "int": 10, "wis": 10, "cha": 10},
+            }
+        ]
+        campaign = campaign_from_adventure(AdventureDefinition(raw))
+        campaign.add_character(_caster())
+        campaign.active_combat = {
+            "encounter_id": "enc_lantern_sprites",
+            "round": 1,
+            "turn": "Leth",
+            "initiative": [
+                {"name": "Leth", "initiative_total": 18, "is_player": True, "armor_class": 16, "current_hp": 24},
+                {
+                    "name": "Lantern Sprite",
+                    "initiative_total": 12,
+                    "is_player": False,
+                    "armor_class": 13,
+                    "current_hp": 7,
+                },
+            ],
+            "resources": {
+                "Leth": {"action": True, "bonus_action": True, "reaction": True, "movement": 30},
+                "Lantern Sprite": {"action": True, "bonus_action": True, "reaction": True, "movement": 30},
+            },
+        }
+        runtime = AdventureRuntime(campaign, rng=random.Random(1))
+
+        handle_adventure_action(runtime, "cast sacred flame sprite")
+        output = runtime.flush()
+
+        self.assertLess(campaign.encounters["enc_lantern_sprites"].monsters[0].current_hp, 7)
+        self.assertFalse(campaign.active_combat["resources"]["Leth"]["action"])
+        self.assertEqual(campaign.characters["Leth"].spellcasting.available_slots(1), 2)
+        self.assertIn("Dexterity save", output)
+        self.assertIn("radiant damage", output)
+
     def test_failed_spell_cast_does_not_spend_action(self) -> None:
         campaign = campaign_from_adventure(AdventureDefinition(create_adventure_template("Moonlit Road")))
         caster = _caster()
@@ -654,6 +697,7 @@ def _caster() -> Character:
                 Spell("Bless", 1, concentration=True),
                 Spell("Cure Wounds", 1),
                 Spell("Healing Word", 1, casting_time="1 bonus action"),
+                Spell("Sacred Flame", 0),
             ],
         ),
     )
