@@ -99,6 +99,7 @@ python -m dnd_ai_assistant.demo state-summary output\generated_campaign.json
 
 ```powershell
 python -m dnd_ai_assistant.demo play-adventure-state output\generated_campaign.json `
+  --add-sample-character `
   --action "look" `
   --action "inspect" `
   --action "go old road" `
@@ -112,6 +113,8 @@ python -m dnd_ai_assistant.demo play-adventure-state output\generated_campaign.j
 ```powershell
 python -m dnd_ai_assistant.demo play-adventure-state output\generated_campaign.json --save-state output\generated_campaign.json
 ```
+
+如果导入的冒险还没有玩家角色，可以加 `--add-sample-character` 自动加入一个可玩的 3 级牧师 Leth，包含 `Bless`、`Cure Wounds`、`Healing Word` 和 `Sacred Flame`。
 
 常用动作：
 
@@ -127,7 +130,9 @@ fight
 combat
 attack goblin
 cast bless
+cast cure wounds leth
 cast healing word
+cast sacred flame goblin
 use action
 use bonus action
 use reaction
