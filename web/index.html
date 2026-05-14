@@ -1,0 +1,512 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>DND AI Assistant</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f5f1e8;
+      --surface: #fffaf0;
+      --surface-2: #f0f7f4;
+      --ink: #221f1a;
+      --muted: #6e675c;
+      --line: #d6cfc0;
+      --accent: #1f6f78;
+      --accent-2: #8f3f35;
+      --focus: #2f6fed;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: Arial, Helvetica, sans-serif;
+      letter-spacing: 0;
+    }
+
+    button,
+    input,
+    textarea {
+      font: inherit;
+    }
+
+    button {
+      border: 1px solid var(--accent);
+      border-radius: 6px;
+      background: var(--accent);
+      color: #fff;
+      min-height: 38px;
+      padding: 0 12px;
+      cursor: pointer;
+    }
+
+    button.secondary {
+      background: var(--surface);
+      color: var(--accent);
+    }
+
+    button:disabled {
+      cursor: not-allowed;
+      opacity: 0.55;
+    }
+
+    input,
+    textarea {
+      width: 100%;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: #fff;
+      color: var(--ink);
+      padding: 9px 10px;
+    }
+
+    textarea {
+      min-height: 88px;
+      resize: vertical;
+    }
+
+    input:focus,
+    textarea:focus,
+    button:focus {
+      outline: 2px solid var(--focus);
+      outline-offset: 2px;
+    }
+
+    .app {
+      display: grid;
+      grid-template-columns: minmax(250px, 320px) minmax(0, 1fr) minmax(260px, 360px);
+      min-height: 100vh;
+    }
+
+    .sidebar,
+    .panel {
+      border-right: 1px solid var(--line);
+      background: var(--surface);
+      padding: 18px;
+      overflow: auto;
+    }
+
+    .panel {
+      border-right: 0;
+      border-left: 1px solid var(--line);
+      background: var(--surface-2);
+    }
+
+    main {
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+      padding: 18px;
+      gap: 14px;
+    }
+
+    h1,
+    h2,
+    h3,
+    p {
+      margin: 0;
+    }
+
+    h1 {
+      font-size: 22px;
+      line-height: 1.2;
+    }
+
+    h2 {
+      font-size: 15px;
+      margin-bottom: 8px;
+    }
+
+    h3 {
+      font-size: 14px;
+      margin-bottom: 6px;
+    }
+
+    .muted {
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.35;
+    }
+
+    .stack {
+      display: grid;
+      gap: 12px;
+    }
+
+    .row {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .row > * {
+      flex: 1;
+    }
+
+    .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid var(--line);
+      padding-bottom: 12px;
+    }
+
+    .status {
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: #fff;
+      padding: 10px;
+      color: var(--muted);
+      min-height: 40px;
+      white-space: pre-wrap;
+    }
+
+    .transcript {
+      flex: 1;
+      min-height: 320px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: #fff;
+      padding: 14px;
+      overflow: auto;
+      white-space: pre-wrap;
+      line-height: 1.45;
+    }
+
+    .quick-actions {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 8px;
+    }
+
+    .metric {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 8px;
+      border-bottom: 1px solid var(--line);
+      padding: 8px 0;
+      font-size: 14px;
+    }
+
+    .list {
+      display: grid;
+      gap: 8px;
+    }
+
+    .item {
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: #fff;
+      padding: 10px;
+    }
+
+    .item strong {
+      display: block;
+      font-size: 14px;
+      margin-bottom: 4px;
+    }
+
+    .danger {
+      color: var(--accent-2);
+    }
+
+    @media (max-width: 980px) {
+      .app {
+        grid-template-columns: 1fr;
+      }
+
+      .sidebar,
+      .panel {
+        border: 0;
+        border-bottom: 1px solid var(--line);
+      }
+
+      .quick-actions {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar stack">
+      <header class="stack">
+        <h1>DND AI Assistant</h1>
+        <p class="muted">Local campaign console for the lightweight API.</p>
+      </header>
+
+      <section class="stack" aria-labelledby="api-title">
+        <h2 id="api-title">API</h2>
+        <label>
+          <span class="muted">Base URL</span>
+          <input id="apiBase" value="http://127.0.0.1:8000" autocomplete="off">
+        </label>
+        <button id="healthButton" type="button" class="secondary">Check API</button>
+      </section>
+
+      <section class="stack" aria-labelledby="import-title">
+        <h2 id="import-title">Adventure</h2>
+        <input id="adventureFile" type="file" accept="application/json,.json">
+        <button id="importButton" type="button">Import Adventure</button>
+        <button id="sampleButton" type="button" class="secondary" disabled>Add Sample Character</button>
+      </section>
+
+      <section class="stack" aria-labelledby="campaign-title">
+        <h2 id="campaign-title">Campaign</h2>
+        <div id="status" class="status">No campaign loaded.</div>
+      </section>
+    </aside>
+
+    <main>
+      <div class="toolbar">
+        <div>
+          <h2>Table</h2>
+          <p id="locationLine" class="muted">Import an adventure to begin.</p>
+        </div>
+        <button id="refreshButton" type="button" class="secondary" disabled>Refresh</button>
+      </div>
+
+      <section id="transcript" class="transcript" aria-live="polite"></section>
+
+      <section class="stack" aria-label="Action input">
+        <div class="quick-actions">
+          <button type="button" class="secondary" data-action="look">Look</button>
+          <button type="button" class="secondary" data-action="inspect">Inspect</button>
+          <button type="button" class="secondary" data-action="fight">Fight</button>
+          <button type="button" class="secondary" data-action="combat">Combat</button>
+          <button type="button" class="secondary" data-action="end turn">End Turn</button>
+          <button type="button" class="secondary" data-action="quests">Quests</button>
+          <button type="button" class="secondary" data-action="cast sacred flame sprite">Sacred Flame</button>
+          <button type="button" class="secondary" data-action="cast cure wounds leth">Cure Wounds</button>
+        </div>
+        <div class="row">
+          <input id="actionInput" placeholder="Type an action, e.g. go old road" autocomplete="off" disabled>
+          <button id="sendButton" type="button" disabled>Send</button>
+        </div>
+      </section>
+    </main>
+
+    <aside class="panel stack">
+      <section>
+        <h2>Summary</h2>
+        <div id="metrics"></div>
+      </section>
+
+      <section>
+        <h2>Characters</h2>
+        <div id="characters" class="list"></div>
+      </section>
+
+      <section>
+        <h2>Combat</h2>
+        <div id="combat" class="list"></div>
+      </section>
+    </aside>
+  </div>
+
+  <script>
+    const state = {
+      campaignId: "",
+      summary: null
+    };
+
+    const apiBase = document.getElementById("apiBase");
+    const adventureFile = document.getElementById("adventureFile");
+    const statusBox = document.getElementById("status");
+    const transcript = document.getElementById("transcript");
+    const locationLine = document.getElementById("locationLine");
+    const metrics = document.getElementById("metrics");
+    const characters = document.getElementById("characters");
+    const combat = document.getElementById("combat");
+    const actionInput = document.getElementById("actionInput");
+    const sendButton = document.getElementById("sendButton");
+    const sampleButton = document.getElementById("sampleButton");
+    const refreshButton = document.getElementById("refreshButton");
+
+    document.getElementById("healthButton").addEventListener("click", checkHealth);
+    document.getElementById("importButton").addEventListener("click", importAdventure);
+    sampleButton.addEventListener("click", addSampleCharacter);
+    refreshButton.addEventListener("click", refreshSummary);
+    sendButton.addEventListener("click", sendTypedAction);
+    actionInput.addEventListener("keydown", (event) => {
+      if (event.key === "Enter") sendTypedAction();
+    });
+    document.querySelectorAll("[data-action]").forEach((button) => {
+      button.addEventListener("click", () => runAction(button.dataset.action));
+    });
+
+    setControls(false);
+
+    async function checkHealth() {
+      try {
+        const data = await api("GET", "/health");
+        setStatus(data.ok ? "API is ready." : "API responded without ok=true.");
+      } catch (error) {
+        setStatus(error.message, true);
+      }
+    }
+
+    async function importAdventure() {
+      const file = adventureFile.files[0];
+      if (!file) {
+        setStatus("Choose an adventure JSON file first.", true);
+        return;
+      }
+      try {
+        const adventure = JSON.parse(await file.text());
+        const data = await api("POST", "/campaigns/import", { adventure });
+        state.campaignId = data.campaign_id;
+        appendTranscript("System: Imported " + data.campaign.title + ".");
+        setControls(true);
+        await refreshSummary();
+      } catch (error) {
+        setStatus(error.message, true);
+      }
+    }
+
+    async function addSampleCharacter() {
+      if (!state.campaignId) return;
+      try {
+        const data = await api("POST", "/campaigns/" + state.campaignId + "/sample-character", {});
+        appendTranscript("System: Added " + data.character.name + ".");
+        await refreshSummary();
+      } catch (error) {
+        setStatus(error.message, true);
+      }
+    }
+
+    async function refreshSummary() {
+      if (!state.campaignId) return;
+      try {
+        state.summary = await api("GET", "/campaigns/" + state.campaignId + "/summary");
+        renderSummary();
+        setStatus("Campaign " + state.campaignId + " loaded.");
+      } catch (error) {
+        setStatus(error.message, true);
+      }
+    }
+
+    async function sendTypedAction() {
+      const action = actionInput.value.trim();
+      if (!action) return;
+      actionInput.value = "";
+      await runAction(action);
+    }
+
+    async function runAction(action) {
+      if (!state.campaignId) return;
+      try {
+        const data = await api("POST", "/campaigns/" + state.campaignId + "/actions", {
+          action,
+          seed: 5
+        });
+        appendTranscript(data.transcript);
+        await refreshSummary();
+      } catch (error) {
+        setStatus(error.message, true);
+      }
+    }
+
+    async function api(method, path, body) {
+      const options = {
+        method,
+        headers: { "Content-Type": "application/json" }
+      };
+      if (body !== undefined) options.body = JSON.stringify(body);
+      const response = await fetch(apiBase.value.replace(/\/$/, "") + path, options);
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Request failed.");
+      return data;
+    }
+
+    function renderSummary() {
+      const summary = state.summary;
+      const location = summary.current_location;
+      locationLine.textContent = location ? location.name + " - " + location.public_description : "No current location.";
+      metrics.innerHTML = [
+        metric("Campaign", summary.title),
+        metric("Party level", summary.party_level),
+        metric("Characters", summary.characters.length),
+        metric("Quests", summary.active_quest_count + "/" + summary.quest_count + " active"),
+        metric("Clues", summary.discovered_clue_count + "/" + summary.clue_count + " discovered")
+      ].join("");
+
+      characters.innerHTML = summary.characters.length
+        ? summary.characters.map(renderCharacter).join("")
+        : "<p class=\"muted\">No characters yet.</p>";
+
+      combat.innerHTML = summary.active_combat
+        ? renderCombat(summary.active_combat)
+        : "<p class=\"muted\">No active combat.</p>";
+    }
+
+    function metric(label, value) {
+      return "<div class=\"metric\"><span>" + escapeHtml(label) + "</span><strong>" + escapeHtml(String(value)) + "</strong></div>";
+    }
+
+    function renderCharacter(character) {
+      return "<div class=\"item\"><strong>" + escapeHtml(character.name) + "</strong><p class=\"muted\">Level "
+        + escapeHtml(String(character.level)) + " " + escapeHtml(character.ancestry) + " "
+        + escapeHtml(character.class_name) + "</p><p>HP "
+        + escapeHtml(String(character.current_hp)) + "/" + escapeHtml(String(character.max_hp))
+        + " | AC " + escapeHtml(String(character.armor_class)) + "</p></div>";
+    }
+
+    function renderCombat(activeCombat) {
+      const lines = [
+        metric("Round", activeCombat.round),
+        metric("Turn", activeCombat.turn || "unknown")
+      ];
+      const initiative = activeCombat.initiative || [];
+      lines.push(initiative.map((entry) => {
+        return "<div class=\"item\"><strong>" + escapeHtml(entry.name || "unknown") + "</strong><p class=\"muted\">Initiative "
+          + escapeHtml(String(entry.initiative_total)) + " | AC " + escapeHtml(String(entry.armor_class || "?"))
+          + " | HP " + escapeHtml(String(entry.current_hp || "?")) + "</p></div>";
+      }).join(""));
+      return lines.join("");
+    }
+
+    function appendTranscript(text) {
+      if (!text) return;
+      transcript.textContent = (transcript.textContent ? transcript.textContent + "\n\n" : "") + text;
+      transcript.scrollTop = transcript.scrollHeight;
+    }
+
+    function setStatus(text, error) {
+      statusBox.textContent = text;
+      statusBox.classList.toggle("danger", Boolean(error));
+    }
+
+    function setControls(enabled) {
+      sampleButton.disabled = !enabled;
+      refreshButton.disabled = !enabled;
+      actionInput.disabled = !enabled;
+      sendButton.disabled = !enabled;
+      document.querySelectorAll("[data-action]").forEach((button) => {
+        button.disabled = !enabled;
+      });
+    }
+
+    function escapeHtml(value) {
+      return value.replace(/[&<>"']/g, (character) => {
+        return {
+          "&": "&amp;",
+          "<": "&lt;",
+          ">": "&gt;",
+          "\"": "&quot;",
+          "'": "&#039;"
+        }[character];
+      });
+    }
+  </script>
+</body>
+</html>
