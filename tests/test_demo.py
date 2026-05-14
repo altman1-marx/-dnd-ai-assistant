@@ -149,6 +149,8 @@ class DemoTests(unittest.TestCase):
                 "dnd-ai-assistant",
                 "play-adventure-state",
                 str(state_path),
+                "--seed",
+                "5",
                 "--add-sample-character",
                 "--action",
                 "look",
@@ -164,6 +166,49 @@ class DemoTests(unittest.TestCase):
         self.assertIn("Leth", loaded.characters)
         self.assertIsNotNone(loaded.characters["Leth"].spellcasting)
         self.assertEqual(loaded.characters["Leth"].spellcasting.available_slots(1), 4)
+
+    def test_play_adventure_state_cli_runs_combat_spell_flow(self) -> None:
+        raw = create_adventure_template("Moonlit Road")
+        raw["encounters"][0]["monsters"] = [
+            {
+                "name": "Lantern Sprite",
+                "armor_class": 13,
+                "max_hp": 7,
+                "current_hp": 7,
+                "ability_scores": {"str": 8, "dex": 8, "con": 10, "int": 10, "wis": 10, "cha": 10},
+            }
+        ]
+        campaign = campaign_from_adventure(AdventureDefinition(raw))
+        campaign.clues["clue_moon_ash"].discovered = True
+        with tempfile.TemporaryDirectory() as tmp:
+            state_path = Path(tmp) / "campaign.json"
+            save_campaign(campaign, state_path)
+            argv = [
+                "dnd-ai-assistant",
+                "play-adventure-state",
+                str(state_path),
+                "--seed",
+                "5",
+                "--add-sample-character",
+                "--action",
+                "go old road",
+                "--action",
+                "fight",
+                "--action",
+                "cast sacred flame sprite",
+                "--save-state",
+                str(state_path),
+            ]
+
+            with patch("sys.argv", argv), patch("builtins.print"):
+                exit_code = main()
+            loaded = load_campaign(state_path)
+
+        self.assertEqual(exit_code, 0)
+        self.assertIn("Leth", loaded.characters)
+        self.assertIsNotNone(loaded.active_combat)
+        self.assertLess(loaded.encounters["enc_lantern_sprites"].monsters[0].current_hp, 7)
+        self.assertFalse(loaded.active_combat["resources"]["Leth"]["action"])
 
 
 if __name__ == "__main__":

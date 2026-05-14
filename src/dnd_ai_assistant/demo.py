@@ -432,6 +432,7 @@ def main() -> int:
 
     adventure_play = subparsers.add_parser("play-adventure-state", help="Run generic actions against a campaign state.")
     adventure_play.add_argument("path", help="Path to a saved campaign JSON file.")
+    adventure_play.add_argument("--seed", type=int, default=1, help="Random seed for reproducible adventure runtime rolls.")
     adventure_play.add_argument("--save-state", default=None, help="Where to save updated campaign state.")
     adventure_play.add_argument(
         "--add-sample-character",
@@ -571,7 +572,7 @@ def main() -> int:
         campaign = load_campaign(args.path)
         if args.add_sample_character and not campaign.characters:
             campaign.add_character(_sample_adventure_character())
-        runtime = AdventureRuntime(campaign)
+        runtime = AdventureRuntime(campaign, rng=random.Random(args.seed))
         describe_current_location(runtime)
         if args.action:
             for action in args.action:
