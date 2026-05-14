@@ -202,6 +202,23 @@
       gap: 8px;
     }
 
+    .campaign-list {
+      display: grid;
+      gap: 8px;
+    }
+
+    .campaign-row {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto auto;
+      gap: 6px;
+      align-items: center;
+    }
+
+    .campaign-row button {
+      min-height: 32px;
+      padding: 0 9px;
+    }
+
     .item {
       border: 1px solid var(--line);
       border-radius: 6px;
@@ -264,6 +281,8 @@
       <section class="stack" aria-labelledby="campaign-title">
         <h2 id="campaign-title">Campaign</h2>
         <div id="status" class="status">No campaign loaded.</div>
+        <button id="campaignsButton" type="button" class="secondary">Refresh Campaigns</button>
+        <div id="campaignList" class="campaign-list"></div>
       </section>
     </aside>
 
@@ -311,6 +330,7 @@
   <script>
     const state = {
       campaignId: "",
+      campaigns: [],
       summary: null
     };
 
@@ -318,6 +338,7 @@
     const adventureFile = document.getElementById("adventureFile");
     const statusBox = document.getElementById("status");
     const transcript = document.getElementById("transcript");
+    const campaignList = document.getElementById("campaignList");
     const locationLine = document.getElementById("locationLine");
     const metrics = document.getElementById("metrics");
     const characters = document.getElementById("characters");
@@ -331,6 +352,7 @@
     document.getElementById("healthButton").addEventListener("click", checkHealth);
     document.getElementById("importButton").addEventListener("click", importAdventure);
     document.getElementById("demoButton").addEventListener("click", loadDemoAdventure);
+    document.getElementById("campaignsButton").addEventListener("click", refreshCampaigns);
     sampleButton.addEventListener("click", addSampleCharacter);
     refreshButton.addEventListener("click", refreshSummary);
     sendButton.addEventListener("click", sendTypedAction);
@@ -340,6 +362,7 @@
     bindQuickActions();
 
     setControls(false);
+    refreshCampaigns();
 
     async function checkHealth() {
       try {
@@ -362,6 +385,7 @@
         state.campaignId = data.campaign_id;
         appendTranscript("System: Imported " + data.campaign.title + ".");
         setControls(true);
+        await refreshCampaigns();
         await refreshSummary();
       } catch (error) {
         setStatus(error.message, true);
@@ -374,6 +398,7 @@
         state.campaignId = data.campaign_id;
         appendTranscript("System: Started demo adventure " + data.campaign.title + " with Leth.");
         setControls(true);
+        await refreshCampaigns();
         await refreshSummary();
       } catch (error) {
         setStatus(error.message, true);
@@ -397,6 +422,34 @@
         state.summary = await api("GET", "/campaigns/" + state.campaignId + "/summary");
         renderSummary();
         setStatus("Campaign " + state.campaignId + " loaded.");
+      } catch (error) {
+        setStatus(error.message, true);
+      }
+    }
+
+    async function refreshCampaigns() {
+      try {
+        const data = await api("GET", "/campaigns");
+        state.campaigns = data.campaigns || [];
+        renderCampaignList();
+      } catch (error) {
+        campaignList.innerHTML = "<p class=\"muted\">Campaign list unavailable.</p>";
+        setStatus(error.message, true);
+      }
+    }
+
+    async function loadCampaign(campaignId) {
+      state.campaignId = campaignId;
+      setControls(true);
+      await refreshSummary();
+    }
+
+    async function deleteCampaign(campaignId) {
+      try {
+        await api("DELETE", "/campaigns/" + campaignId);
+        if (state.campaignId === campaignId) clearCampaign();
+        await refreshCampaigns();
+        setStatus("Deleted campaign " + campaignId + ".");
       } catch (error) {
         setStatus(error.message, true);
       }
@@ -457,6 +510,39 @@
       combat.innerHTML = summary.active_combat
         ? renderCombat(summary.active_combat)
         : "<p class=\"muted\">No active combat.</p>";
+    }
+
+    function renderCampaignList() {
+      if (!state.campaigns.length) {
+        campaignList.innerHTML = "<p class=\"muted\">No in-memory campaigns.</p>";
+        return;
+      }
+      campaignList.innerHTML = state.campaigns.map((campaign) => {
+        const active = campaign.id === state.campaignId ? "Active" : "Open";
+        return "<div class=\"item campaign-row\"><div><strong>" + escapeHtml(campaign.title)
+          + "</strong><p class=\"muted\">" + escapeHtml(campaign.id)
+          + " | Level " + escapeHtml(String(campaign.party_level))
+          + " | Characters " + escapeHtml(String(campaign.character_count))
+          + "</p></div><button type=\"button\" class=\"secondary\" data-load-campaign=\"" + escapeHtml(campaign.id)
+          + "\">" + active + "</button><button type=\"button\" class=\"secondary danger\" data-delete-campaign=\""
+          + escapeHtml(campaign.id) + "\">Delete</button></div>";
+      }).join("");
+      document.querySelectorAll("[data-load-campaign]").forEach((button) => {
+        button.addEventListener("click", () => loadCampaign(button.dataset.loadCampaign));
+      });
+      document.querySelectorAll("[data-delete-campaign]").forEach((button) => {
+        button.addEventListener("click", () => deleteCampaign(button.dataset.deleteCampaign));
+      });
+    }
+
+    function clearCampaign() {
+      state.campaignId = "";
+      state.summary = null;
+      locationLine.textContent = "Import an adventure to begin.";
+      metrics.innerHTML = "";
+      characters.innerHTML = "";
+      combat.innerHTML = "";
+      setControls(false);
     }
 
     function metric(label, value) {
