@@ -378,6 +378,31 @@ class AdventureRuntimeTests(unittest.TestCase):
         self.assertFalse(campaign.active_combat["resources"]["Leth"]["bonus_action"])
         self.assertEqual(campaign.characters["Leth"].spellcasting.available_slots(1), 1)
 
+    def test_healing_spell_restores_target_hp_and_syncs_combat(self) -> None:
+        campaign = campaign_from_adventure(AdventureDefinition(create_adventure_template("Moonlit Road")))
+        caster = _caster()
+        target = _scout()
+        target.current_hp = 5
+        campaign.add_character(caster)
+        campaign.add_character(target)
+        campaign.active_combat = {
+            "round": 1,
+            "turn": "Leth",
+            "initiative": [
+                {"name": "Leth", "initiative_total": 18, "armor_class": 16, "current_hp": 24},
+                {"name": "Kael", "initiative_total": 12, "armor_class": 14, "current_hp": 5},
+            ],
+            "resources": {"Leth": {"action": True, "bonus_action": True, "reaction": True, "movement": 30}},
+        }
+        runtime = AdventureRuntime(campaign, rng=random.Random(1))
+
+        handle_adventure_action(runtime, "cast cure wounds kael")
+        output = runtime.flush()
+
+        self.assertGreater(campaign.characters["Kael"].current_hp, 5)
+        self.assertEqual(campaign.active_combat["initiative"][1]["current_hp"], campaign.characters["Kael"].current_hp)
+        self.assertIn("Kael heals", output)
+
     def test_failed_spell_cast_does_not_spend_action(self) -> None:
         campaign = campaign_from_adventure(AdventureDefinition(create_adventure_template("Moonlit Road")))
         caster = _caster()
@@ -627,6 +652,7 @@ def _caster() -> Character:
             slots_by_level={1: 2},
             known_spells=[
                 Spell("Bless", 1, concentration=True),
+                Spell("Cure Wounds", 1),
                 Spell("Healing Word", 1, casting_time="1 bonus action"),
             ],
         ),

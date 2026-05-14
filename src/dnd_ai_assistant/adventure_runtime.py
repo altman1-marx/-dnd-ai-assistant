@@ -8,9 +8,10 @@ from .core.campaign import Campaign, Encounter, Location, NPC, Clue, SessionEven
 from .core.character import Character
 from .core.config import DEFAULT_RULES_CONFIG
 from .core.damage import adjusted_damage_amount
-from .core.dnd5e import RollMode, roll_attack, roll_d20_check
+from .core.dnd5e import RollMode, roll_attack, roll_d20_check, roll_damage
 from .core.initiative import Combatant
 from .core.skills import skill_label
+from .core.spells import Spell
 
 
 QUEST_COMPLETE_STATUS = "completed"
@@ -400,9 +401,8 @@ def cast_active_combat_spell(runtime: AdventureRuntime, spell_text: str) -> None
         runtime.narrate(f"DM: {caster.name} cannot cast spells.")
         return
 
-    try:
-        spell = caster.spellcasting.spell_named(spell_name)
-    except ValueError:
+    spell, target_text = _match_known_spell_with_target(caster, spell_name)
+    if spell is None:
         runtime.narrate(f"DM: {caster.name} does not know that spell.")
         return
 
@@ -421,10 +421,14 @@ def cast_active_combat_spell(runtime: AdventureRuntime, spell_text: str) -> None
 
     resources[resource_name] = False
     slot_text = ""
+    effective_level = None
     if cast_spell.level > 0:
         effective_level = slot_level if slot_level is not None else cast_spell.level
         slot_text = f" using a level {effective_level} slot"
+    effect_text = _apply_spell_effect(runtime, caster, cast_spell.name, effective_level, target_text)
     content = f"{caster.name} casts {cast_spell.name}{slot_text}, spending {resource_name.replace('_', ' ')}."
+    if effect_text:
+        content += f" {effect_text}"
     runtime.campaign.record_event(SessionEvent(actor="DM", content=content))
     runtime.narrate(f"DM: {content}")
 
@@ -641,6 +645,75 @@ def _parse_spell_cast_text(spell_text: str) -> tuple[str, int | None]:
         except ValueError:
             return spell_text.strip(), None
     return spell_text.strip(), None
+
+
+def _match_known_spell_with_target(caster: Character, spell_text: str) -> tuple[Spell | None, str]:
+    if caster.spellcasting is None:
+        return None, ""
+    normalized = spell_text.strip().lower()
+    for spell in caster.spellcasting.known_spells:
+        if spell.name.lower() == normalized:
+            return spell, ""
+    for spell in sorted(caster.spellcasting.known_spells, key=lambda item: len(item.name), reverse=True):
+        spell_name = spell.name.lower()
+        if normalized.startswith(spell_name + " "):
+            target = spell_text[len(spell.name) :].strip()
+            if target.lower().startswith("on "):
+                target = target[3:].strip()
+            return spell, target
+    return None, ""
+
+
+def _apply_spell_effect(
+    runtime: AdventureRuntime,
+    caster: Character,
+    spell_name: str,
+    slot_level: int | None,
+    target_text: str,
+) -> str:
+    normalized = spell_name.strip().lower()
+    if normalized not in {"cure wounds", "healing word"}:
+        return ""
+
+    target = _match_character(runtime.campaign, target_text) if target_text else caster
+    if target is None:
+        return "The healing has no valid target."
+
+    level = max(1, slot_level or 1)
+    die = "d4" if normalized == "healing word" else "d8"
+    modifier = caster.ability_modifier(caster.spellcasting.ability) if caster.spellcasting is not None else 0
+    healing = roll_damage(_signed_expression(f"{level}{die}", modifier), runtime.rng)
+    before = target.current_hp
+    target.heal(max(0, healing.total))
+    _sync_combatant_hp(runtime.campaign.active_combat, target.name, target.current_hp)
+    return f"{target.name} heals {target.current_hp - before} HP: {before} -> {target.current_hp}."
+
+
+def _signed_expression(base: str, modifier: int) -> str:
+    if modifier > 0:
+        return f"{base}+{modifier}"
+    if modifier < 0:
+        return f"{base}{modifier}"
+    return base
+
+
+def _match_character(campaign: Campaign, target: str) -> Character | None:
+    normalized = target.strip().lower()
+    if not normalized and len(campaign.characters) == 1:
+        return next(iter(campaign.characters.values()))
+    for character in campaign.characters.values():
+        name = character.name.lower()
+        if normalized == name or normalized in name:
+            return character
+    return None
+
+
+def _sync_combatant_hp(combat: dict | None, name: str, hp: int) -> None:
+    if combat is None:
+        return
+    combatant = _active_combatant(combat, name)
+    if combatant is not None:
+        combatant["current_hp"] = hp
 
 
 def _reset_turn_resources(combat: dict, name: str) -> None:
