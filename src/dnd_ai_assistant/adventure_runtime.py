@@ -16,6 +16,11 @@ from .core.spells import Spell
 
 QUEST_COMPLETE_STATUS = "completed"
 QUEST_FAILED_STATUS = "failed"
+SPELL_EFFECTS = {
+    "cure wounds": "healing",
+    "healing word": "healing",
+    "sacred flame": "sacred_flame",
+}
 
 
 DEFAULT_RUNTIME_ACTIONS = {
@@ -676,9 +681,10 @@ def _apply_spell_effect(
     target_text: str,
 ) -> str:
     normalized = spell_name.strip().lower()
-    if normalized not in {"cure wounds", "healing word"}:
-        if normalized == "sacred flame":
-            return _apply_sacred_flame(runtime, caster, target_text)
+    effect = SPELL_EFFECTS.get(normalized)
+    if effect == "sacred_flame":
+        return _apply_sacred_flame(runtime, caster, target_text)
+    if effect != "healing":
         return ""
 
     target = _match_character(runtime.campaign, target_text) if target_text else caster
@@ -697,9 +703,10 @@ def _apply_spell_effect(
 
 def _validate_spell_effect_target(runtime: AdventureRuntime, spell_name: str, target_text: str) -> str:
     normalized = spell_name.strip().lower()
-    if normalized in {"cure wounds", "healing word"} and target_text and _match_character(runtime.campaign, target_text) is None:
+    effect = SPELL_EFFECTS.get(normalized)
+    if effect == "healing" and target_text and _match_character(runtime.campaign, target_text) is None:
         return "The healing has no valid target."
-    if normalized == "sacred flame" and _active_combatant(runtime.campaign.active_combat or {}, target_text) is None:
+    if effect == "sacred_flame" and _active_combatant(runtime.campaign.active_combat or {}, target_text) is None:
         return "The spell has no valid target."
     return ""
 
