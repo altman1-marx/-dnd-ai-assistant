@@ -63,6 +63,9 @@ def create_handler(state: APIState) -> type[BaseHTTPRequestHandler]:
         def do_POST(self) -> None:
             self._handle("POST")
 
+        def do_OPTIONS(self) -> None:
+            self._write_json(200, {"ok": True})
+
         def log_message(self, format: str, *args) -> None:
             return
 
@@ -88,6 +91,9 @@ def create_handler(state: APIState) -> type[BaseHTTPRequestHandler]:
             body = json.dumps(payload, ensure_ascii=False).encode("utf-8")
             self.send_response(status)
             self.send_header("Content-Type", "application/json; charset=utf-8")
+            self.send_header("Access-Control-Allow-Origin", "*")
+            self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+            self.send_header("Access-Control-Allow-Headers", "Content-Type")
             self.send_header("Content-Length", str(len(body)))
             self.end_headers()
             self.wfile.write(body)

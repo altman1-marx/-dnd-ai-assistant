@@ -1,7 +1,18 @@
 import unittest
+from http.server import ThreadingHTTPServer
+from threading import Thread
+from urllib.request import Request, urlopen
 
 from dnd_ai_assistant.adventure import create_adventure_template
-from dnd_ai_assistant.api import APIError, APIState, campaign_state, import_adventure, route_request, run_campaign_action
+from dnd_ai_assistant.api import (
+    APIError,
+    APIState,
+    campaign_state,
+    create_handler,
+    import_adventure,
+    route_request,
+    run_campaign_action,
+)
 
 
 class APITests(unittest.TestCase):
@@ -61,6 +72,20 @@ class APITests(unittest.TestCase):
             route_request(APIState(), "POST", "/campaigns/import", {})
 
         self.assertEqual(context.exception.status, 400)
+
+    def test_http_handler_supports_cors_preflight(self) -> None:
+        server = ThreadingHTTPServer(("127.0.0.1", 0), create_handler(APIState()))
+        thread = Thread(target=server.handle_request)
+        thread.start()
+        try:
+            request = Request(f"http://127.0.0.1:{server.server_port}/campaigns/import", method="OPTIONS")
+            with urlopen(request, timeout=5) as response:
+                self.assertEqual(response.status, 200)
+                self.assertEqual(response.headers["Access-Control-Allow-Origin"], "*")
+                self.assertIn("OPTIONS", response.headers["Access-Control-Allow-Methods"])
+        finally:
+            server.server_close()
+            thread.join(timeout=5)
 
 
 if __name__ == "__main__":
