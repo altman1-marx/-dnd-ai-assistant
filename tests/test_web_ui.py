@@ -12,8 +12,11 @@ class WebUITests(unittest.TestCase):
         self.assertIn("/summary", html)
         self.assertIn("/actions", html)
         self.assertIn('id="adventureFile"', html)
+        self.assertIn('id="demoButton"', html)
         self.assertIn('id="actionInput"', html)
         self.assertIn("data-action=\"cast sacred flame sprite\"", html)
+        self.assertIn("DEMO_ADVENTURE", html)
+        self.assertIn("Lantern Sprite", html)
 
     def test_index_does_not_depend_on_external_assets(self) -> None:
         html = Path("web/index.html").read_text(encoding="utf-8")

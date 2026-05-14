@@ -232,10 +232,10 @@ python -m dnd_ai_assistant.demo serve-api --host 127.0.0.1 --port 8000
 ```
 
 2. 在浏览器中打开 `web/index.html`。
-3. 选择一个 adventure JSON 文件并导入。
+3. 点击 `Load Demo Adventure`，或选择一个 adventure JSON 文件并导入。
 4. 点击 `Add Sample Character`，然后用动作栏或输入框推进冒险。
 
-当前页面支持 API 健康检查、导入冒险、添加示例角色、查看摘要、发送 runtime action 和查看 transcript。它是前端骨架，不需要 Node.js 或构建步骤。
+当前页面支持 API 健康检查、内置 demo adventure、导入冒险、添加示例角色、查看摘要、发送 runtime action 和查看 transcript。它是前端骨架，不需要 Node.js 或构建步骤。
 
 ## 近期路线
 
