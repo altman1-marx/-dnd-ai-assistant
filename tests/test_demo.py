@@ -140,6 +140,31 @@ class DemoTests(unittest.TestCase):
         self.assertEqual(exit_code, 0)
         self.assertEqual(loaded.current_location_id, "loc_old_road")
 
+    def test_play_adventure_state_cli_can_add_sample_character(self) -> None:
+        campaign = campaign_from_adventure(AdventureDefinition(create_adventure_template("Moonlit Road")))
+        with tempfile.TemporaryDirectory() as tmp:
+            state_path = Path(tmp) / "campaign.json"
+            save_campaign(campaign, state_path)
+            argv = [
+                "dnd-ai-assistant",
+                "play-adventure-state",
+                str(state_path),
+                "--add-sample-character",
+                "--action",
+                "look",
+                "--save-state",
+                str(state_path),
+            ]
+
+            with patch("sys.argv", argv), patch("builtins.print"):
+                exit_code = main()
+            loaded = load_campaign(state_path)
+
+        self.assertEqual(exit_code, 0)
+        self.assertIn("Leth", loaded.characters)
+        self.assertIsNotNone(loaded.characters["Leth"].spellcasting)
+        self.assertEqual(loaded.characters["Leth"].spellcasting.available_slots(1), 4)
+
 
 if __name__ == "__main__":
     unittest.main()
