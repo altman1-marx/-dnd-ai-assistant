@@ -8,7 +8,7 @@ class WebUITests(unittest.TestCase):
 
         self.assertIn("/health", html)
         self.assertIn("/campaigns/import", html)
-        self.assertIn("/campaigns/demo", html)
+        self.assertIn("/campaigns/demo-with-character", html)
         self.assertIn("/sample-character", html)
         self.assertIn("/summary", html)
         self.assertIn("/actions", html)

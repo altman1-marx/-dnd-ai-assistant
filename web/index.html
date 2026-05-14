@@ -257,7 +257,7 @@
         <h2 id="import-title">Adventure</h2>
         <input id="adventureFile" type="file" accept="application/json,.json">
         <button id="importButton" type="button">Import Adventure</button>
-        <button id="demoButton" type="button" class="secondary">Load Demo Adventure</button>
+        <button id="demoButton" type="button" class="secondary">Start Demo</button>
         <button id="sampleButton" type="button" class="secondary" disabled>Add Sample Character</button>
       </section>
 
@@ -379,9 +379,9 @@
 
     async function loadDemoAdventure() {
       try {
-        const data = await api("POST", "/campaigns/demo", {});
+        const data = await api("POST", "/campaigns/demo-with-character", {});
         state.campaignId = data.campaign_id;
-        appendTranscript("System: Loaded demo adventure " + data.campaign.title + ".");
+        appendTranscript("System: Started demo adventure " + data.campaign.title + " with Leth.");
         setControls(true);
         await refreshSummary();
       } catch (error) {

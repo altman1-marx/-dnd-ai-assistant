@@ -42,6 +42,15 @@ def create_demo_campaign(state: APIState) -> dict:
     return import_adventure(state, sample_adventure_template())
 
 
+def create_playable_demo_campaign(state: APIState) -> dict:
+    response = create_demo_campaign(state)
+    add_sample_character(state, response["campaign_id"])
+    return {
+        "campaign_id": response["campaign_id"],
+        "campaign": campaign_to_dict(state.campaigns[response["campaign_id"]]),
+    }
+
+
 def campaign_state(state: APIState, campaign_id: str) -> dict:
     return campaign_to_dict(_campaign_or_404(state, campaign_id))
 
@@ -173,6 +182,8 @@ def route_request(state: APIState, method: str, path: str, body: dict) -> dict:
         return import_adventure(state, adventure)
     if method == "POST" and parts == ["campaigns", "demo"]:
         return create_demo_campaign(state)
+    if method == "POST" and parts == ["campaigns", "demo-with-character"]:
+        return create_playable_demo_campaign(state)
     if method == "GET" and len(parts) == 2 and parts[0] == "campaigns":
         return campaign_state(state, parts[1])
     if method == "GET" and len(parts) == 3 and parts[0] == "campaigns" and parts[2] == "summary":

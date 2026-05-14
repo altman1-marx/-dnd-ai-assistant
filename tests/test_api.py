@@ -12,6 +12,7 @@ from dnd_ai_assistant.api import (
     campaign_summary,
     create_handler,
     create_demo_campaign,
+    create_playable_demo_campaign,
     import_adventure,
     route_request,
     run_campaign_action,
@@ -36,6 +37,15 @@ class APITests(unittest.TestCase):
         monster = campaign.encounters["enc_lantern_sprites"].monsters[0]
         self.assertEqual(campaign.title, "Moonlit Road")
         self.assertEqual(monster.name, "Lantern Sprite")
+
+    def test_create_playable_demo_campaign_adds_sample_character(self) -> None:
+        state = APIState()
+
+        response = create_playable_demo_campaign(state)
+
+        campaign = state.campaigns[response["campaign_id"]]
+        self.assertIn("Leth", campaign.characters)
+        self.assertIn("Leth", response["campaign"]["characters"])
 
     def test_campaign_state_reports_missing_campaign(self) -> None:
         with self.assertRaises(APIError) as context:
@@ -120,17 +130,15 @@ class APITests(unittest.TestCase):
         imported = route_request(
             state,
             "POST",
-            "/campaigns/demo",
+            "/campaigns/demo-with-character",
             {},
         )
         campaign_id = imported["campaign_id"]
         fetched = route_request(state, "GET", f"/campaigns/{campaign_id}", {})
-        added = route_request(state, "POST", f"/campaigns/{campaign_id}/sample-character", {})
         summary = route_request(state, "GET", f"/campaigns/{campaign_id}/summary", {})
         action = route_request(state, "POST", f"/campaigns/{campaign_id}/actions", {"action": "inspect", "seed": 3})
 
         self.assertEqual(fetched["id"], campaign_id)
-        self.assertEqual(added["character"]["name"], "Leth")
         self.assertEqual(summary["characters"][0]["name"], "Leth")
         self.assertIn("Clue found", action["transcript"])
 
