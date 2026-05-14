@@ -12,6 +12,7 @@ from .adventure_map import render_mermaid_map, render_text_map
 from .adventure_review import render_adventure_review, render_adventure_review_json
 from .adventure_runtime import AdventureRuntime, describe_current_location, handle_adventure_action
 from .ai_provider import build_provider
+from .api import run_server
 from .core.character import Character
 from .core.dnd5e import RollMode
 from .core.initiative import Combatant, InitiativeTracker
@@ -446,6 +447,10 @@ def main() -> int:
         help="Run a non-interactive action. Repeat to script the adventure runtime.",
     )
 
+    serve_api = subparsers.add_parser("serve-api", help="Run the lightweight JSON API server.")
+    serve_api.add_argument("--host", default="127.0.0.1", help="Host interface to bind.")
+    serve_api.add_argument("--port", type=int, default=8000, help="Port to bind.")
+
     args = parser.parse_args()
     if args.command == "quickstart":
         print(run_quickstart(args.seed))
@@ -594,6 +599,10 @@ def main() -> int:
                 return 0
             if runtime.transcript:
                 print(runtime.flush())
+    if args.command == "serve-api":
+        print(f"Serving DND AI Assistant API on http://{args.host}:{args.port}")
+        run_server(args.host, args.port)
+        return 0
 
     parser.print_help()
     return 0

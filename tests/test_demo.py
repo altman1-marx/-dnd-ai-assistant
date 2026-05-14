@@ -210,6 +210,15 @@ class DemoTests(unittest.TestCase):
         self.assertLess(loaded.encounters["enc_lantern_sprites"].monsters[0].current_hp, 7)
         self.assertFalse(loaded.active_combat["resources"]["Leth"]["action"])
 
+    def test_serve_api_cli_starts_server(self) -> None:
+        argv = ["dnd-ai-assistant", "serve-api", "--host", "0.0.0.0", "--port", "8123"]
+
+        with patch("sys.argv", argv), patch("builtins.print"), patch("dnd_ai_assistant.demo.run_server") as server:
+            exit_code = main()
+
+        self.assertEqual(exit_code, 0)
+        server.assert_called_once_with("0.0.0.0", 8123)
+
 
 if __name__ == "__main__":
     unittest.main()
