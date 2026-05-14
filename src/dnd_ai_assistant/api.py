@@ -51,6 +51,28 @@ def create_playable_demo_campaign(state: APIState) -> dict:
     }
 
 
+def list_campaigns(state: APIState) -> dict:
+    return {
+        "campaigns": [
+            {
+                "id": campaign.id,
+                "title": campaign.title,
+                "party_level": campaign.party_level,
+                "current_location_id": campaign.current_location_id,
+                "character_count": len(campaign.characters),
+                "active_combat": campaign.active_combat is not None,
+            }
+            for campaign in state.campaigns.values()
+        ]
+    }
+
+
+def delete_campaign(state: APIState, campaign_id: str) -> dict:
+    _campaign_or_404(state, campaign_id)
+    del state.campaigns[campaign_id]
+    return {"deleted": True, "campaign_id": campaign_id}
+
+
 def campaign_state(state: APIState, campaign_id: str) -> dict:
     return campaign_to_dict(_campaign_or_404(state, campaign_id))
 
@@ -152,6 +174,9 @@ def create_handler(state: APIState) -> type[BaseHTTPRequestHandler]:
         def do_POST(self) -> None:
             self._handle("POST")
 
+        def do_DELETE(self) -> None:
+            self._handle("DELETE")
+
         def do_OPTIONS(self) -> None:
             self._write_json(200, {"ok": True})
 
@@ -181,7 +206,7 @@ def create_handler(state: APIState) -> type[BaseHTTPRequestHandler]:
             self.send_response(status)
             self.send_header("Content-Type", "application/json; charset=utf-8")
             self.send_header("Access-Control-Allow-Origin", "*")
-            self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+            self.send_header("Access-Control-Allow-Methods", "GET, POST, DELETE, OPTIONS")
             self.send_header("Access-Control-Allow-Headers", "Content-Type")
             self.send_header("Content-Length", str(len(body)))
             self.end_headers()
@@ -195,6 +220,8 @@ def route_request(state: APIState, method: str, path: str, body: dict) -> dict:
     parts = [part for part in parsed.path.split("/") if part]
     if method == "GET" and parts == ["health"]:
         return {"ok": True}
+    if method == "GET" and parts == ["campaigns"]:
+        return list_campaigns(state)
     if method == "POST" and parts == ["campaigns", "import"]:
         adventure = body.get("adventure")
         if not isinstance(adventure, dict):
@@ -206,6 +233,8 @@ def route_request(state: APIState, method: str, path: str, body: dict) -> dict:
         return create_playable_demo_campaign(state)
     if method == "GET" and len(parts) == 2 and parts[0] == "campaigns":
         return campaign_state(state, parts[1])
+    if method == "DELETE" and len(parts) == 2 and parts[0] == "campaigns":
+        return delete_campaign(state, parts[1])
     if method == "GET" and len(parts) == 3 and parts[0] == "campaigns" and parts[2] == "summary":
         return campaign_summary(state, parts[1])
     if method == "POST" and len(parts) == 3 and parts[0] == "campaigns" and parts[2] == "sample-character":

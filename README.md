@@ -177,6 +177,7 @@ python -m dnd_ai_assistant.demo serve-api --host 127.0.0.1 --port 8000
 
 ```text
 GET  /health
+GET  /campaigns
 POST /campaigns/import
 POST /campaigns/demo
 POST /campaigns/demo-with-character
@@ -184,6 +185,7 @@ GET  /campaigns/{campaign_id}
 GET  /campaigns/{campaign_id}/summary
 POST /campaigns/{campaign_id}/sample-character
 POST /campaigns/{campaign_id}/actions
+DELETE /campaigns/{campaign_id}
 ```
 
 导入冒险时提交：
@@ -220,6 +222,18 @@ GET /campaigns/{campaign_id}/summary
 ```text
 POST /campaigns/demo
 POST /campaigns/demo-with-character
+```
+
+列出当前内存中的 campaign：
+
+```text
+GET /campaigns
+```
+
+删除当前内存中的 campaign：
+
+```text
+DELETE /campaigns/{campaign_id}
 ```
 
 这层 API 目前是轻量桥接层，目标是先稳定前端需要的交互契约；后续可以替换为 FastAPI 或其他 Web 框架。

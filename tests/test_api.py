@@ -13,7 +13,9 @@ from dnd_ai_assistant.api import (
     create_handler,
     create_demo_campaign,
     create_playable_demo_campaign,
+    delete_campaign,
     import_adventure,
+    list_campaigns,
     route_request,
     run_campaign_action,
 )
@@ -46,6 +48,33 @@ class APITests(unittest.TestCase):
         campaign = state.campaigns[response["campaign_id"]]
         self.assertIn("Leth", campaign.characters)
         self.assertIn("Leth", response["campaign"]["characters"])
+
+    def test_list_campaigns_returns_memory_campaigns(self) -> None:
+        state = APIState()
+        first_id = create_demo_campaign(state)["campaign_id"]
+        second_id = create_playable_demo_campaign(state)["campaign_id"]
+
+        response = list_campaigns(state)
+
+        ids = [campaign["id"] for campaign in response["campaigns"]]
+        self.assertEqual(ids, [first_id, second_id])
+        self.assertEqual(response["campaigns"][0]["character_count"], 0)
+        self.assertEqual(response["campaigns"][1]["character_count"], 1)
+
+    def test_delete_campaign_removes_campaign(self) -> None:
+        state = APIState()
+        campaign_id = create_demo_campaign(state)["campaign_id"]
+
+        response = delete_campaign(state, campaign_id)
+
+        self.assertTrue(response["deleted"])
+        self.assertNotIn(campaign_id, state.campaigns)
+
+    def test_delete_campaign_reports_missing_campaign(self) -> None:
+        with self.assertRaises(APIError) as context:
+            delete_campaign(APIState(), "missing")
+
+        self.assertEqual(context.exception.status, 404)
 
     def test_campaign_state_reports_missing_campaign(self) -> None:
         with self.assertRaises(APIError) as context:
@@ -135,6 +164,7 @@ class APITests(unittest.TestCase):
         state = APIState()
 
         self.assertEqual(route_request(state, "GET", "/health", {}), {"ok": True})
+        self.assertEqual(route_request(state, "GET", "/campaigns", {})["campaigns"], [])
         imported = route_request(
             state,
             "POST",
@@ -142,6 +172,7 @@ class APITests(unittest.TestCase):
             {},
         )
         campaign_id = imported["campaign_id"]
+        self.assertEqual(len(route_request(state, "GET", "/campaigns", {})["campaigns"]), 1)
         fetched = route_request(state, "GET", f"/campaigns/{campaign_id}", {})
         summary = route_request(state, "GET", f"/campaigns/{campaign_id}/summary", {})
         action = route_request(state, "POST", f"/campaigns/{campaign_id}/actions", {"action": "inspect", "seed": 3})
@@ -149,6 +180,8 @@ class APITests(unittest.TestCase):
         self.assertEqual(fetched["id"], campaign_id)
         self.assertEqual(summary["characters"][0]["name"], "Leth")
         self.assertIn("Clue found", action["transcript"])
+        deleted = route_request(state, "DELETE", f"/campaigns/{campaign_id}", {})
+        self.assertTrue(deleted["deleted"])
 
     def test_route_request_reports_bad_import_body(self) -> None:
         with self.assertRaises(APIError) as context:
@@ -166,6 +199,7 @@ class APITests(unittest.TestCase):
                 self.assertEqual(response.status, 200)
                 self.assertEqual(response.headers["Access-Control-Allow-Origin"], "*")
                 self.assertIn("OPTIONS", response.headers["Access-Control-Allow-Methods"])
+                self.assertIn("DELETE", response.headers["Access-Control-Allow-Methods"])
         finally:
             server.server_close()
             thread.join(timeout=5)
