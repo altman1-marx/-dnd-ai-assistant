@@ -146,6 +146,7 @@ quit
 
 ## 代码结构
 
+- `src/dnd_ai_assistant/api.py`：零依赖 JSON API 雏形，供未来前端调用。
 - `src/dnd_ai_assistant/core/dice.py`：骰子表达式解析与投骰。
 - `src/dnd_ai_assistant/core/dnd5e.py`：D&D 5e 常用规则、检定、攻击与伤害。
 - `src/dnd_ai_assistant/core/damage.py`：伤害类型、抗性、易伤、免疫调整。
@@ -163,6 +164,42 @@ quit
 - `src/dnd_ai_assistant/adventure_map.py`：地点图可视化。
 - `src/dnd_ai_assistant/demo.py`：CLI 入口。
 - `tests/`：单元测试。
+
+## API 雏形
+
+当前 API 使用 Python 标准库 `http.server`，主要用于前端 MVP 前的接口验证：
+
+```powershell
+python -m dnd_ai_assistant.demo serve-api --host 127.0.0.1 --port 8000
+```
+
+已支持的端点：
+
+```text
+GET  /health
+POST /campaigns/import
+GET  /campaigns/{campaign_id}
+POST /campaigns/{campaign_id}/actions
+```
+
+导入冒险时提交：
+
+```json
+{
+  "adventure": {}
+}
+```
+
+执行动作时提交：
+
+```json
+{
+  "action": "inspect",
+  "seed": 1
+}
+```
+
+这层 API 目前是轻量桥接层，目标是先稳定前端需要的交互契约；后续可以替换为 FastAPI 或其他 Web 框架。
 
 ## 近期路线
 
