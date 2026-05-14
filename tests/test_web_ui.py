@@ -14,6 +14,8 @@ class WebUITests(unittest.TestCase):
         self.assertIn('id="adventureFile"', html)
         self.assertIn('id="demoButton"', html)
         self.assertIn('id="actionInput"', html)
+        self.assertIn("data-action=\"talk mayor\"", html)
+        self.assertIn("data-action=\"go old road\"", html)
         self.assertIn("data-action=\"cast sacred flame sprite\"", html)
         self.assertIn("DEMO_ADVENTURE", html)
         self.assertIn("Lantern Sprite", html)
