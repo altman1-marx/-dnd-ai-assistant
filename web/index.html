@@ -315,6 +315,7 @@
         <div class="row">
           <input id="actionInput" placeholder="Type an action, e.g. go old road" autocomplete="off" disabled>
           <button id="sendButton" type="button" disabled>Send</button>
+          <button id="dmButton" type="button" class="secondary" disabled>DM Suggest</button>
         </div>
       </section>
     </main>
@@ -364,6 +365,7 @@
     const rulesResults = document.getElementById("rulesResults");
     const actionInput = document.getElementById("actionInput");
     const sendButton = document.getElementById("sendButton");
+    const dmButton = document.getElementById("dmButton");
     const sampleButton = document.getElementById("sampleButton");
     const refreshButton = document.getElementById("refreshButton");
     const quickActions = document.querySelector(".quick-actions");
@@ -379,6 +381,7 @@
       if (event.key === "Enter") searchRules();
     });
     sendButton.addEventListener("click", sendTypedAction);
+    dmButton.addEventListener("click", suggestTypedAction);
     actionInput.addEventListener("keydown", (event) => {
       if (event.key === "Enter") sendTypedAction();
     });
@@ -483,6 +486,20 @@
       if (!action) return;
       actionInput.value = "";
       await runAction(action);
+    }
+
+    async function suggestTypedAction() {
+      const action = actionInput.value.trim();
+      if (!action || !state.campaignId) return;
+      try {
+        const data = await api("POST", "/campaigns/" + state.campaignId + "/dm-suggestion", { action });
+        appendTranscript("AI DM suggestion:\n" + data.suggestion.text);
+        if (data.suggestion.rules && data.suggestion.rules.length) renderRulesResults(data.suggestion.rules);
+        setStatus("AI DM suggestion ready.");
+      } catch (error) {
+        appendTranscript("System: Start the API with --ai-provider to enable AI DM suggestions.");
+        setStatus(error.message, true);
+      }
     }
 
     async function runAction(action) {
@@ -646,6 +663,7 @@
       refreshButton.disabled = !enabled;
       actionInput.disabled = !enabled;
       sendButton.disabled = !enabled;
+      dmButton.disabled = !enabled;
       document.querySelectorAll("[data-action]").forEach((button) => {
         button.disabled = !enabled;
       });
