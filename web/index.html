@@ -202,6 +202,11 @@
       gap: 8px;
     }
 
+    .rules-results {
+      display: grid;
+      gap: 8px;
+    }
+
     .campaign-list {
       display: grid;
       gap: 8px;
@@ -230,6 +235,11 @@
       display: block;
       font-size: 14px;
       margin-bottom: 4px;
+    }
+
+    .item .score {
+      color: var(--muted);
+      font-size: 12px;
     }
 
     .danger {
@@ -324,6 +334,13 @@
         <h2>Combat</h2>
         <div id="combat" class="list"></div>
       </section>
+
+      <section class="stack" aria-labelledby="rules-title">
+        <h2 id="rules-title">Rules</h2>
+        <input id="rulesQuery" placeholder="Search rules, e.g. grapple attack action" autocomplete="off">
+        <button id="rulesButton" type="button" class="secondary">Search Rules</button>
+        <div id="rulesResults" class="rules-results"></div>
+      </section>
     </aside>
   </div>
 
@@ -343,6 +360,8 @@
     const metrics = document.getElementById("metrics");
     const characters = document.getElementById("characters");
     const combat = document.getElementById("combat");
+    const rulesQuery = document.getElementById("rulesQuery");
+    const rulesResults = document.getElementById("rulesResults");
     const actionInput = document.getElementById("actionInput");
     const sendButton = document.getElementById("sendButton");
     const sampleButton = document.getElementById("sampleButton");
@@ -355,6 +374,10 @@
     document.getElementById("campaignsButton").addEventListener("click", refreshCampaigns);
     sampleButton.addEventListener("click", addSampleCharacter);
     refreshButton.addEventListener("click", refreshSummary);
+    document.getElementById("rulesButton").addEventListener("click", searchRules);
+    rulesQuery.addEventListener("keydown", (event) => {
+      if (event.key === "Enter") searchRules();
+    });
     sendButton.addEventListener("click", sendTypedAction);
     actionInput.addEventListener("keydown", (event) => {
       if (event.key === "Enter") sendTypedAction();
@@ -476,6 +499,22 @@
       }
     }
 
+    async function searchRules() {
+      const query = rulesQuery.value.trim();
+      if (!query) {
+        rulesResults.innerHTML = "<p class=\"muted\">Enter a rules query.</p>";
+        return;
+      }
+      try {
+        const data = await api("POST", "/rules/search", { query, limit: 5 });
+        renderRulesResults(data.results || []);
+        setStatus("Rules search returned " + (data.results || []).length + " result(s).");
+      } catch (error) {
+        rulesResults.innerHTML = "<p class=\"muted\">Start the API with --rules-corpus to enable rules search.</p>";
+        setStatus(error.message, true);
+      }
+    }
+
     async function api(method, path, body) {
       const options = {
         method,
@@ -574,6 +613,21 @@
           + " | HP " + escapeHtml(String(entry.current_hp || "?")) + "</p></div>";
       }).join(""));
       return lines.join("");
+    }
+
+    function renderRulesResults(results) {
+      if (!results.length) {
+        rulesResults.innerHTML = "<p class=\"muted\">No matching rules found.</p>";
+        return;
+      }
+      rulesResults.innerHTML = results.map((result) => {
+        const excerpt = result.text.length > 360 ? result.text.slice(0, 357).trim() + "..." : result.text;
+        return "<div class=\"item\"><strong>" + escapeHtml(result.section)
+          + "</strong><p class=\"score\">Score " + escapeHtml(String(result.score))
+          + " | " + escapeHtml(result.title) + "</p><p>"
+          + escapeHtml(excerpt) + "</p><p class=\"muted\">"
+          + escapeHtml(result.url) + "</p></div>";
+      }).join("");
     }
 
     function appendTranscript(text) {
