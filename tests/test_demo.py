@@ -236,7 +236,16 @@ class DemoTests(unittest.TestCase):
             exit_code = main()
 
         self.assertEqual(exit_code, 0)
-        server.assert_called_once_with("127.0.0.1", 8123, rules_corpus_path="rules.jsonl", ai_provider=None)
+        server.assert_called_once_with("127.0.0.1", 8123, rules_corpus_path="rules.jsonl", ai_provider=None, state_dir=None)
+
+    def test_serve_api_cli_accepts_state_dir(self) -> None:
+        argv = ["dnd-ai-assistant", "serve-api", "--host", "127.0.0.1", "--port", "8123", "--state-dir", ".dnd_ai/campaigns"]
+
+        with patch("sys.argv", argv), patch("builtins.print"), patch("dnd_ai_assistant.demo.run_server") as server:
+            exit_code = main()
+
+        self.assertEqual(exit_code, 0)
+        server.assert_called_once_with("127.0.0.1", 8123, state_dir=".dnd_ai/campaigns")
 
     def test_search_rules_cli_prints_results(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

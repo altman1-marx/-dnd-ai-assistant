@@ -427,6 +427,7 @@ def main() -> int:
     serve_api = subparsers.add_parser("serve-api", help="Run the lightweight JSON API server.")
     serve_api.add_argument("--host", default="127.0.0.1", help="Host interface to bind.")
     serve_api.add_argument("--port", type=int, default=8000, help="Port to bind.")
+    serve_api.add_argument("--state-dir", default=None, help="Optional directory for persistent campaign JSON state.")
     serve_api.add_argument("--rules-corpus", default=None, help="Optional JSONL rules corpus for /rules/search.")
     serve_api.add_argument("--ai-provider", choices=("none", "mock", "openai-compatible"), default="none")
     serve_api.add_argument("--mock-response", default=None, help="Path to mock provider text for API AI routes.")
@@ -618,12 +619,21 @@ def main() -> int:
                 model=args.model,
             )
         if args.rules_corpus:
-            run_server(args.host, args.port, rules_corpus_path=args.rules_corpus, ai_provider=ai_provider)
+            run_server(
+                args.host,
+                args.port,
+                rules_corpus_path=args.rules_corpus,
+                ai_provider=ai_provider,
+                state_dir=args.state_dir,
+            )
         else:
             if ai_provider is not None:
-                run_server(args.host, args.port, ai_provider=ai_provider)
+                run_server(args.host, args.port, ai_provider=ai_provider, state_dir=args.state_dir)
             else:
-                run_server(args.host, args.port)
+                if args.state_dir is not None:
+                    run_server(args.host, args.port, state_dir=args.state_dir)
+                else:
+                    run_server(args.host, args.port)
         return 0
     if args.command == "build-rules-corpus":
         if args.source == "srd":

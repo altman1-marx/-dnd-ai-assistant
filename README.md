@@ -123,6 +123,7 @@ python -m dnd_ai_assistant.demo generate-adventure `
 python -m dnd_ai_assistant.demo serve-api `
   --host 127.0.0.1 `
   --port 8000 `
+  --state-dir .dnd_ai\campaigns `
   --rules-corpus .dnd_ai\rules\srd_5_2_1.jsonl `
   --ai-provider openai-compatible
 ```
@@ -307,6 +308,8 @@ DELETE /campaigns/{campaign_id}
 ```
 
 这层 API 目前是轻量桥接层，目标是先稳定前端需要的交互契约；后续可以替换为 FastAPI 或其他 Web 框架。
+
+如果希望 API 重启后保留 campaign，可加 `--state-dir .dnd_ai\campaigns`。导入、添加示例角色、执行 runtime action 和删除 campaign 都会同步到这个本地目录。
 
 ## 前端 MVP
 

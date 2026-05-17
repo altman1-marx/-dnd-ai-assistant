@@ -1,4 +1,6 @@
 import unittest
+import tempfile
+from pathlib import Path
 from http.server import ThreadingHTTPServer
 from threading import Thread
 from urllib.request import Request, urlopen
@@ -16,12 +18,14 @@ from dnd_ai_assistant.api import (
     delete_campaign,
     import_adventure,
     list_campaigns,
+    load_campaigns_from_state_dir,
     route_request,
     run_campaign_action,
     search_rules,
     suggest_dm_turn,
 )
 from dnd_ai_assistant.ai_provider import MockProvider
+from dnd_ai_assistant.core.serialization import load_campaign
 from dnd_ai_assistant.rules_corpus import RuleChunk, RuleCorpus
 
 
@@ -93,6 +97,28 @@ class APITests(unittest.TestCase):
             delete_campaign(APIState(), "missing")
 
         self.assertEqual(context.exception.status, 404)
+
+    def test_state_dir_persists_import_action_and_delete(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            state = APIState(state_dir=Path(tmp))
+            campaign_id = import_adventure(state, create_adventure_template("Moonlit Road"))["campaign_id"]
+            path = Path(tmp) / f"{campaign_id}.json"
+
+            self.assertTrue(path.exists())
+            run_campaign_action(state, campaign_id, "go old road", seed=1)
+            self.assertEqual(load_campaign(path).current_location_id, "loc_old_road")
+            delete_campaign(state, campaign_id)
+            self.assertFalse(path.exists())
+
+    def test_load_campaigns_from_state_dir_reads_existing_json(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            writer_state = APIState(state_dir=Path(tmp))
+            campaign_id = import_adventure(writer_state, create_adventure_template("Moonlit Road"))["campaign_id"]
+            reader_state = APIState(state_dir=Path(tmp))
+
+            load_campaigns_from_state_dir(reader_state)
+
+        self.assertIn(campaign_id, reader_state.campaigns)
 
     def test_campaign_state_reports_missing_campaign(self) -> None:
         with self.assertRaises(APIError) as context:

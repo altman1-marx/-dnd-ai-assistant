@@ -4,6 +4,7 @@ import json
 import random
 from dataclasses import dataclass, field
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from pathlib import Path
 from typing import Callable
 from urllib.parse import urlparse
 
@@ -13,7 +14,7 @@ from .adventure_runtime import AdventureRuntime, handle_adventure_action
 from .ai_dm import generate_dm_suggestion
 from .ai_provider import AIProvider
 from .core.campaign import Campaign
-from .core.serialization import campaign_to_dict
+from .core.serialization import campaign_to_dict, load_campaign, save_campaign
 from .rules_corpus import RuleCorpus
 from .sample_data import sample_adventure_character, sample_adventure_template
 
@@ -23,6 +24,7 @@ class APIState:
     campaigns: dict[str, Campaign] = field(default_factory=dict)
     rules_corpus: RuleCorpus | None = None
     ai_provider: AIProvider | None = None
+    state_dir: Path | None = None
 
 
 class APIError(Exception):
@@ -37,6 +39,7 @@ def import_adventure(state: APIState, adventure_data: dict) -> dict:
     validate_adventure(adventure)
     campaign = campaign_from_adventure(adventure)
     state.campaigns[campaign.id] = campaign
+    _persist_campaign(state, campaign)
     return {
         "campaign_id": campaign.id,
         "campaign": campaign_to_dict(campaign),
@@ -75,6 +78,7 @@ def list_campaigns(state: APIState) -> dict:
 def delete_campaign(state: APIState, campaign_id: str) -> dict:
     _campaign_or_404(state, campaign_id)
     del state.campaigns[campaign_id]
+    _delete_persisted_campaign(state, campaign_id)
     return {"deleted": True, "campaign_id": campaign_id}
 
 
@@ -143,6 +147,7 @@ def add_sample_character(state: APIState, campaign_id: str) -> dict:
     if character.name in campaign.characters:
         raise APIError(400, f"Character already exists: {character.name}")
     campaign.add_character(character)
+    _persist_campaign(state, campaign)
     return {
         "campaign_id": campaign.id,
         "character": {
@@ -162,6 +167,7 @@ def run_campaign_action(state: APIState, campaign_id: str, action: str, seed: in
     event_count = len(campaign.session_log)
     runtime = AdventureRuntime(campaign, rng=random.Random(seed))
     keep_going = handle_adventure_action(runtime, action)
+    _persist_campaign(state, campaign)
     return {
         "campaign_id": campaign.id,
         "keep_going": keep_going,
@@ -295,9 +301,13 @@ def run_server(
     state: APIState | None = None,
     rules_corpus_path: str | None = None,
     ai_provider: AIProvider | None = None,
+    state_dir: str | None = None,
     server_factory: Callable[..., ThreadingHTTPServer] = ThreadingHTTPServer,
 ) -> None:
     api_state = state or APIState()
+    if state_dir is not None:
+        api_state.state_dir = Path(state_dir)
+        load_campaigns_from_state_dir(api_state)
     if rules_corpus_path is not None:
         api_state.rules_corpus = RuleCorpus.load_jsonl(rules_corpus_path)
     if ai_provider is not None:
@@ -306,11 +316,35 @@ def run_server(
     server.serve_forever()
 
 
+def load_campaigns_from_state_dir(state: APIState) -> None:
+    if state.state_dir is None:
+        return
+    state.state_dir.mkdir(parents=True, exist_ok=True)
+    for path in sorted(state.state_dir.glob("*.json")):
+        campaign = load_campaign(path)
+        state.campaigns[campaign.id] = campaign
+
+
 def _campaign_or_404(state: APIState, campaign_id: str) -> Campaign:
     campaign = state.campaigns.get(campaign_id)
     if campaign is None:
         raise APIError(404, "Campaign not found.")
     return campaign
+
+
+def _persist_campaign(state: APIState, campaign: Campaign) -> None:
+    if state.state_dir is None:
+        return
+    state.state_dir.mkdir(parents=True, exist_ok=True)
+    save_campaign(campaign, state.state_dir / f"{campaign.id}.json")
+
+
+def _delete_persisted_campaign(state: APIState, campaign_id: str) -> None:
+    if state.state_dir is None:
+        return
+    path = state.state_dir / f"{campaign_id}.json"
+    if path.exists():
+        path.unlink()
 
 
 def _active_combat_summary(campaign: Campaign) -> dict | None:
