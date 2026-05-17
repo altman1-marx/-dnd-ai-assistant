@@ -12,6 +12,7 @@
 - 冒险数据结构：地点、NPC、线索、任务、遭遇、结局、地点可达性和线索门校验。
 - AI 冒险生成：支持 mock provider 和 OpenAI-compatible provider，可接 OpenAI、DeepSeek、OpenRouter 或其他兼容 `/chat/completions` 的服务。
 - 冒险运行时：可导入冒险 JSON 为 campaign state，并通过 `look`、`inspect`、`talk`、`go`、`fight`、`combat`、`attack`、`cast`、`end turn` 等动作推进。
+- 规则检索 RAG：可从开放 SRD 构建本地 JSONL 语料，使用零依赖关键词/BM25 风格检索，为 AI DM 提供可追溯规则片段。
 - 序列化与审查：campaign JSON 存档、冒险质量 review、文本/mermaid 地图输出。
 - CI：GitHub Actions 自动运行测试。
 
@@ -86,6 +87,59 @@ python -m dnd_ai_assistant.demo generate-adventure `
 ```
 
 API key 只从环境变量读取，不从命令行参数读取，避免进入 shell 历史。
+
+## 规则检索 RAG
+
+第一版规则检索保持零外部依赖，默认使用开放 SRD 构建本地 JSONL 语料。生成的语料放在 `.dnd_ai/` 下，这个目录不会提交到仓库。
+
+```powershell
+python -m dnd_ai_assistant.demo build-rules-corpus `
+  --source srd `
+  --output .dnd_ai\rules\srd_5_2_1.jsonl
+```
+
+查询规则：
+
+```powershell
+python -m dnd_ai_assistant.demo search-rules `
+  --corpus .dnd_ai\rules\srd_5_2_1.jsonl `
+  --query "grapple attack action"
+```
+
+生成冒险时附加规则上下文：
+
+```powershell
+python -m dnd_ai_assistant.demo generate-adventure `
+  --provider openai-compatible `
+  --premise "A cursed tournament begins at midnight." `
+  --adventure-output adventures\generated.json `
+  --campaign-output output\generated_campaign.json `
+  --rules-corpus .dnd_ai\rules\srd_5_2_1.jsonl
+```
+
+启动 API 时启用规则检索：
+
+```powershell
+python -m dnd_ai_assistant.demo serve-api `
+  --host 127.0.0.1 `
+  --port 8000 `
+  --rules-corpus .dnd_ai\rules\srd_5_2_1.jsonl
+```
+
+规则搜索 API：
+
+```text
+POST /rules/search
+```
+
+```json
+{
+  "query": "grapple attack action",
+  "limit": 5
+}
+```
+
+项目默认不提交 PHB 或第三方规则书原文。若以后需要使用你本机的中文 PHB，可以在本地私有目录导入为 JSONL，但不要把受限内容提交到公开仓库。
 
 ## 运行冒险
 
@@ -162,6 +216,7 @@ quit
 - `src/dnd_ai_assistant/adventure_runtime.py`：通用冒险运行时。
 - `src/dnd_ai_assistant/adventure_review.py`：冒险质量审查。
 - `src/dnd_ai_assistant/adventure_map.py`：地点图可视化。
+- `src/dnd_ai_assistant/rules_corpus.py`：规则语料 JSONL、构建、检索与 prompt 上下文。
 - `src/dnd_ai_assistant/demo.py`：CLI 入口。
 - `tests/`：单元测试。
 
@@ -186,6 +241,7 @@ GET  /campaigns/{campaign_id}/summary
 POST /campaigns/{campaign_id}/sample-character
 POST /campaigns/{campaign_id}/actions
 DELETE /campaigns/{campaign_id}
+POST /rules/search
 ```
 
 导入冒险时提交：

@@ -12,12 +12,14 @@ from .adventure_importer import campaign_from_adventure
 from .adventure_runtime import AdventureRuntime, handle_adventure_action
 from .core.campaign import Campaign
 from .core.serialization import campaign_to_dict
+from .rules_corpus import RuleCorpus
 from .sample_data import sample_adventure_character, sample_adventure_template
 
 
 @dataclass
 class APIState:
     campaigns: dict[str, Campaign] = field(default_factory=dict)
+    rules_corpus: RuleCorpus | None = None
 
 
 class APIError(Exception):
@@ -166,6 +168,16 @@ def run_campaign_action(state: APIState, campaign_id: str, action: str, seed: in
     }
 
 
+def search_rules(state: APIState, query: str, limit: int = 5) -> dict:
+    if state.rules_corpus is None:
+        raise APIError(503, "Rules corpus is not configured.")
+    try:
+        results = state.rules_corpus.search(query, limit=limit)
+    except ValueError as exc:
+        raise APIError(400, str(exc)) from exc
+    return {"query": query, "results": [result.to_dict() for result in results]}
+
+
 def create_handler(state: APIState) -> type[BaseHTTPRequestHandler]:
     class DNDAPIHandler(BaseHTTPRequestHandler):
         def do_GET(self) -> None:
@@ -231,6 +243,10 @@ def route_request(state: APIState, method: str, path: str, body: dict) -> dict:
         return create_demo_campaign(state)
     if method == "POST" and parts == ["campaigns", "demo-with-character"]:
         return create_playable_demo_campaign(state)
+    if method == "POST" and parts == ["rules", "search"]:
+        query = str(body.get("query", ""))
+        limit = int(body.get("limit", 5))
+        return search_rules(state, query, limit=limit)
     if method == "GET" and len(parts) == 2 and parts[0] == "campaigns":
         return campaign_state(state, parts[1])
     if method == "DELETE" and len(parts) == 2 and parts[0] == "campaigns":
@@ -250,9 +266,12 @@ def run_server(
     host: str = "127.0.0.1",
     port: int = 8000,
     state: APIState | None = None,
+    rules_corpus_path: str | None = None,
     server_factory: Callable[..., ThreadingHTTPServer] = ThreadingHTTPServer,
 ) -> None:
     api_state = state or APIState()
+    if rules_corpus_path is not None:
+        api_state.rules_corpus = RuleCorpus.load_jsonl(rules_corpus_path)
     server = server_factory((host, port), create_handler(api_state))
     server.serve_forever()
 

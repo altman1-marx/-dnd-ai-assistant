@@ -8,6 +8,7 @@ from dnd_ai_assistant.adventure import AdventureDefinition, create_adventure_tem
 from dnd_ai_assistant.adventure_importer import campaign_from_adventure
 from dnd_ai_assistant.core.serialization import load_campaign, save_campaign
 from dnd_ai_assistant.demo import main, run_combat_demo, run_initiative_demo, run_quickstart, run_scripted_scene, summarize_state
+from dnd_ai_assistant.rules_corpus import RuleChunk, RuleCorpus
 from dnd_ai_assistant.scenario import create_scene_template
 
 
@@ -218,6 +219,57 @@ class DemoTests(unittest.TestCase):
 
         self.assertEqual(exit_code, 0)
         server.assert_called_once_with("0.0.0.0", 8123)
+
+    def test_serve_api_cli_accepts_rules_corpus(self) -> None:
+        argv = [
+            "dnd-ai-assistant",
+            "serve-api",
+            "--host",
+            "127.0.0.1",
+            "--port",
+            "8123",
+            "--rules-corpus",
+            "rules.jsonl",
+        ]
+
+        with patch("sys.argv", argv), patch("builtins.print"), patch("dnd_ai_assistant.demo.run_server") as server:
+            exit_code = main()
+
+        self.assertEqual(exit_code, 0)
+        server.assert_called_once_with("127.0.0.1", 8123, rules_corpus_path="rules.jsonl")
+
+    def test_search_rules_cli_prints_results(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "rules.jsonl"
+            RuleCorpus(
+                [
+                    RuleChunk(
+                        source_id="test",
+                        title="Test Rules",
+                        section="Grappling",
+                        text="A grapple uses the Attack action.",
+                        url="https://example.test/grapple",
+                        license="test",
+                    )
+                ]
+            ).save_jsonl(path)
+            argv = ["dnd-ai-assistant", "search-rules", "--corpus", str(path), "--query", "grapple"]
+
+            with patch("sys.argv", argv), patch("builtins.print") as mocked_print:
+                exit_code = main()
+
+        self.assertEqual(exit_code, 0)
+        self.assertIn("Grappling", mocked_print.call_args.args[0])
+
+    def test_build_rules_corpus_cli_uses_srd_builder(self) -> None:
+        argv = ["dnd-ai-assistant", "build-rules-corpus", "--source", "srd", "--output", "rules.jsonl"]
+
+        with patch("sys.argv", argv), patch("builtins.print"), patch("dnd_ai_assistant.demo.build_srd_corpus") as builder:
+            builder.return_value.chunks = [object(), object()]
+            exit_code = main()
+
+        self.assertEqual(exit_code, 0)
+        builder.assert_called_once()
 
 
 if __name__ == "__main__":

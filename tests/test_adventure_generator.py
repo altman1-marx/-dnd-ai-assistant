@@ -13,9 +13,11 @@ from dnd_ai_assistant.adventure_generator import (
     extract_json_object,
     generate_adventure_files,
     generate_adventure_text,
+    rules_context_for_request,
     write_adventure_from_model_text,
     write_campaign_from_model_text,
 )
+from dnd_ai_assistant.rules_corpus import RuleChunk, RuleCorpus
 
 
 class SequenceProvider:
@@ -48,6 +50,15 @@ class AdventureGeneratorTests(unittest.TestCase):
         self.assertIn('"runtime_actions"', prompt)
         self.assertIn('"dialogue"', prompt)
         self.assertIn("Party level: 2", prompt)
+
+    def test_build_adventure_prompt_can_include_rules_context(self) -> None:
+        prompt = build_adventure_prompt(
+            AdventureRequest(premise="A locked tower."),
+            rules_context="- Ability Checks: Roll a d20 and add a modifier.",
+        )
+
+        self.assertIn("Rules reference:", prompt)
+        self.assertIn("Ability Checks", prompt)
 
     def test_extract_json_object_accepts_markdown_fenced_json(self) -> None:
         raw = create_adventure_template("Moonlit Road")
@@ -113,6 +124,35 @@ class AdventureGeneratorTests(unittest.TestCase):
         self.assertEqual(adventure.campaign["title"], "Moonlit Road")
         self.assertEqual(campaign.title, "Moonlit Road")
         self.assertFalse(review.ok)
+
+    def test_generate_adventure_text_adds_rules_context_when_corpus_is_provided(self) -> None:
+        raw = create_adventure_template("Moonlit Road")
+        provider = SequenceProvider([json.dumps(raw)])
+        corpus = RuleCorpus(
+            [
+                RuleChunk(
+                    source_id="test",
+                    title="Test Rules",
+                    section="Ability Checks",
+                    text="Ability checks use a d20 and a difficulty class.",
+                    url="https://example.test/rules",
+                    license="test",
+                )
+            ]
+        )
+
+        text = generate_adventure_text(
+            AdventureRequest(premise="A puzzle asks for ability checks."),
+            provider,
+            rules_corpus=corpus,
+        )
+
+        self.assertEqual(json.loads(text)["campaign"]["title"], "Moonlit Road")
+        self.assertIn("Rules reference:", provider.prompts[0])
+        self.assertIn("Ability Checks", provider.prompts[0])
+
+    def test_rules_context_for_request_returns_none_without_corpus(self) -> None:
+        self.assertIsNone(rules_context_for_request(AdventureRequest(premise="A road."), None))
 
     def test_generate_adventure_text_repairs_invalid_first_response(self) -> None:
         raw = create_adventure_template("Moonlit Road")

@@ -18,10 +18,26 @@ from dnd_ai_assistant.api import (
     list_campaigns,
     route_request,
     run_campaign_action,
+    search_rules,
 )
+from dnd_ai_assistant.rules_corpus import RuleChunk, RuleCorpus
 
 
 class APITests(unittest.TestCase):
+    def _rules_corpus(self) -> RuleCorpus:
+        return RuleCorpus(
+            [
+                RuleChunk(
+                    source_id="test",
+                    title="Test Rules",
+                    section="Grappling",
+                    text="A grapple uses the Attack action.",
+                    url="https://example.test/grapple",
+                    license="test",
+                )
+            ]
+        )
+
     def test_import_adventure_stores_campaign(self) -> None:
         state = APIState()
 
@@ -160,6 +176,20 @@ class APITests(unittest.TestCase):
 
         self.assertEqual(context.exception.status, 400)
 
+    def test_search_rules_uses_configured_corpus(self) -> None:
+        state = APIState(rules_corpus=self._rules_corpus())
+
+        response = search_rules(state, "grapple", limit=1)
+
+        self.assertEqual(response["query"], "grapple")
+        self.assertEqual(response["results"][0]["section"], "Grappling")
+
+    def test_search_rules_reports_missing_corpus(self) -> None:
+        with self.assertRaises(APIError) as context:
+            search_rules(APIState(), "grapple")
+
+        self.assertEqual(context.exception.status, 503)
+
     def test_route_request_supports_health_import_state_and_action(self) -> None:
         state = APIState()
 
@@ -182,6 +212,10 @@ class APITests(unittest.TestCase):
         self.assertIn("Clue found", action["transcript"])
         deleted = route_request(state, "DELETE", f"/campaigns/{campaign_id}", {})
         self.assertTrue(deleted["deleted"])
+
+        state.rules_corpus = self._rules_corpus()
+        rules = route_request(state, "POST", "/rules/search", {"query": "grapple", "limit": 1})
+        self.assertEqual(rules["results"][0]["section"], "Grappling")
 
     def test_route_request_reports_bad_import_body(self) -> None:
         with self.assertRaises(APIError) as context:

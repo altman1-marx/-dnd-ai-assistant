@@ -5,6 +5,7 @@ venv/
 env/
 .env
 .env.local
+.dnd_ai/
 .DS_Store
 Thumbs.db
 node_modules/

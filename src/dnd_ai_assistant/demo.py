@@ -6,7 +6,7 @@ import sys
 from pathlib import Path
 
 from .adventure import load_adventure, validate_adventure, write_adventure_template
-from .adventure_generator import AdventureRequest, build_adventure_prompt, generate_adventure_files, write_adventure_from_model_text, write_campaign_from_model_text
+from .adventure_generator import AdventureRequest, build_adventure_prompt, generate_adventure_files, rules_context_for_request, write_adventure_from_model_text, write_campaign_from_model_text
 from .adventure_importer import campaign_from_adventure
 from .adventure_map import render_mermaid_map, render_text_map
 from .adventure_review import render_adventure_review, render_adventure_review_json
@@ -16,6 +16,7 @@ from .api import run_server
 from .core.dnd5e import RollMode
 from .core.initiative import Combatant, InitiativeTracker
 from .core.serialization import load_campaign, save_campaign
+from .rules_corpus import DEFAULT_SRD_URL, RuleCorpus, build_srd_corpus, format_search_results
 from .sample_data import sample_adventure_character
 from .scenario import DEFAULT_SCENE_PATH, SceneDefinition, load_scene, validate_scene_file, write_scene_template
 from .scene_engine import build_character, build_scene_session, describe_scene, handle_player_action
@@ -350,6 +351,7 @@ def main() -> int:
     adventure_prompt.add_argument("--tone", default="heroic fantasy mystery", help="Adventure tone.")
     adventure_prompt.add_argument("--combat-ratio", default="medium", help="Desired combat ratio.")
     adventure_prompt.add_argument("--puzzle-ratio", default="medium", help="Desired puzzle ratio.")
+    adventure_prompt.add_argument("--rules-corpus", default=None, help="Optional JSONL rules corpus for prompt context.")
 
     clean_adventure = subparsers.add_parser(
         "clean-adventure-output",
@@ -383,6 +385,7 @@ def main() -> int:
     generate_adventure.add_argument("--tone", default="heroic fantasy mystery", help="Adventure tone.")
     generate_adventure.add_argument("--combat-ratio", default="medium", help="Desired combat ratio.")
     generate_adventure.add_argument("--puzzle-ratio", default="medium", help="Desired puzzle ratio.")
+    generate_adventure.add_argument("--rules-corpus", default=None, help="Optional JSONL rules corpus for prompt context.")
     generate_adventure.add_argument("--review-format", choices=("text", "json"), default="text")
     generate_adventure.add_argument("--max-attempts", type=int, default=1, help="Retry with repair prompts on invalid model output.")
     generate_adventure.add_argument(
@@ -423,6 +426,17 @@ def main() -> int:
     serve_api = subparsers.add_parser("serve-api", help="Run the lightweight JSON API server.")
     serve_api.add_argument("--host", default="127.0.0.1", help="Host interface to bind.")
     serve_api.add_argument("--port", type=int, default=8000, help="Port to bind.")
+    serve_api.add_argument("--rules-corpus", default=None, help="Optional JSONL rules corpus for /rules/search.")
+
+    build_rules = subparsers.add_parser("build-rules-corpus", help="Build a local DND rules JSONL corpus.")
+    build_rules.add_argument("--source", choices=("srd",), default="srd", help="Rules source to build.")
+    build_rules.add_argument("--source-url", default=None, help="Override the SRD HTML source URL.")
+    build_rules.add_argument("--output", required=True, help="Where to write rules JSONL.")
+
+    search_rules = subparsers.add_parser("search-rules", help="Search a local DND rules JSONL corpus.")
+    search_rules.add_argument("--corpus", required=True, help="Path to rules JSONL corpus.")
+    search_rules.add_argument("--query", required=True, help="Rules question or search query.")
+    search_rules.add_argument("--limit", type=int, default=5, help="Maximum number of results.")
 
     args = parser.parse_args()
     if args.command == "quickstart":
@@ -485,7 +499,11 @@ def main() -> int:
             combat_ratio=args.combat_ratio,
             puzzle_ratio=args.puzzle_ratio,
         )
-        print(build_adventure_prompt(request))
+        rules_corpus = RuleCorpus.load_jsonl(args.rules_corpus) if args.rules_corpus else None
+        rules_context = None
+        if rules_corpus is not None:
+            rules_context = rules_context_for_request(request, rules_corpus)
+        print(build_adventure_prompt(request, rules_context))
         return 0
     if args.command == "clean-adventure-output":
         text = Path(args.input).read_text(encoding="utf-8")
@@ -528,6 +546,7 @@ def main() -> int:
             args.adventure_output,
             args.campaign_output,
             max_attempts=args.max_attempts,
+            rules_corpus=RuleCorpus.load_jsonl(args.rules_corpus) if args.rules_corpus else None,
         )
         print(f"Adventure OK: {args.adventure_output}")
         print(f"Campaign OK: {args.campaign_output}")
@@ -574,7 +593,20 @@ def main() -> int:
                 print(runtime.flush())
     if args.command == "serve-api":
         print(f"Serving DND AI Assistant API on http://{args.host}:{args.port}")
-        run_server(args.host, args.port)
+        if args.rules_corpus:
+            run_server(args.host, args.port, rules_corpus_path=args.rules_corpus)
+        else:
+            run_server(args.host, args.port)
+        return 0
+    if args.command == "build-rules-corpus":
+        if args.source == "srd":
+            corpus = build_srd_corpus(args.output, source_url=args.source_url or DEFAULT_SRD_URL)
+            print(f"Wrote rules corpus: {args.output}")
+            print(f"Chunks: {len(corpus.chunks)}")
+            return 0
+    if args.command == "search-rules":
+        corpus = RuleCorpus.load_jsonl(args.corpus)
+        print(format_search_results(corpus.search(args.query, limit=args.limit)))
         return 0
 
     parser.print_help()

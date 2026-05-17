@@ -10,6 +10,7 @@ from .adventure_review import AdventureReview, review_adventure
 from .ai_provider import AIProvider
 from .core.campaign import Campaign
 from .core.serialization import save_campaign
+from .rules_corpus import RuleCorpus, render_rules_context
 
 
 @dataclass(frozen=True)
@@ -33,9 +34,8 @@ class AdventureRequest:
             raise ValueError("Duration must be at least 1 hour.")
 
 
-def build_adventure_prompt(request: AdventureRequest) -> str:
-    return "\n".join(
-        [
+def build_adventure_prompt(request: AdventureRequest, rules_context: str | None = None) -> str:
+    lines = [
             "You are designing a short DND 5e adventure for an AI tabletop assistant.",
             "Return only valid JSON. Do not wrap it in markdown.",
             "The JSON must match this shape:",
@@ -59,8 +59,17 @@ def build_adventure_prompt(request: AdventureRequest) -> str:
             "- Use clue.check for clues that should require a DND 5e skill check; omit it for obvious clues.",
             "- Use stable ids like loc_old_chapel, npc_mayor_voss, clue_black_ash.",
             "- Make all location references point to existing location ids.",
-        ]
-    )
+    ]
+    if rules_context:
+        lines.extend(
+            [
+                "",
+                "Rules reference:",
+                "Use these rule excerpts as guidance. Do not quote them verbatim unless needed.",
+                rules_context,
+            ]
+        )
+    return "\n".join(lines)
 
 
 def adventure_from_model_text(text: str) -> AdventureDefinition:
@@ -95,18 +104,24 @@ def generate_adventure_files(
     adventure_path: str | Path,
     campaign_path: str | Path,
     max_attempts: int = 1,
+    rules_corpus: RuleCorpus | None = None,
 ) -> tuple[AdventureDefinition, Campaign, AdventureReview]:
-    model_text = generate_adventure_text(request, provider, max_attempts=max_attempts)
+    model_text = generate_adventure_text(request, provider, max_attempts=max_attempts, rules_corpus=rules_corpus)
     adventure, campaign = write_campaign_from_model_text(model_text, adventure_path, campaign_path)
     review = review_adventure(adventure)
     return adventure, campaign, review
 
 
-def generate_adventure_text(request: AdventureRequest, provider: AIProvider, max_attempts: int = 1) -> str:
+def generate_adventure_text(
+    request: AdventureRequest,
+    provider: AIProvider,
+    max_attempts: int = 1,
+    rules_corpus: RuleCorpus | None = None,
+) -> str:
     if max_attempts < 1:
         raise ValueError("max_attempts must be at least 1.")
 
-    prompt = build_adventure_prompt(request)
+    prompt = build_adventure_prompt(request, rules_context_for_request(request, rules_corpus))
     last_error: Exception | None = None
     for attempt in range(max_attempts):
         model_text = provider.generate_text(prompt)
@@ -120,6 +135,21 @@ def generate_adventure_text(request: AdventureRequest, provider: AIProvider, max
             prompt = build_repair_prompt(model_text, str(exc))
 
     raise ValueError(f"Model did not produce a valid adventure after {max_attempts} attempt(s): {last_error}")
+
+
+def rules_context_for_request(request: AdventureRequest, rules_corpus: RuleCorpus | None) -> str | None:
+    if rules_corpus is None:
+        return None
+    query = " ".join(
+        [
+            request.premise,
+            f"level {request.party_level}",
+            request.combat_ratio,
+            request.puzzle_ratio,
+            "encounter ability check saving throw adventuring combat",
+        ]
+    )
+    return render_rules_context(rules_corpus.search(query, limit=4))
 
 
 def build_repair_prompt(model_text: str, error_message: str) -> str:
