@@ -349,7 +349,8 @@
     const state = {
       campaignId: "",
       campaigns: [],
-      summary: null
+      summary: null,
+      transcriptEventIds: new Set()
     };
 
     const apiBase = document.getElementById("apiBase");
@@ -447,6 +448,7 @@
       try {
         state.summary = await api("GET", "/campaigns/" + state.campaignId + "/summary");
         renderSummary();
+        renderRecentEvents(state.summary.recent_events || []);
         setStatus("Campaign " + state.campaignId + " loaded.");
       } catch (error) {
         setStatus(error.message, true);
@@ -465,6 +467,10 @@
     }
 
     async function loadCampaign(campaignId) {
+      if (state.campaignId !== campaignId) {
+        transcript.textContent = "";
+        state.transcriptEventIds.clear();
+      }
       state.campaignId = campaignId;
       setControls(true);
       await refreshSummary();
@@ -510,6 +516,7 @@
           seed: 5
         });
         appendTranscript(data.transcript);
+        (data.messages || []).forEach((message) => state.transcriptEventIds.add(message.id));
         await refreshSummary();
       } catch (error) {
         setStatus(error.message, true);
@@ -594,6 +601,8 @@
     function clearCampaign() {
       state.campaignId = "";
       state.summary = null;
+      state.transcriptEventIds.clear();
+      transcript.textContent = "";
       locationLine.textContent = "Import an adventure to begin.";
       metrics.innerHTML = "";
       characters.innerHTML = "";
@@ -645,6 +654,14 @@
           + escapeHtml(excerpt) + "</p><p class=\"muted\">"
           + escapeHtml(result.url) + "</p></div>";
       }).join("");
+    }
+
+    function renderRecentEvents(events) {
+      events.forEach((event) => {
+        if (state.transcriptEventIds.has(event.id)) return;
+        state.transcriptEventIds.add(event.id);
+        appendTranscript(event.actor + ": " + event.content);
+      });
     }
 
     function appendTranscript(text) {

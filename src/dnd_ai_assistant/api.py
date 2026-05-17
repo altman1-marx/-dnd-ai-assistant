@@ -138,6 +138,7 @@ def campaign_summary(state: APIState, campaign_id: str) -> dict:
         "discovered_clue_count": sum(1 for clue in campaign.clues.values() if clue.discovered),
         "active_combat": active_combat,
         "available_actions": _available_actions(campaign, active_combat),
+        "recent_events": [_event_message(event) for event in campaign.session_log[-10:]],
     }
 
 

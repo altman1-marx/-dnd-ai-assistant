@@ -25,6 +25,7 @@ from dnd_ai_assistant.api import (
     suggest_dm_turn,
 )
 from dnd_ai_assistant.ai_provider import MockProvider
+from dnd_ai_assistant.core.campaign import SessionEvent
 from dnd_ai_assistant.core.serialization import load_campaign
 from dnd_ai_assistant.rules_corpus import RuleChunk, RuleCorpus
 
@@ -159,6 +160,7 @@ class APITests(unittest.TestCase):
         campaign_id = import_adventure(state, create_adventure_template("Moonlit Road"))["campaign_id"]
         add_sample_character(state, campaign_id)
         campaign = state.campaigns[campaign_id]
+        campaign.record_event(SessionEvent(actor="DM", content="The village waits."))
         campaign.active_combat = {
             "encounter_id": "enc_lantern_sprites",
             "round": 2,
@@ -180,6 +182,7 @@ class APITests(unittest.TestCase):
         self.assertEqual(summary["clue_count"], 1)
         self.assertEqual(summary["active_combat"]["round"], 2)
         self.assertEqual(summary["active_combat"]["current_resources"]["movement"], 20)
+        self.assertEqual(summary["recent_events"][-1]["content"], "The village waits.")
         self.assertIn("talk mayor", summary["available_actions"])
         self.assertIn("combat", summary["available_actions"])
 
