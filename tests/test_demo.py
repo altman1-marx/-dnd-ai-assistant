@@ -236,7 +236,7 @@ class DemoTests(unittest.TestCase):
             exit_code = main()
 
         self.assertEqual(exit_code, 0)
-        server.assert_called_once_with("127.0.0.1", 8123, rules_corpus_path="rules.jsonl")
+        server.assert_called_once_with("127.0.0.1", 8123, rules_corpus_path="rules.jsonl", ai_provider=None)
 
     def test_search_rules_cli_prints_results(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -270,6 +270,34 @@ class DemoTests(unittest.TestCase):
 
         self.assertEqual(exit_code, 0)
         builder.assert_called_once()
+
+    def test_dm_suggest_cli_uses_mock_provider(self) -> None:
+        campaign = campaign_from_adventure(AdventureDefinition(create_adventure_template("Moonlit Road")))
+        with tempfile.TemporaryDirectory() as tmp:
+            state_path = Path(tmp) / "campaign.json"
+            response_path = Path(tmp) / "response.txt"
+            save_campaign(campaign, state_path)
+            response_path.write_text("- Describe the moonlit road.", encoding="utf-8")
+            argv = [
+                "dnd-ai-assistant",
+                "dm-suggest",
+                str(state_path),
+                "--action",
+                "look down the road",
+                "--provider",
+                "mock",
+                "--mock-response",
+                str(response_path),
+                "--include-prompt",
+            ]
+
+            with patch("sys.argv", argv), patch("builtins.print") as mocked_print:
+                exit_code = main()
+
+        printed = "\n".join(str(call.args[0]) if call.args else "" for call in mocked_print.call_args_list)
+        self.assertEqual(exit_code, 0)
+        self.assertIn("moonlit road", printed)
+        self.assertIn("Prompt:", printed)
 
 
 if __name__ == "__main__":

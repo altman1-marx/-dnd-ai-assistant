@@ -19,7 +19,9 @@ from dnd_ai_assistant.api import (
     route_request,
     run_campaign_action,
     search_rules,
+    suggest_dm_turn,
 )
+from dnd_ai_assistant.ai_provider import MockProvider
 from dnd_ai_assistant.rules_corpus import RuleChunk, RuleCorpus
 
 
@@ -190,6 +192,27 @@ class APITests(unittest.TestCase):
 
         self.assertEqual(context.exception.status, 503)
 
+    def test_suggest_dm_turn_uses_provider_without_mutating_campaign(self) -> None:
+        state = APIState(ai_provider=MockProvider("- The road darkens."))
+        campaign_id = import_adventure(state, create_adventure_template("Moonlit Road"))["campaign_id"]
+        before_events = len(state.campaigns[campaign_id].session_log)
+
+        response = suggest_dm_turn(state, campaign_id, "look down the road", include_prompt=True)
+
+        self.assertEqual(response["campaign_id"], campaign_id)
+        self.assertIn("road darkens", response["suggestion"]["text"])
+        self.assertIn("prompt", response["suggestion"])
+        self.assertEqual(len(state.campaigns[campaign_id].session_log), before_events)
+
+    def test_suggest_dm_turn_reports_missing_provider(self) -> None:
+        state = APIState()
+        campaign_id = import_adventure(state, create_adventure_template("Moonlit Road"))["campaign_id"]
+
+        with self.assertRaises(APIError) as context:
+            suggest_dm_turn(state, campaign_id, "look")
+
+        self.assertEqual(context.exception.status, 503)
+
     def test_route_request_supports_health_import_state_and_action(self) -> None:
         state = APIState()
 
@@ -210,12 +233,21 @@ class APITests(unittest.TestCase):
         self.assertEqual(fetched["id"], campaign_id)
         self.assertEqual(summary["characters"][0]["name"], "Leth")
         self.assertIn("Clue found", action["transcript"])
-        deleted = route_request(state, "DELETE", f"/campaigns/{campaign_id}", {})
-        self.assertTrue(deleted["deleted"])
 
         state.rules_corpus = self._rules_corpus()
         rules = route_request(state, "POST", "/rules/search", {"query": "grapple", "limit": 1})
         self.assertEqual(rules["results"][0]["section"], "Grappling")
+
+        state.ai_provider = MockProvider("- Suggest a Perception check.")
+        suggestion = route_request(
+            state,
+            "POST",
+            f"/campaigns/{campaign_id}/dm-suggestion",
+            {"action": "inspect ash"},
+        )
+        self.assertIn("Perception", suggestion["suggestion"]["text"])
+        deleted = route_request(state, "DELETE", f"/campaigns/{campaign_id}", {})
+        self.assertTrue(deleted["deleted"])
 
     def test_route_request_reports_bad_import_body(self) -> None:
         with self.assertRaises(APIError) as context:

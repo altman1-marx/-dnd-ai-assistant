@@ -11,6 +11,7 @@ from .adventure_importer import campaign_from_adventure
 from .adventure_map import render_mermaid_map, render_text_map
 from .adventure_review import render_adventure_review, render_adventure_review_json
 from .adventure_runtime import AdventureRuntime, describe_current_location, handle_adventure_action
+from .ai_dm import generate_dm_suggestion
 from .ai_provider import build_provider
 from .api import run_server
 from .core.dnd5e import RollMode
@@ -427,6 +428,10 @@ def main() -> int:
     serve_api.add_argument("--host", default="127.0.0.1", help="Host interface to bind.")
     serve_api.add_argument("--port", type=int, default=8000, help="Port to bind.")
     serve_api.add_argument("--rules-corpus", default=None, help="Optional JSONL rules corpus for /rules/search.")
+    serve_api.add_argument("--ai-provider", choices=("none", "mock", "openai-compatible"), default="none")
+    serve_api.add_argument("--mock-response", default=None, help="Path to mock provider text for API AI routes.")
+    serve_api.add_argument("--base-url", default=None, help="Override DND_AI_BASE_URL for API AI routes.")
+    serve_api.add_argument("--model", default=None, help="Override DND_AI_MODEL for API AI routes.")
 
     build_rules = subparsers.add_parser("build-rules-corpus", help="Build a local DND rules JSONL corpus.")
     build_rules.add_argument("--source", choices=("srd",), default="srd", help="Rules source to build.")
@@ -437,6 +442,16 @@ def main() -> int:
     search_rules.add_argument("--corpus", required=True, help="Path to rules JSONL corpus.")
     search_rules.add_argument("--query", required=True, help="Rules question or search query.")
     search_rules.add_argument("--limit", type=int, default=5, help="Maximum number of results.")
+
+    dm_suggest = subparsers.add_parser("dm-suggest", help="Generate a DM suggestion for a saved campaign state.")
+    dm_suggest.add_argument("path", help="Path to a saved campaign JSON file.")
+    dm_suggest.add_argument("--action", required=True, help="Player action to advise on.")
+    dm_suggest.add_argument("--provider", choices=("mock", "openai-compatible"), default="openai-compatible")
+    dm_suggest.add_argument("--mock-response", default=None, help="Path to mock provider output text.")
+    dm_suggest.add_argument("--base-url", default=None, help="Override DND_AI_BASE_URL.")
+    dm_suggest.add_argument("--model", default=None, help="Override DND_AI_MODEL.")
+    dm_suggest.add_argument("--rules-corpus", default=None, help="Optional JSONL rules corpus.")
+    dm_suggest.add_argument("--include-prompt", action="store_true", help="Print the prompt after the suggestion.")
 
     args = parser.parse_args()
     if args.command == "quickstart":
@@ -593,10 +608,22 @@ def main() -> int:
                 print(runtime.flush())
     if args.command == "serve-api":
         print(f"Serving DND AI Assistant API on http://{args.host}:{args.port}")
+        ai_provider = None
+        if args.ai_provider != "none":
+            mock_response_text = Path(args.mock_response).read_text(encoding="utf-8") if args.mock_response else None
+            ai_provider = build_provider(
+                args.ai_provider,
+                mock_response_text=mock_response_text,
+                base_url=args.base_url,
+                model=args.model,
+            )
         if args.rules_corpus:
-            run_server(args.host, args.port, rules_corpus_path=args.rules_corpus)
+            run_server(args.host, args.port, rules_corpus_path=args.rules_corpus, ai_provider=ai_provider)
         else:
-            run_server(args.host, args.port)
+            if ai_provider is not None:
+                run_server(args.host, args.port, ai_provider=ai_provider)
+            else:
+                run_server(args.host, args.port)
         return 0
     if args.command == "build-rules-corpus":
         if args.source == "srd":
@@ -607,6 +634,27 @@ def main() -> int:
     if args.command == "search-rules":
         corpus = RuleCorpus.load_jsonl(args.corpus)
         print(format_search_results(corpus.search(args.query, limit=args.limit)))
+        return 0
+    if args.command == "dm-suggest":
+        mock_response_text = Path(args.mock_response).read_text(encoding="utf-8") if args.mock_response else None
+        provider = build_provider(
+            args.provider,
+            mock_response_text=mock_response_text,
+            base_url=args.base_url,
+            model=args.model,
+        )
+        suggestion = generate_dm_suggestion(
+            load_campaign(args.path),
+            args.action,
+            provider,
+            rules_corpus=RuleCorpus.load_jsonl(args.rules_corpus) if args.rules_corpus else None,
+            include_prompt=args.include_prompt,
+        )
+        print(suggestion.text)
+        if args.include_prompt:
+            print("")
+            print("Prompt:")
+            print(suggestion.prompt)
         return 0
 
     parser.print_help()

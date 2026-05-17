@@ -10,6 +10,8 @@ from urllib.parse import urlparse
 from .adventure import AdventureDefinition, validate_adventure
 from .adventure_importer import campaign_from_adventure
 from .adventure_runtime import AdventureRuntime, handle_adventure_action
+from .ai_dm import generate_dm_suggestion
+from .ai_provider import AIProvider
 from .core.campaign import Campaign
 from .core.serialization import campaign_to_dict
 from .rules_corpus import RuleCorpus
@@ -20,6 +22,7 @@ from .sample_data import sample_adventure_character, sample_adventure_template
 class APIState:
     campaigns: dict[str, Campaign] = field(default_factory=dict)
     rules_corpus: RuleCorpus | None = None
+    ai_provider: AIProvider | None = None
 
 
 class APIError(Exception):
@@ -178,6 +181,26 @@ def search_rules(state: APIState, query: str, limit: int = 5) -> dict:
     return {"query": query, "results": [result.to_dict() for result in results]}
 
 
+def suggest_dm_turn(state: APIState, campaign_id: str, action: str, include_prompt: bool = False) -> dict:
+    if state.ai_provider is None:
+        raise APIError(503, "AI provider is not configured.")
+    campaign = _campaign_or_404(state, campaign_id)
+    try:
+        suggestion = generate_dm_suggestion(
+            campaign,
+            action,
+            state.ai_provider,
+            rules_corpus=state.rules_corpus,
+            include_prompt=include_prompt,
+        )
+    except ValueError as exc:
+        raise APIError(400, str(exc)) from exc
+    return {
+        "campaign_id": campaign.id,
+        "suggestion": suggestion.to_dict(include_prompt=include_prompt),
+    }
+
+
 def create_handler(state: APIState) -> type[BaseHTTPRequestHandler]:
     class DNDAPIHandler(BaseHTTPRequestHandler):
         def do_GET(self) -> None:
@@ -259,6 +282,10 @@ def route_request(state: APIState, method: str, path: str, body: dict) -> dict:
         action = str(body.get("action", ""))
         seed = int(body.get("seed", 1))
         return run_campaign_action(state, parts[1], action, seed=seed)
+    if method == "POST" and len(parts) == 3 and parts[0] == "campaigns" and parts[2] == "dm-suggestion":
+        action = str(body.get("action", ""))
+        include_prompt = bool(body.get("include_prompt", False))
+        return suggest_dm_turn(state, parts[1], action, include_prompt=include_prompt)
     raise APIError(404, "Route not found.")
 
 
@@ -267,11 +294,14 @@ def run_server(
     port: int = 8000,
     state: APIState | None = None,
     rules_corpus_path: str | None = None,
+    ai_provider: AIProvider | None = None,
     server_factory: Callable[..., ThreadingHTTPServer] = ThreadingHTTPServer,
 ) -> None:
     api_state = state or APIState()
     if rules_corpus_path is not None:
         api_state.rules_corpus = RuleCorpus.load_jsonl(rules_corpus_path)
+    if ai_provider is not None:
+        api_state.ai_provider = ai_provider
     server = server_factory((host, port), create_handler(api_state))
     server.serve_forever()
 

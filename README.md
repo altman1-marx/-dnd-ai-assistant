@@ -123,7 +123,8 @@ python -m dnd_ai_assistant.demo generate-adventure `
 python -m dnd_ai_assistant.demo serve-api `
   --host 127.0.0.1 `
   --port 8000 `
-  --rules-corpus .dnd_ai\rules\srd_5_2_1.jsonl
+  --rules-corpus .dnd_ai\rules\srd_5_2_1.jsonl `
+  --ai-provider openai-compatible
 ```
 
 规则搜索 API：
@@ -171,6 +172,17 @@ python -m dnd_ai_assistant.demo play-adventure-state output\generated_campaign.j
 
 如果导入的冒险还没有玩家角色，可以加 `--add-sample-character` 自动加入一个可玩的 3 级牧师 Leth，包含 `Bless`、`Cure Wounds`、`Healing Word` 和 `Sacred Flame`。
 
+生成一个不修改状态的 AI DM 建议：
+
+```powershell
+python -m dnd_ai_assistant.demo dm-suggest output\generated_campaign.json `
+  --action "inspect the old altar" `
+  --provider openai-compatible `
+  --rules-corpus .dnd_ai\rules\srd_5_2_1.jsonl
+```
+
+`dm-suggest` 只生成叙述/裁定建议，不会写回 campaign state；实际检定、攻击、施法和移动仍由确定性 runtime action 执行。
+
 常用动作：
 
 ```text
@@ -217,6 +229,7 @@ quit
 - `src/dnd_ai_assistant/adventure_review.py`：冒险质量审查。
 - `src/dnd_ai_assistant/adventure_map.py`：地点图可视化。
 - `src/dnd_ai_assistant/rules_corpus.py`：规则语料 JSONL、构建、检索与 prompt 上下文。
+- `src/dnd_ai_assistant/ai_dm.py`：AI DM 建议生成，不直接修改 campaign state。
 - `src/dnd_ai_assistant/demo.py`：CLI 入口。
 - `tests/`：单元测试。
 
@@ -240,6 +253,7 @@ GET  /campaigns/{campaign_id}
 GET  /campaigns/{campaign_id}/summary
 POST /campaigns/{campaign_id}/sample-character
 POST /campaigns/{campaign_id}/actions
+POST /campaigns/{campaign_id}/dm-suggestion
 DELETE /campaigns/{campaign_id}
 POST /rules/search
 ```
