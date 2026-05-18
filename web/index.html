@@ -410,7 +410,7 @@
     document.getElementById("demoButton").addEventListener("click", loadDemoAdventure);
     document.getElementById("campaignsButton").addEventListener("click", refreshCampaigns);
     sampleButton.addEventListener("click", addSampleCharacter);
-    refreshButton.addEventListener("click", refreshSummary);
+    refreshButton.addEventListener("click", refreshCampaignView);
     clearTranscriptButton.addEventListener("click", clearTranscriptView);
     document.getElementById("rulesButton").addEventListener("click", searchRules);
     rulesQuery.addEventListener("keydown", (event) => {
@@ -459,7 +459,7 @@
         appendTranscriptMessage("System", "Imported " + data.campaign.title + ".");
         setControls(true);
         await refreshCampaigns();
-        await refreshSummary();
+        await refreshCampaignView();
       } catch (error) {
         setStatus(error.message, true);
       }
@@ -472,7 +472,7 @@
         appendTranscriptMessage("System", "Started demo adventure " + data.campaign.title + " with Leth.");
         setControls(true);
         await refreshCampaigns();
-        await refreshSummary();
+        await refreshCampaignView();
       } catch (error) {
         setStatus(error.message, true);
       }
@@ -483,10 +483,16 @@
       try {
         const data = await api("POST", "/campaigns/" + state.campaignId + "/sample-character", {});
         appendTranscriptMessage("System", "Added " + data.character.name + ".");
-        await refreshSummary();
+        await refreshCampaignView();
       } catch (error) {
         setStatus(error.message, true);
       }
+    }
+
+    async function refreshCampaignView() {
+      if (!state.campaignId) return;
+      await refreshCampaignLog();
+      await refreshSummary();
     }
 
     async function refreshSummary() {
@@ -519,8 +525,7 @@
       }
       state.campaignId = campaignId;
       setControls(true);
-      await refreshCampaignLog();
-      await refreshSummary();
+      await refreshCampaignView();
     }
 
     async function refreshCampaignLog() {

@@ -27,6 +27,7 @@ class WebUITests(unittest.TestCase):
         self.assertIn('id="actionInput"', html)
         self.assertIn('id="dmButton"', html)
         self.assertIn("renderCampaignList", html)
+        self.assertIn("refreshCampaignView", html)
         self.assertIn("refreshCampaignLog", html)
         self.assertIn("renderRecentEvents", html)
         self.assertIn("recent_events", html)
