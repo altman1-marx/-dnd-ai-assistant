@@ -57,10 +57,11 @@ class APITests(unittest.TestCase):
         self.assertEqual(response["campaign"]["title"], "Moonlit Road")
 
     def test_health_status_reports_enabled_features(self) -> None:
-        state = APIState(rules_corpus=self._rules_corpus(), ai_provider=MockProvider("ok"), state_dir=Path(".dnd_ai/campaigns"))
-        create_demo_campaign(state)
+        with tempfile.TemporaryDirectory() as tmp:
+            state = APIState(rules_corpus=self._rules_corpus(), ai_provider=MockProvider("ok"), state_dir=Path(tmp))
+            create_demo_campaign(state)
 
-        response = health_status(state)
+            response = health_status(state)
 
         self.assertTrue(response["ok"])
         self.assertEqual(response["campaign_count"], 1)
