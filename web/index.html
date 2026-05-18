@@ -150,6 +150,10 @@
       flex: 1;
     }
 
+    .compact-row {
+      flex: 0 0 auto;
+    }
+
     .toolbar {
       display: flex;
       flex-wrap: wrap;
@@ -328,7 +332,10 @@
           <h2>Table</h2>
           <p id="locationLine" class="muted">Import an adventure to begin.</p>
         </div>
-        <button id="refreshButton" type="button" class="secondary" disabled>Refresh</button>
+        <div class="row compact-row">
+          <button id="refreshButton" type="button" class="secondary" disabled>Refresh</button>
+          <button id="clearTranscriptButton" type="button" class="secondary" disabled>Clear Log View</button>
+        </div>
       </div>
 
       <section id="transcript" class="transcript" aria-live="polite"></section>
@@ -395,6 +402,7 @@
     const dmButton = document.getElementById("dmButton");
     const sampleButton = document.getElementById("sampleButton");
     const refreshButton = document.getElementById("refreshButton");
+    const clearTranscriptButton = document.getElementById("clearTranscriptButton");
     const quickActions = document.querySelector(".quick-actions");
 
     document.getElementById("healthButton").addEventListener("click", checkHealth);
@@ -403,6 +411,7 @@
     document.getElementById("campaignsButton").addEventListener("click", refreshCampaigns);
     sampleButton.addEventListener("click", addSampleCharacter);
     refreshButton.addEventListener("click", refreshSummary);
+    clearTranscriptButton.addEventListener("click", clearTranscriptView);
     document.getElementById("rulesButton").addEventListener("click", searchRules);
     rulesQuery.addEventListener("keydown", (event) => {
       if (event.key === "Enter") searchRules();
@@ -667,13 +676,17 @@
     function clearCampaign() {
       state.campaignId = "";
       state.summary = null;
-      state.transcriptEventIds.clear();
-      transcript.innerHTML = "";
+      clearTranscriptView();
       locationLine.textContent = "Import an adventure to begin.";
       metrics.innerHTML = "";
       characters.innerHTML = "";
       combat.innerHTML = "";
       setControls(false);
+    }
+
+    function clearTranscriptView() {
+      state.transcriptEventIds.clear();
+      transcript.innerHTML = "";
     }
 
     function metric(label, value) {
@@ -770,6 +783,7 @@
     function setControls(enabled) {
       sampleButton.disabled = !enabled;
       refreshButton.disabled = !enabled;
+      clearTranscriptButton.disabled = !enabled;
       actionInput.disabled = !enabled;
       sendButton.disabled = !enabled;
       dmButton.disabled = !enabled;
