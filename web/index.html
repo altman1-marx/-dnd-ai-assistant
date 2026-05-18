@@ -561,7 +561,7 @@
           renderRulesResults(data.suggestion.rules);
           appendTranscriptMessage("Rules", ruleSourceSummary(data.suggestion.rules));
         }
-        setStatus("AI DM suggestion ready.");
+        setStatus("AI DM suggestion ready. " + dmSuggestionMetadata(data.metadata));
       } catch (error) {
         appendTranscriptMessage("System", setupHint(error));
         setStatus(error.message, true);
@@ -740,6 +740,11 @@
 
     function ruleSourceSummary(rules) {
       return "Referenced: " + rules.map((rule) => rule.section).join(", ");
+    }
+
+    function dmSuggestionMetadata(metadata) {
+      if (!metadata) return "";
+      return metadata.used_rules ? "Rules referenced: " + String(metadata.rules_count) + "." : "No rules referenced.";
     }
 
     function renderRecentEvents(events) {

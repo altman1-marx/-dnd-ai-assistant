@@ -37,6 +37,7 @@ class WebUITests(unittest.TestCase):
         self.assertIn(".message", html)
         self.assertIn("renderRulesResults", html)
         self.assertIn("ruleSourceSummary", html)
+        self.assertIn("dmSuggestionMetadata", html)
         self.assertIn("searchRules", html)
         self.assertIn("suggestTypedAction", html)
         self.assertIn("apiErrorFromResponse", html)
