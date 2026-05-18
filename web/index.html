@@ -178,8 +178,34 @@
       background: #fff;
       padding: 14px;
       overflow: auto;
-      white-space: pre-wrap;
       line-height: 1.45;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .message {
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: #fff;
+      padding: 10px;
+      white-space: pre-wrap;
+    }
+
+    .message strong {
+      display: block;
+      color: var(--accent);
+      font-size: 12px;
+      margin-bottom: 4px;
+      text-transform: uppercase;
+    }
+
+    .message.system strong {
+      color: var(--muted);
+    }
+
+    .message.ai-dm strong {
+      color: var(--accent-2);
     }
 
     .quick-actions {
@@ -421,7 +447,7 @@
         const adventure = JSON.parse(await file.text());
         const data = await api("POST", "/campaigns/import", { adventure });
         state.campaignId = data.campaign_id;
-        appendTranscript("System: Imported " + data.campaign.title + ".");
+        appendTranscriptMessage("System", "Imported " + data.campaign.title + ".");
         setControls(true);
         await refreshCampaigns();
         await refreshSummary();
@@ -434,7 +460,7 @@
       try {
         const data = await api("POST", "/campaigns/demo-with-character", {});
         state.campaignId = data.campaign_id;
-        appendTranscript("System: Started demo adventure " + data.campaign.title + " with Leth.");
+        appendTranscriptMessage("System", "Started demo adventure " + data.campaign.title + " with Leth.");
         setControls(true);
         await refreshCampaigns();
         await refreshSummary();
@@ -447,7 +473,7 @@
       if (!state.campaignId) return;
       try {
         const data = await api("POST", "/campaigns/" + state.campaignId + "/sample-character", {});
-        appendTranscript("System: Added " + data.character.name + ".");
+        appendTranscriptMessage("System", "Added " + data.character.name + ".");
         await refreshSummary();
       } catch (error) {
         setStatus(error.message, true);
@@ -479,7 +505,7 @@
 
     async function loadCampaign(campaignId) {
       if (state.campaignId !== campaignId) {
-        transcript.textContent = "";
+        transcript.innerHTML = "";
         state.transcriptEventIds.clear();
       }
       state.campaignId = campaignId;
@@ -521,11 +547,11 @@
       if (!action || !state.campaignId) return;
       try {
         const data = await api("POST", "/campaigns/" + state.campaignId + "/dm-suggestion", { action });
-        appendTranscript("AI DM suggestion:\n" + data.suggestion.text);
+        appendTranscriptMessage("AI DM", data.suggestion.text);
         if (data.suggestion.rules && data.suggestion.rules.length) renderRulesResults(data.suggestion.rules);
         setStatus("AI DM suggestion ready.");
       } catch (error) {
-        appendTranscript("System: " + setupHint(error));
+        appendTranscriptMessage("System", setupHint(error));
         setStatus(error.message, true);
       }
     }
@@ -642,7 +668,7 @@
       state.campaignId = "";
       state.summary = null;
       state.transcriptEventIds.clear();
-      transcript.textContent = "";
+      transcript.innerHTML = "";
       locationLine.textContent = "Import an adventure to begin.";
       metrics.innerHTML = "";
       characters.innerHTML = "";
@@ -700,14 +726,40 @@
       events.forEach((event) => {
         if (state.transcriptEventIds.has(event.id)) return;
         state.transcriptEventIds.add(event.id);
-        appendTranscript(event.actor + ": " + event.content);
+        appendTranscriptMessage(event.actor, event.content);
       });
     }
 
     function appendTranscript(text) {
       if (!text) return;
-      transcript.textContent = (transcript.textContent ? transcript.textContent + "\n\n" : "") + text;
+      text.split(/\n\n+/).forEach((block) => {
+        const trimmed = block.trim();
+        if (!trimmed) return;
+        const parsed = trimmed.match(/^([^:\n]{1,32}):\s*([\s\S]*)$/);
+        if (parsed) {
+          appendTranscriptMessage(parsed[1], parsed[2]);
+        } else {
+          appendTranscriptMessage("Log", trimmed);
+        }
+      });
+    }
+
+    function appendTranscriptMessage(actor, content) {
+      if (!content) return;
+      const message = document.createElement("article");
+      message.className = "message " + actorClass(actor);
+      const label = document.createElement("strong");
+      label.textContent = actor;
+      const body = document.createElement("div");
+      body.textContent = content;
+      message.appendChild(label);
+      message.appendChild(body);
+      transcript.appendChild(message);
       transcript.scrollTop = transcript.scrollHeight;
+    }
+
+    function actorClass(actor) {
+      return actor.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
     }
 
     function setStatus(text, error) {
