@@ -273,6 +273,8 @@ class APITests(unittest.TestCase):
         self.assertEqual(response["campaign_id"], campaign_id)
         self.assertIn("road darkens", response["suggestion"]["text"])
         self.assertIn("prompt", response["suggestion"])
+        self.assertFalse(response["metadata"]["used_rules"])
+        self.assertTrue(response["metadata"]["included_prompt"])
         self.assertEqual(len(state.campaigns[campaign_id].session_log), before_events)
 
     def test_suggest_dm_turn_reports_missing_provider(self) -> None:

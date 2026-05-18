@@ -279,6 +279,8 @@ POST /rules/search
 }
 ```
 
+AI DM 建议返回 `suggestion` 和 `metadata`。它不会写入 campaign state，适合在真正执行 runtime action 前做叙述和规则建议预览。
+
 添加示例角色：
 
 ```text
