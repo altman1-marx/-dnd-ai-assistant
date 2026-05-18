@@ -46,6 +46,7 @@ class WebUITests(unittest.TestCase):
         self.assertIn("rules_corpus_not_configured", html)
         self.assertIn("featureLabel", html)
         self.assertIn("persistent_state", html)
+        self.assertIn("session_event_count", html)
         self.assertIn("available_actions", html)
         self.assertIn("renderQuickActions", html)
         self.assertIn("spellcasting.slots", html)

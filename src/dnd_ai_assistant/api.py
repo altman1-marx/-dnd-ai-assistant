@@ -78,6 +78,7 @@ def list_campaigns(state: APIState) -> dict:
                 "party_level": campaign.party_level,
                 "current_location_id": campaign.current_location_id,
                 "character_count": len(campaign.characters),
+                "session_event_count": len(campaign.session_log),
                 "active_combat": campaign.active_combat is not None,
             }
             for campaign in state.campaigns.values()
@@ -157,6 +158,7 @@ def campaign_summary(state: APIState, campaign_id: str) -> dict:
         "active_quest_count": sum(1 for quest in campaign.quests.values() if quest.status == "active"),
         "clue_count": len(campaign.clues),
         "discovered_clue_count": sum(1 for clue in campaign.clues.values() if clue.discovered),
+        "session_event_count": len(campaign.session_log),
         "active_combat": active_combat,
         "available_actions": _available_actions(campaign, active_combat),
         "recent_events": [_event_message(event) for event in campaign.session_log[-10:]],

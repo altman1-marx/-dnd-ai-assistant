@@ -100,6 +100,7 @@ class APITests(unittest.TestCase):
         self.assertEqual(ids, [first_id, second_id])
         self.assertEqual(response["campaigns"][0]["character_count"], 0)
         self.assertEqual(response["campaigns"][1]["character_count"], 1)
+        self.assertIn("session_event_count", response["campaigns"][0])
 
     def test_delete_campaign_removes_campaign(self) -> None:
         state = APIState()
@@ -199,6 +200,7 @@ class APITests(unittest.TestCase):
         self.assertTrue(any(spell["name"] == "Sacred Flame" for spell in summary["characters"][0]["spellcasting"]["known_spells"]))
         self.assertEqual(summary["quest_count"], 1)
         self.assertEqual(summary["clue_count"], 1)
+        self.assertGreater(summary["session_event_count"], 0)
         self.assertEqual(summary["active_combat"]["round"], 2)
         self.assertEqual(summary["active_combat"]["current_resources"]["movement"], 20)
         self.assertEqual(summary["recent_events"][-1]["content"], "The village waits.")

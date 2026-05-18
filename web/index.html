@@ -664,6 +664,7 @@
           + "</strong><p class=\"muted\">" + escapeHtml(campaign.id)
           + " | Level " + escapeHtml(String(campaign.party_level))
           + " | Characters " + escapeHtml(String(campaign.character_count))
+          + " | Events " + escapeHtml(String(campaign.session_event_count || 0))
           + "</p></div><button type=\"button\" class=\"secondary\" data-load-campaign=\"" + escapeHtml(campaign.id)
           + "\">" + active + "</button><button type=\"button\" class=\"secondary danger\" data-delete-campaign=\""
           + escapeHtml(campaign.id) + "\">Delete</button></div>";
