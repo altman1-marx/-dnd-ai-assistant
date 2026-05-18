@@ -1,8 +1,10 @@
 import unittest
 import tempfile
+import json
 from pathlib import Path
 from http.server import ThreadingHTTPServer
 from threading import Thread
+from urllib.error import HTTPError
 from urllib.request import Request, urlopen
 
 from dnd_ai_assistant.adventure import create_adventure_template
@@ -126,7 +128,9 @@ class APITests(unittest.TestCase):
             campaign_state(APIState(), "missing")
 
         self.assertEqual(context.exception.status, 404)
+        self.assertEqual(context.exception.code, "campaign_not_found")
         self.assertEqual(context.exception.message, "Campaign not found.")
+        self.assertEqual(context.exception.to_response()["error"]["code"], "campaign_not_found")
 
     def test_add_sample_character_updates_campaign(self) -> None:
         state = APIState()
@@ -295,6 +299,24 @@ class APITests(unittest.TestCase):
                 self.assertEqual(response.headers["Access-Control-Allow-Origin"], "*")
                 self.assertIn("OPTIONS", response.headers["Access-Control-Allow-Methods"])
                 self.assertIn("DELETE", response.headers["Access-Control-Allow-Methods"])
+        finally:
+            server.server_close()
+            thread.join(timeout=5)
+
+    def test_http_handler_returns_structured_error(self) -> None:
+        server = ThreadingHTTPServer(("127.0.0.1", 0), create_handler(APIState()))
+        thread = Thread(target=server.handle_request)
+        thread.start()
+        try:
+            request = Request(f"http://127.0.0.1:{server.server_port}/rules/search", data=b"{}", method="POST")
+            request.add_header("Content-Type", "application/json")
+            with self.assertRaises(HTTPError) as context:
+                urlopen(request, timeout=5)
+            body = json.loads(context.exception.read().decode("utf-8"))
+
+            self.assertEqual(context.exception.code, 503)
+            self.assertEqual(body["error"]["code"], "rules_corpus_not_configured")
+            self.assertEqual(body["error_message"], "Rules corpus is not configured.")
         finally:
             server.server_close()
             thread.join(timeout=5)

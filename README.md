@@ -311,6 +311,18 @@ DELETE /campaigns/{campaign_id}
 
 如果希望 API 重启后保留 campaign，可加 `--state-dir .dnd_ai\campaigns`。导入、添加示例角色、执行 runtime action 和删除 campaign 都会同步到这个本地目录。
 
+错误响应使用结构化格式：
+
+```json
+{
+  "error": {
+    "code": "rules_corpus_not_configured",
+    "message": "Rules corpus is not configured."
+  },
+  "error_message": "Rules corpus is not configured."
+}
+```
+
 ## 前端 MVP
 
 仓库包含一个零依赖的本地前端页面：

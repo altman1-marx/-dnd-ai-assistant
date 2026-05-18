@@ -28,10 +28,20 @@ class APIState:
 
 
 class APIError(Exception):
-    def __init__(self, status: int, message: str) -> None:
+    def __init__(self, status: int, message: str, code: str | None = None) -> None:
         super().__init__(message)
         self.status = status
         self.message = message
+        self.code = code or _default_error_code(status)
+
+    def to_response(self) -> dict:
+        return {
+            "error": {
+                "code": self.code,
+                "message": self.message,
+            },
+            "error_message": self.message,
+        }
 
 
 def import_adventure(state: APIState, adventure_data: dict) -> dict:
@@ -163,7 +173,7 @@ def add_sample_character(state: APIState, campaign_id: str) -> dict:
 
 def run_campaign_action(state: APIState, campaign_id: str, action: str, seed: int = 1) -> dict:
     if not action.strip():
-        raise APIError(400, "Action cannot be empty.")
+        raise APIError(400, "Action cannot be empty.", "empty_action")
     campaign = _campaign_or_404(state, campaign_id)
     event_count = len(campaign.session_log)
     runtime = AdventureRuntime(campaign, rng=random.Random(seed))
@@ -180,17 +190,17 @@ def run_campaign_action(state: APIState, campaign_id: str, action: str, seed: in
 
 def search_rules(state: APIState, query: str, limit: int = 5) -> dict:
     if state.rules_corpus is None:
-        raise APIError(503, "Rules corpus is not configured.")
+        raise APIError(503, "Rules corpus is not configured.", "rules_corpus_not_configured")
     try:
         results = state.rules_corpus.search(query, limit=limit)
     except ValueError as exc:
-        raise APIError(400, str(exc)) from exc
+        raise APIError(400, str(exc), "invalid_rules_query") from exc
     return {"query": query, "results": [result.to_dict() for result in results]}
 
 
 def suggest_dm_turn(state: APIState, campaign_id: str, action: str, include_prompt: bool = False) -> dict:
     if state.ai_provider is None:
-        raise APIError(503, "AI provider is not configured.")
+        raise APIError(503, "AI provider is not configured.", "ai_provider_not_configured")
     campaign = _campaign_or_404(state, campaign_id)
     try:
         suggestion = generate_dm_suggestion(
@@ -201,7 +211,7 @@ def suggest_dm_turn(state: APIState, campaign_id: str, action: str, include_prom
             include_prompt=include_prompt,
         )
     except ValueError as exc:
-        raise APIError(400, str(exc)) from exc
+        raise APIError(400, str(exc), "invalid_dm_suggestion_request") from exc
     return {
         "campaign_id": campaign.id,
         "suggestion": suggestion.to_dict(include_prompt=include_prompt),
@@ -230,9 +240,9 @@ def create_handler(state: APIState) -> type[BaseHTTPRequestHandler]:
                 response = route_request(state, method, self.path, self._read_json())
                 self._write_json(200, response)
             except APIError as exc:
-                self._write_json(exc.status, {"error": exc.message})
+                self._write_json(exc.status, exc.to_response())
             except Exception as exc:
-                self._write_json(500, {"error": str(exc)})
+                self._write_json(500, _error_response("internal_error", str(exc)))
 
         def _read_json(self) -> dict:
             length = int(self.headers.get("Content-Length", "0"))
@@ -241,7 +251,7 @@ def create_handler(state: APIState) -> type[BaseHTTPRequestHandler]:
             try:
                 return json.loads(self.rfile.read(length).decode("utf-8"))
             except json.JSONDecodeError as exc:
-                raise APIError(400, "Request body must be valid JSON.") from exc
+                raise APIError(400, "Request body must be valid JSON.", "invalid_json") from exc
 
         def _write_json(self, status: int, payload: dict) -> None:
             body = json.dumps(payload, ensure_ascii=False).encode("utf-8")
@@ -267,7 +277,7 @@ def route_request(state: APIState, method: str, path: str, body: dict) -> dict:
     if method == "POST" and parts == ["campaigns", "import"]:
         adventure = body.get("adventure")
         if not isinstance(adventure, dict):
-            raise APIError(400, "Missing adventure object.")
+            raise APIError(400, "Missing adventure object.", "missing_adventure")
         return import_adventure(state, adventure)
     if method == "POST" and parts == ["campaigns", "demo"]:
         return create_demo_campaign(state)
@@ -293,7 +303,7 @@ def route_request(state: APIState, method: str, path: str, body: dict) -> dict:
         action = str(body.get("action", ""))
         include_prompt = bool(body.get("include_prompt", False))
         return suggest_dm_turn(state, parts[1], action, include_prompt=include_prompt)
-    raise APIError(404, "Route not found.")
+    raise APIError(404, "Route not found.", "route_not_found")
 
 
 def run_server(
@@ -329,8 +339,28 @@ def load_campaigns_from_state_dir(state: APIState) -> None:
 def _campaign_or_404(state: APIState, campaign_id: str) -> Campaign:
     campaign = state.campaigns.get(campaign_id)
     if campaign is None:
-        raise APIError(404, "Campaign not found.")
+        raise APIError(404, "Campaign not found.", "campaign_not_found")
     return campaign
+
+
+def _error_response(code: str, message: str) -> dict:
+    return {
+        "error": {
+            "code": code,
+            "message": message,
+        },
+        "error_message": message,
+    }
+
+
+def _default_error_code(status: int) -> str:
+    if status == 400:
+        return "bad_request"
+    if status == 404:
+        return "not_found"
+    if status == 503:
+        return "service_unavailable"
+    return "api_error"
 
 
 def _persist_campaign(state: APIState, campaign: Campaign) -> None:

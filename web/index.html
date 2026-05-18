@@ -503,7 +503,7 @@
         if (data.suggestion.rules && data.suggestion.rules.length) renderRulesResults(data.suggestion.rules);
         setStatus("AI DM suggestion ready.");
       } catch (error) {
-        appendTranscript("System: Start the API with --ai-provider to enable AI DM suggestions.");
+        appendTranscript("System: " + setupHint(error));
         setStatus(error.message, true);
       }
     }
@@ -534,7 +534,7 @@
         renderRulesResults(data.results || []);
         setStatus("Rules search returned " + (data.results || []).length + " result(s).");
       } catch (error) {
-        rulesResults.innerHTML = "<p class=\"muted\">Start the API with --rules-corpus to enable rules search.</p>";
+        rulesResults.innerHTML = "<p class=\"muted\">" + escapeHtml(setupHint(error)) + "</p>";
         setStatus(error.message, true);
       }
     }
@@ -547,8 +547,26 @@
       if (body !== undefined) options.body = JSON.stringify(body);
       const response = await fetch(apiBase.value.replace(/\/$/, "") + path, options);
       const data = await response.json();
-      if (!response.ok) throw new Error(data.error || "Request failed.");
+      if (!response.ok) throw apiErrorFromResponse(data);
       return data;
+    }
+
+    function apiErrorFromResponse(data) {
+      const error = data.error || {};
+      const message = error.message || data.error_message || "Request failed.";
+      const wrapped = new Error(message);
+      wrapped.code = error.code || "request_failed";
+      return wrapped;
+    }
+
+    function setupHint(error) {
+      if (error.code === "ai_provider_not_configured") {
+        return "Start the API with --ai-provider openai-compatible to enable AI DM suggestions.";
+      }
+      if (error.code === "rules_corpus_not_configured") {
+        return "Start the API with --rules-corpus .dnd_ai\\rules\\srd_5_2_1.jsonl to enable rules search.";
+      }
+      return error.message;
     }
 
     function renderSummary() {
