@@ -35,6 +35,8 @@ class WebUITests(unittest.TestCase):
         self.assertIn("setupHint", html)
         self.assertIn("ai_provider_not_configured", html)
         self.assertIn("rules_corpus_not_configured", html)
+        self.assertIn("featureLabel", html)
+        self.assertIn("persistent_state", html)
         self.assertIn("available_actions", html)
         self.assertIn("renderQuickActions", html)
         self.assertIn("spellcasting.slots", html)

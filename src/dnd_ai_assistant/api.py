@@ -198,6 +198,18 @@ def search_rules(state: APIState, query: str, limit: int = 5) -> dict:
     return {"query": query, "results": [result.to_dict() for result in results]}
 
 
+def health_status(state: APIState) -> dict:
+    return {
+        "ok": True,
+        "campaign_count": len(state.campaigns),
+        "features": {
+            "rules_search": state.rules_corpus is not None,
+            "ai_dm": state.ai_provider is not None,
+            "persistent_state": state.state_dir is not None,
+        },
+    }
+
+
 def suggest_dm_turn(state: APIState, campaign_id: str, action: str, include_prompt: bool = False) -> dict:
     if state.ai_provider is None:
         raise APIError(503, "AI provider is not configured.", "ai_provider_not_configured")
@@ -271,7 +283,7 @@ def route_request(state: APIState, method: str, path: str, body: dict) -> dict:
     parsed = urlparse(path)
     parts = [part for part in parsed.path.split("/") if part]
     if method == "GET" and parts == ["health"]:
-        return {"ok": True}
+        return health_status(state)
     if method == "GET" and parts == ["campaigns"]:
         return list_campaigns(state)
     if method == "POST" and parts == ["campaigns", "import"]:

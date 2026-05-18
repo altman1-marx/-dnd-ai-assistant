@@ -394,7 +394,18 @@
     async function checkHealth() {
       try {
         const data = await api("GET", "/health");
-        setStatus(data.ok ? "API is ready." : "API responded without ok=true.");
+        if (data.ok) {
+          const features = data.features || {};
+          setStatus([
+            "API is ready.",
+            "Campaigns: " + String(data.campaign_count || 0),
+            "Rules: " + featureLabel(features.rules_search),
+            "AI DM: " + featureLabel(features.ai_dm),
+            "Persistence: " + featureLabel(features.persistent_state)
+          ].join("\n"));
+        } else {
+          setStatus("API responded without ok=true.");
+        }
       } catch (error) {
         setStatus(error.message, true);
       }
@@ -723,6 +734,10 @@
 
     function actionLabel(action) {
       return action.replace(/\b\w/g, (letter) => letter.toUpperCase());
+    }
+
+    function featureLabel(enabled) {
+      return enabled ? "enabled" : "disabled";
     }
 
     function escapeHtml(value) {

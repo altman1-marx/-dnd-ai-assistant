@@ -18,6 +18,7 @@ from dnd_ai_assistant.api import (
     create_demo_campaign,
     create_playable_demo_campaign,
     delete_campaign,
+    health_status,
     import_adventure,
     list_campaigns,
     load_campaigns_from_state_dir,
@@ -54,6 +55,18 @@ class APITests(unittest.TestCase):
 
         self.assertIn(response["campaign_id"], state.campaigns)
         self.assertEqual(response["campaign"]["title"], "Moonlit Road")
+
+    def test_health_status_reports_enabled_features(self) -> None:
+        state = APIState(rules_corpus=self._rules_corpus(), ai_provider=MockProvider("ok"), state_dir=Path(".dnd_ai/campaigns"))
+        create_demo_campaign(state)
+
+        response = health_status(state)
+
+        self.assertTrue(response["ok"])
+        self.assertEqual(response["campaign_count"], 1)
+        self.assertTrue(response["features"]["rules_search"])
+        self.assertTrue(response["features"]["ai_dm"])
+        self.assertTrue(response["features"]["persistent_state"])
 
     def test_create_demo_campaign_includes_combat_ready_encounter(self) -> None:
         state = APIState()
@@ -249,7 +262,7 @@ class APITests(unittest.TestCase):
     def test_route_request_supports_health_import_state_and_action(self) -> None:
         state = APIState()
 
-        self.assertEqual(route_request(state, "GET", "/health", {}), {"ok": True})
+        self.assertTrue(route_request(state, "GET", "/health", {})["ok"])
         self.assertEqual(route_request(state, "GET", "/campaigns", {})["campaigns"], [])
         imported = route_request(
             state,

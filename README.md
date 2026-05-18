@@ -259,6 +259,8 @@ DELETE /campaigns/{campaign_id}
 POST /rules/search
 ```
 
+`GET /health` 会返回已启用能力，例如 rules search、AI DM 和持久化状态，方便前端显示当前 API 的启动配置。
+
 导入冒险时提交：
 
 ```json
