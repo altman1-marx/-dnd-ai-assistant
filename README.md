@@ -252,6 +252,7 @@ POST /campaigns/demo
 POST /campaigns/demo-with-character
 GET  /campaigns/{campaign_id}
 GET  /campaigns/{campaign_id}/summary
+GET  /campaigns/{campaign_id}/log?limit=50
 POST /campaigns/{campaign_id}/sample-character
 POST /campaigns/{campaign_id}/actions
 POST /campaigns/{campaign_id}/dm-suggestion

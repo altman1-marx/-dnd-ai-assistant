@@ -12,6 +12,7 @@ from dnd_ai_assistant.api import (
     APIError,
     APIState,
     add_sample_character,
+    campaign_log,
     campaign_state,
     campaign_summary,
     create_handler,
@@ -204,6 +205,29 @@ class APITests(unittest.TestCase):
         self.assertIn("talk mayor", summary["available_actions"])
         self.assertIn("combat", summary["available_actions"])
 
+    def test_campaign_log_returns_limited_events(self) -> None:
+        state = APIState()
+        campaign_id = import_adventure(state, create_adventure_template("Moonlit Road"))["campaign_id"]
+        campaign = state.campaigns[campaign_id]
+        campaign.record_event(SessionEvent(actor="Player", content="First"))
+        campaign.record_event(SessionEvent(actor="DM", content="Second"))
+
+        response = campaign_log(state, campaign_id, limit=1)
+
+        self.assertEqual(response["campaign_id"], campaign_id)
+        self.assertEqual(len(response["events"]), 1)
+        self.assertEqual(response["events"][0]["content"], "Second")
+
+    def test_campaign_log_rejects_non_positive_limit(self) -> None:
+        state = APIState()
+        campaign_id = import_adventure(state, create_adventure_template("Moonlit Road"))["campaign_id"]
+
+        with self.assertRaises(APIError) as context:
+            campaign_log(state, campaign_id, limit=0)
+
+        self.assertEqual(context.exception.status, 400)
+        self.assertEqual(context.exception.code, "invalid_limit")
+
     def test_run_campaign_action_updates_campaign_and_returns_transcript(self) -> None:
         state = APIState()
         campaign_id = import_adventure(state, create_adventure_template("Moonlit Road"))["campaign_id"]
@@ -275,10 +299,12 @@ class APITests(unittest.TestCase):
         self.assertEqual(len(route_request(state, "GET", "/campaigns", {})["campaigns"]), 1)
         fetched = route_request(state, "GET", f"/campaigns/{campaign_id}", {})
         summary = route_request(state, "GET", f"/campaigns/{campaign_id}/summary", {})
+        log = route_request(state, "GET", f"/campaigns/{campaign_id}/log?limit=2", {})
         action = route_request(state, "POST", f"/campaigns/{campaign_id}/actions", {"action": "inspect", "seed": 3})
 
         self.assertEqual(fetched["id"], campaign_id)
         self.assertEqual(summary["characters"][0]["name"], "Leth")
+        self.assertLessEqual(len(log["events"]), 2)
         self.assertIn("Clue found", action["transcript"])
 
         state.rules_corpus = self._rules_corpus()

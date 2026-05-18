@@ -6,7 +6,7 @@ from dataclasses import dataclass, field
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Callable
-from urllib.parse import urlparse
+from urllib.parse import parse_qsl, urlparse
 
 from .adventure import AdventureDefinition, validate_adventure
 from .adventure_importer import campaign_from_adventure
@@ -94,6 +94,17 @@ def delete_campaign(state: APIState, campaign_id: str) -> dict:
 
 def campaign_state(state: APIState, campaign_id: str) -> dict:
     return campaign_to_dict(_campaign_or_404(state, campaign_id))
+
+
+def campaign_log(state: APIState, campaign_id: str, limit: int = 50) -> dict:
+    if limit < 1:
+        raise APIError(400, "limit must be at least 1.", "invalid_limit")
+    campaign = _campaign_or_404(state, campaign_id)
+    events = campaign.session_log[-limit:]
+    return {
+        "campaign_id": campaign.id,
+        "events": [_event_message(event) for event in events],
+    }
 
 
 def campaign_summary(state: APIState, campaign_id: str) -> dict:
@@ -281,6 +292,7 @@ def create_handler(state: APIState) -> type[BaseHTTPRequestHandler]:
 
 def route_request(state: APIState, method: str, path: str, body: dict) -> dict:
     parsed = urlparse(path)
+    query = _query_params(parsed.query)
     parts = [part for part in parsed.path.split("/") if part]
     if method == "GET" and parts == ["health"]:
         return health_status(state)
@@ -305,6 +317,8 @@ def route_request(state: APIState, method: str, path: str, body: dict) -> dict:
         return delete_campaign(state, parts[1])
     if method == "GET" and len(parts) == 3 and parts[0] == "campaigns" and parts[2] == "summary":
         return campaign_summary(state, parts[1])
+    if method == "GET" and len(parts) == 3 and parts[0] == "campaigns" and parts[2] == "log":
+        return campaign_log(state, parts[1], limit=_int_query(query, "limit", 50))
     if method == "POST" and len(parts) == 3 and parts[0] == "campaigns" and parts[2] == "sample-character":
         return add_sample_character(state, parts[1])
     if method == "POST" and len(parts) == 3 and parts[0] == "campaigns" and parts[2] == "actions":
@@ -392,6 +406,18 @@ def _delete_persisted_campaign(state: APIState, campaign_id: str) -> None:
 
 def _int_body(body: dict, key: str, default: int) -> int:
     value = body.get(key, default)
+    try:
+        return int(value)
+    except (TypeError, ValueError) as exc:
+        raise APIError(400, f"{key} must be an integer.", "invalid_integer") from exc
+
+
+def _query_params(query: str) -> dict[str, str]:
+    return {key: value for key, value in parse_qsl(query)}
+
+
+def _int_query(query: dict[str, str], key: str, default: int) -> int:
+    value = query.get(key, str(default))
     try:
         return int(value)
     except (TypeError, ValueError) as exc:
