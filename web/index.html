@@ -557,7 +557,10 @@
       try {
         const data = await api("POST", "/campaigns/" + state.campaignId + "/dm-suggestion", { action });
         appendTranscriptMessage("AI DM", data.suggestion.text);
-        if (data.suggestion.rules && data.suggestion.rules.length) renderRulesResults(data.suggestion.rules);
+        if (data.suggestion.rules && data.suggestion.rules.length) {
+          renderRulesResults(data.suggestion.rules);
+          appendTranscriptMessage("Rules", ruleSourceSummary(data.suggestion.rules));
+        }
         setStatus("AI DM suggestion ready.");
       } catch (error) {
         appendTranscriptMessage("System", setupHint(error));
@@ -733,6 +736,10 @@
           + escapeHtml(excerpt) + "</p><p class=\"muted\">"
           + escapeHtml(result.url) + "</p></div>";
       }).join("");
+    }
+
+    function ruleSourceSummary(rules) {
+      return "Referenced: " + rules.map((rule) => rule.section).join(", ");
     }
 
     function renderRecentEvents(events) {
