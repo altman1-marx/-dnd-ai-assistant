@@ -43,6 +43,7 @@ class WebUITests(unittest.TestCase):
         self.assertIn("apiErrorFromResponse", html)
         self.assertIn("setupHint", html)
         self.assertIn("ai_provider_not_configured", html)
+        self.assertIn("ai_provider_error", html)
         self.assertIn("rules_corpus_not_configured", html)
         self.assertIn("featureLabel", html)
         self.assertIn("persistent_state", html)

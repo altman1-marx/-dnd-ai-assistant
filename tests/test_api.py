@@ -34,6 +34,11 @@ from dnd_ai_assistant.core.serialization import load_campaign
 from dnd_ai_assistant.rules_corpus import RuleChunk, RuleCorpus
 
 
+class FailingProvider:
+    def generate_text(self, prompt: str) -> str:
+        raise RuntimeError("provider exploded")
+
+
 class APITests(unittest.TestCase):
     def _rules_corpus(self) -> RuleCorpus:
         return RuleCorpus(
@@ -287,6 +292,16 @@ class APITests(unittest.TestCase):
             suggest_dm_turn(state, campaign_id, "look")
 
         self.assertEqual(context.exception.status, 503)
+
+    def test_suggest_dm_turn_reports_provider_failure(self) -> None:
+        state = APIState(ai_provider=FailingProvider())
+        campaign_id = import_adventure(state, create_adventure_template("Moonlit Road"))["campaign_id"]
+
+        with self.assertRaises(APIError) as context:
+            suggest_dm_turn(state, campaign_id, "look")
+
+        self.assertEqual(context.exception.status, 502)
+        self.assertEqual(context.exception.code, "ai_provider_error")
 
     def test_route_request_supports_health_import_state_and_action(self) -> None:
         state = APIState()

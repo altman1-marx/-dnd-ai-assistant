@@ -626,6 +626,9 @@
       if (error.code === "rules_corpus_not_configured") {
         return "Start the API with --rules-corpus .dnd_ai\\rules\\srd_5_2_1.jsonl to enable rules search.";
       }
+      if (error.code === "ai_provider_error") {
+        return "The AI provider request failed. Check the model, base URL, API key, and provider quota.";
+      }
       return error.message;
     }
 

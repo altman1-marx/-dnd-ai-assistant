@@ -235,6 +235,8 @@ def suggest_dm_turn(state: APIState, campaign_id: str, action: str, include_prom
             rules_corpus=state.rules_corpus,
             include_prompt=include_prompt,
         )
+    except RuntimeError as exc:
+        raise APIError(502, str(exc), "ai_provider_error") from exc
     except ValueError as exc:
         raise APIError(400, str(exc), "invalid_dm_suggestion_request") from exc
     return {
