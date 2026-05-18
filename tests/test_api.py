@@ -302,6 +302,20 @@ class APITests(unittest.TestCase):
 
         self.assertEqual(context.exception.status, 400)
 
+    def test_route_request_reports_invalid_numeric_body_fields(self) -> None:
+        state = APIState(rules_corpus=self._rules_corpus())
+        campaign_id = import_adventure(state, create_adventure_template("Moonlit Road"))["campaign_id"]
+
+        with self.assertRaises(APIError) as seed_context:
+            route_request(state, "POST", f"/campaigns/{campaign_id}/actions", {"action": "look", "seed": "bad"})
+        with self.assertRaises(APIError) as limit_context:
+            route_request(state, "POST", "/rules/search", {"query": "grapple", "limit": "bad"})
+
+        self.assertEqual(seed_context.exception.status, 400)
+        self.assertEqual(seed_context.exception.code, "invalid_integer")
+        self.assertEqual(limit_context.exception.status, 400)
+        self.assertEqual(limit_context.exception.code, "invalid_integer")
+
     def test_http_handler_supports_cors_preflight(self) -> None:
         server = ThreadingHTTPServer(("127.0.0.1", 0), create_handler(APIState()))
         thread = Thread(target=server.handle_request)

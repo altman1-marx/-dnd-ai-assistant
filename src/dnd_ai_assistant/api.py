@@ -297,7 +297,7 @@ def route_request(state: APIState, method: str, path: str, body: dict) -> dict:
         return create_playable_demo_campaign(state)
     if method == "POST" and parts == ["rules", "search"]:
         query = str(body.get("query", ""))
-        limit = int(body.get("limit", 5))
+        limit = _int_body(body, "limit", 5)
         return search_rules(state, query, limit=limit)
     if method == "GET" and len(parts) == 2 and parts[0] == "campaigns":
         return campaign_state(state, parts[1])
@@ -309,7 +309,7 @@ def route_request(state: APIState, method: str, path: str, body: dict) -> dict:
         return add_sample_character(state, parts[1])
     if method == "POST" and len(parts) == 3 and parts[0] == "campaigns" and parts[2] == "actions":
         action = str(body.get("action", ""))
-        seed = int(body.get("seed", 1))
+        seed = _int_body(body, "seed", 1)
         return run_campaign_action(state, parts[1], action, seed=seed)
     if method == "POST" and len(parts) == 3 and parts[0] == "campaigns" and parts[2] == "dm-suggestion":
         action = str(body.get("action", ""))
@@ -388,6 +388,14 @@ def _delete_persisted_campaign(state: APIState, campaign_id: str) -> None:
     path = state.state_dir / f"{campaign_id}.json"
     if path.exists():
         path.unlink()
+
+
+def _int_body(body: dict, key: str, default: int) -> int:
+    value = body.get(key, default)
+    try:
+        return int(value)
+    except (TypeError, ValueError) as exc:
+        raise APIError(400, f"{key} must be an integer.", "invalid_integer") from exc
 
 
 def _active_combat_summary(campaign: Campaign) -> dict | None:
