@@ -341,7 +341,22 @@ web/index.html
 1. 启动 API：
 
 ```powershell
-python -m dnd_ai_assistant.demo serve-api --host 127.0.0.1 --port 8000
+python -m dnd_ai_assistant.demo serve-api --host 127.0.0.1 --port 8000 --state-dir .dnd_ai\campaigns
+```
+
+如果已经构建规则语料并配置了 AI provider，可以一次启用完整本地体验：
+
+```powershell
+$env:DND_AI_BASE_URL = "https://api.deepseek.com"
+$env:DND_AI_MODEL = "deepseek-chat"
+$env:DND_AI_API_KEY = "<your api key>"
+
+python -m dnd_ai_assistant.demo serve-api `
+  --host 127.0.0.1 `
+  --port 8000 `
+  --state-dir .dnd_ai\campaigns `
+  --rules-corpus .dnd_ai\rules\srd_5_2_1.jsonl `
+  --ai-provider openai-compatible
 ```
 
 2. 在浏览器中打开 `web/index.html`。
