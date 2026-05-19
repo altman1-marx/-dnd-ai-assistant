@@ -775,7 +775,9 @@
 
     function dmSuggestionMetadata(metadata) {
       if (!metadata) return "";
-      return metadata.used_rules ? "Rules referenced: " + String(metadata.rules_count) + "." : "No rules referenced.";
+      const action = metadata.action ? "Action: " + metadata.action + ". " : "";
+      const rules = metadata.used_rules ? "Rules referenced: " + String(metadata.rules_count) + "." : "No rules referenced.";
+      return action + rules;
     }
 
     function renderRecentEvents(events) {

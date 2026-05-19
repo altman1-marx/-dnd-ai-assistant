@@ -40,6 +40,7 @@ class WebUITests(unittest.TestCase):
         self.assertIn("renderRulesResults", html)
         self.assertIn("ruleSourceSummary", html)
         self.assertIn("dmSuggestionMetadata", html)
+        self.assertIn("Action: ", html)
         self.assertIn("searchRules", html)
         self.assertIn("suggestTypedAction", html)
         self.assertIn("runSuggestedAction", html)
