@@ -104,6 +104,8 @@ def campaign_log(state: APIState, campaign_id: str, limit: int = 50) -> dict:
     events = campaign.session_log[-limit:]
     return {
         "campaign_id": campaign.id,
+        "event_count": len(campaign.session_log),
+        "returned_count": len(events),
         "events": [_event_message(event) for event in events],
     }
 

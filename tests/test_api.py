@@ -225,6 +225,8 @@ class APITests(unittest.TestCase):
 
         self.assertEqual(response["campaign_id"], campaign_id)
         self.assertEqual(len(response["events"]), 1)
+        self.assertGreaterEqual(response["event_count"], 2)
+        self.assertEqual(response["returned_count"], 1)
         self.assertEqual(response["events"][0]["content"], "Second")
 
     def test_campaign_log_rejects_non_positive_limit(self) -> None:
