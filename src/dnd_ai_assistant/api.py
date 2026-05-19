@@ -243,6 +243,7 @@ def suggest_dm_turn(state: APIState, campaign_id: str, action: str, include_prom
         "campaign_id": campaign.id,
         "suggestion": suggestion.to_dict(include_prompt=include_prompt),
         "metadata": {
+            "action": action,
             "rules_count": len(suggestion.rules),
             "used_rules": bool(suggestion.rules),
             "included_prompt": include_prompt,

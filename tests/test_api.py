@@ -280,6 +280,7 @@ class APITests(unittest.TestCase):
         self.assertEqual(response["campaign_id"], campaign_id)
         self.assertIn("road darkens", response["suggestion"]["text"])
         self.assertIn("prompt", response["suggestion"])
+        self.assertEqual(response["metadata"]["action"], "look down the road")
         self.assertFalse(response["metadata"]["used_rules"])
         self.assertTrue(response["metadata"]["included_prompt"])
         self.assertEqual(len(state.campaigns[campaign_id].session_log), before_events)
