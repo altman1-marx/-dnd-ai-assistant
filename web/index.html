@@ -568,6 +568,7 @@
       try {
         const data = await api("POST", "/campaigns/" + state.campaignId + "/dm-suggestion", { action });
         state.pendingSuggestedAction = action;
+        actionInput.value = action;
         updateSuggestedActionControl();
         appendTranscriptMessage("AI DM", data.suggestion.text);
         if (data.suggestion.rules && data.suggestion.rules.length) {
