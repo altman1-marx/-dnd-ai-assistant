@@ -339,6 +339,11 @@
           <p id="locationLine" class="muted">Import an adventure to begin.</p>
         </div>
         <div class="row compact-row">
+          <select id="logVisibility" disabled aria-label="Log visibility">
+            <option value="">All Logs</option>
+            <option value="public">Public</option>
+            <option value="dm_only">DM Only</option>
+          </select>
           <button id="refreshButton" type="button" class="secondary" disabled>Refresh</button>
           <button id="clearTranscriptButton" type="button" class="secondary" disabled>Clear Log View</button>
         </div>
@@ -414,6 +419,7 @@
     const sampleButton = document.getElementById("sampleButton");
     const refreshButton = document.getElementById("refreshButton");
     const clearTranscriptButton = document.getElementById("clearTranscriptButton");
+    const logVisibility = document.getElementById("logVisibility");
     const quickActions = document.querySelector(".quick-actions");
 
     document.getElementById("healthButton").addEventListener("click", checkHealth);
@@ -423,6 +429,7 @@
     sampleButton.addEventListener("click", addSampleCharacter);
     refreshButton.addEventListener("click", refreshCampaignView);
     clearTranscriptButton.addEventListener("click", clearTranscriptView);
+    logVisibility.addEventListener("change", reloadCampaignLog);
     document.getElementById("rulesButton").addEventListener("click", searchRules);
     rulesQuery.addEventListener("keydown", (event) => {
       if (event.key === "Enter") searchRules();
@@ -513,7 +520,7 @@
       try {
         state.summary = await api("GET", "/campaigns/" + state.campaignId + "/summary");
         renderSummary();
-        renderRecentEvents(state.summary.recent_events || []);
+        if (!logVisibility.value) renderRecentEvents(state.summary.recent_events || []);
         setStatus(composeCampaignStatus());
       } catch (error) {
         setStatus(error.message, true);
@@ -544,13 +551,19 @@
     async function refreshCampaignLog() {
       if (!state.campaignId) return;
       try {
-        const data = await api("GET", "/campaigns/" + state.campaignId + "/log?limit=50");
+        const visibility = logVisibility.value ? "&visibility=" + encodeURIComponent(logVisibility.value) : "";
+        const data = await api("GET", "/campaigns/" + state.campaignId + "/log?limit=50" + visibility);
         renderRecentEvents(data.events || []);
-        state.logStatus = "Loaded " + String(data.returned_count || 0) + "/" + String(data.event_count || 0) + " log event(s).";
+        state.logStatus = composeLogStatus(data);
         setStatus(state.summary ? composeCampaignStatus() : state.logStatus);
       } catch (error) {
         setStatus(error.message, true);
       }
+    }
+
+    async function reloadCampaignLog() {
+      clearTranscriptView();
+      await refreshCampaignLog();
     }
 
     async function deleteCampaign(campaignId) {
@@ -859,10 +872,19 @@
       return lines.join("\n");
     }
 
+    function composeLogStatus(data) {
+      const returned = String(data.returned_count || 0);
+      const filtered = String(data.filtered_count ?? data.event_count ?? 0);
+      const total = String(data.event_count || 0);
+      const scope = data.visibility ? " " + data.visibility : "";
+      return "Loaded " + returned + "/" + filtered + scope + " log event(s), " + total + " total.";
+    }
+
     function setControls(enabled) {
       sampleButton.disabled = !enabled;
       refreshButton.disabled = !enabled;
       clearTranscriptButton.disabled = !enabled;
+      logVisibility.disabled = !enabled;
       actionInput.disabled = !enabled;
       sendButton.disabled = !enabled;
       dmButton.disabled = !enabled;
