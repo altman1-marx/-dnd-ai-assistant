@@ -349,6 +349,7 @@
           <input id="actionInput" placeholder="Type an action, e.g. go old road" autocomplete="off" disabled>
           <button id="sendButton" type="button" disabled>Send</button>
           <button id="dmButton" type="button" class="secondary" disabled>DM Suggest</button>
+          <button id="runSuggestedButton" type="button" class="secondary" disabled>Run Suggested</button>
         </div>
       </section>
     </main>
@@ -383,6 +384,7 @@
       campaignId: "",
       campaigns: [],
       summary: null,
+      pendingSuggestedAction: "",
       transcriptEventIds: new Set()
     };
 
@@ -400,6 +402,7 @@
     const actionInput = document.getElementById("actionInput");
     const sendButton = document.getElementById("sendButton");
     const dmButton = document.getElementById("dmButton");
+    const runSuggestedButton = document.getElementById("runSuggestedButton");
     const sampleButton = document.getElementById("sampleButton");
     const refreshButton = document.getElementById("refreshButton");
     const clearTranscriptButton = document.getElementById("clearTranscriptButton");
@@ -418,6 +421,7 @@
     });
     sendButton.addEventListener("click", sendTypedAction);
     dmButton.addEventListener("click", suggestTypedAction);
+    runSuggestedButton.addEventListener("click", runSuggestedAction);
     actionInput.addEventListener("keydown", (event) => {
       if (event.key === "Enter") sendTypedAction();
     });
@@ -562,6 +566,8 @@
       if (!action || !state.campaignId) return;
       try {
         const data = await api("POST", "/campaigns/" + state.campaignId + "/dm-suggestion", { action });
+        state.pendingSuggestedAction = action;
+        updateSuggestedActionControl();
         appendTranscriptMessage("AI DM", data.suggestion.text);
         if (data.suggestion.rules && data.suggestion.rules.length) {
           renderRulesResults(data.suggestion.rules);
@@ -574,8 +580,20 @@
       }
     }
 
+    async function runSuggestedAction() {
+      if (!state.pendingSuggestedAction) return;
+      const action = state.pendingSuggestedAction;
+      state.pendingSuggestedAction = "";
+      updateSuggestedActionControl();
+      await runAction(action);
+    }
+
     async function runAction(action) {
       if (!state.campaignId) return;
+      if (state.pendingSuggestedAction === action) {
+        state.pendingSuggestedAction = "";
+        updateSuggestedActionControl();
+      }
       try {
         const data = await api("POST", "/campaigns/" + state.campaignId + "/actions", {
           action,
@@ -689,6 +707,7 @@
     function clearCampaign() {
       state.campaignId = "";
       state.summary = null;
+      state.pendingSuggestedAction = "";
       clearTranscriptView();
       locationLine.textContent = "Import an adventure to begin.";
       metrics.innerHTML = "";
@@ -809,9 +828,14 @@
       actionInput.disabled = !enabled;
       sendButton.disabled = !enabled;
       dmButton.disabled = !enabled;
+      updateSuggestedActionControl();
       document.querySelectorAll("[data-action]").forEach((button) => {
         button.disabled = !enabled;
       });
+    }
+
+    function updateSuggestedActionControl() {
+      runSuggestedButton.disabled = !state.campaignId || !state.pendingSuggestedAction;
     }
 
     function renderQuickActions(actions) {
