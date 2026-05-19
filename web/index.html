@@ -204,6 +204,12 @@
       text-transform: uppercase;
     }
 
+    .message-meta {
+      color: var(--muted);
+      font-size: 11px;
+      margin-bottom: 6px;
+    }
+
     .message.system strong {
       color: var(--muted);
     }
@@ -793,7 +799,7 @@
       events.forEach((event) => {
         if (state.transcriptEventIds.has(event.id)) return;
         state.transcriptEventIds.add(event.id);
-        appendTranscriptMessage(event.actor, event.content);
+        appendTranscriptMessage(event.actor, event.content, eventMeta(event));
       });
     }
 
@@ -811,7 +817,7 @@
       });
     }
 
-    function appendTranscriptMessage(actor, content) {
+    function appendTranscriptMessage(actor, content, meta) {
       if (!content) return;
       const message = document.createElement("article");
       message.className = "message " + actorClass(actor);
@@ -820,13 +826,26 @@
       const body = document.createElement("div");
       body.textContent = content;
       message.appendChild(label);
+      if (meta) {
+        const metaLine = document.createElement("div");
+        metaLine.className = "message-meta";
+        metaLine.textContent = meta;
+        message.appendChild(metaLine);
+      }
       message.appendChild(body);
       transcript.appendChild(message);
       transcript.scrollTop = transcript.scrollHeight;
     }
 
+    function eventMeta(event) {
+      const parts = [];
+      if (event.visibility) parts.push(event.visibility);
+      if (event.created_at) parts.push(new Date(event.created_at).toLocaleString());
+      return parts.join(" | ");
+    }
+
     function actorClass(actor) {
-      return actor.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+      return String(actor || "log").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
     }
 
     function setStatus(text, error) {
