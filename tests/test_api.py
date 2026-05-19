@@ -208,6 +208,7 @@ class APITests(unittest.TestCase):
         self.assertEqual(summary["clue_count"], 1)
         self.assertGreater(summary["session_event_count"], 0)
         self.assertEqual(summary["active_combat"]["round"], 2)
+        self.assertEqual(summary["active_combat"]["combatant_count"], 1)
         self.assertEqual(summary["active_combat"]["current_resources"]["movement"], 20)
         self.assertEqual(summary["recent_events"][-1]["content"], "The village waits.")
         self.assertIn("talk mayor", summary["available_actions"])

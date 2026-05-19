@@ -445,6 +445,7 @@ def _active_combat_summary(campaign: Campaign) -> dict | None:
         "encounter_id": combat.get("encounter_id"),
         "round": combat.get("round", 1),
         "turn": combat.get("turn"),
+        "combatant_count": len(combat.get("initiative", [])),
         "initiative": [
             {
                 "name": entry.get("name"),

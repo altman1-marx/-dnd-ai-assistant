@@ -747,7 +747,8 @@
     function renderCombat(activeCombat) {
       const lines = [
         metric("Round", activeCombat.round),
-        metric("Turn", activeCombat.turn || "unknown")
+        metric("Turn", activeCombat.turn || "unknown"),
+        metric("Combatants", activeCombat.combatant_count || 0)
       ];
       const initiative = activeCombat.initiative || [];
       lines.push(initiative.map((entry) => {
