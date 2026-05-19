@@ -793,8 +793,19 @@
           + "</strong><p class=\"score\">Score " + escapeHtml(String(result.score))
           + " | " + escapeHtml(result.title) + "</p><p>"
           + escapeHtml(excerpt) + "</p><p class=\"muted\">"
-          + escapeHtml(result.url) + "</p></div>";
+          + escapeHtml(result.url) + "</p><button type=\"button\" class=\"secondary\" data-use-rule=\""
+          + escapeHtml(result.section) + "\">Use</button></div>";
       }).join("");
+      document.querySelectorAll("[data-use-rule]").forEach((button) => {
+        button.addEventListener("click", () => useRuleResult(button.dataset.useRule));
+      });
+    }
+
+    function useRuleResult(section) {
+      const action = state.lastRulesQuery || section || "";
+      actionInput.value = action;
+      actionInput.focus();
+      setStatus("Loaded rule query into the action box.");
     }
 
     function ruleSourceSummary(rules) {
