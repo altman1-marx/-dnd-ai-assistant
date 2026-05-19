@@ -75,6 +75,7 @@ class WebUITests(unittest.TestCase):
         self.assertIn("session_event_count", html)
         self.assertIn("String(value ?? \"\")", html)
         self.assertIn("current_location_id", html)
+        self.assertIn("current_location_name", html)
         self.assertIn("available_actions", html)
         self.assertIn("renderQuickActions", html)
         self.assertIn("spellcasting.slots", html)

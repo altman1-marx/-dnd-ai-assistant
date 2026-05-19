@@ -105,6 +105,7 @@ class APITests(unittest.TestCase):
         self.assertEqual(ids, [first_id, second_id])
         self.assertEqual(response["campaigns"][0]["character_count"], 0)
         self.assertEqual(response["campaigns"][1]["character_count"], 1)
+        self.assertEqual(response["campaigns"][0]["current_location_name"], "Village Square")
         self.assertIn("session_event_count", response["campaigns"][0])
 
     def test_delete_campaign_removes_campaign(self) -> None:

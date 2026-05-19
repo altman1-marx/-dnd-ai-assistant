@@ -77,6 +77,7 @@ def list_campaigns(state: APIState) -> dict:
                 "title": campaign.title,
                 "party_level": campaign.party_level,
                 "current_location_id": campaign.current_location_id,
+                "current_location_name": _campaign_location_name(campaign),
                 "character_count": len(campaign.characters),
                 "session_event_count": len(campaign.session_log),
                 "active_combat": campaign.active_combat is not None,
@@ -391,6 +392,13 @@ def _campaign_or_404(state: APIState, campaign_id: str) -> Campaign:
     if campaign is None:
         raise APIError(404, "Campaign not found.", "campaign_not_found")
     return campaign
+
+
+def _campaign_location_name(campaign: Campaign) -> str | None:
+    if campaign.current_location_id is None:
+        return None
+    location = campaign.locations.get(campaign.current_location_id)
+    return None if location is None else location.name
 
 
 def _error_response(code: str, message: str) -> dict:

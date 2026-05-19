@@ -718,6 +718,7 @@
         return "<div class=\"item campaign-row\"><div><strong>" + escapeHtml(campaign.title)
           + "</strong><p class=\"muted\">" + escapeHtml(campaign.id)
           + " | Level " + escapeHtml(String(campaign.party_level))
+          + " | " + escapeHtml(campaign.current_location_name || "No location")
           + " | Characters " + escapeHtml(String(campaign.character_count))
           + " | Events " + escapeHtml(String(campaign.session_event_count || 0))
           + "</p></div><button type=\"button\" class=\"secondary\" data-load-campaign=\"" + escapeHtml(campaign.id)
