@@ -252,7 +252,7 @@ POST /campaigns/demo
 POST /campaigns/demo-with-character
 GET  /campaigns/{campaign_id}
 GET  /campaigns/{campaign_id}/summary
-GET  /campaigns/{campaign_id}/log?limit=50
+GET  /campaigns/{campaign_id}/log?limit=50&visibility=public
 POST /campaigns/{campaign_id}/sample-character
 POST /campaigns/{campaign_id}/actions
 POST /campaigns/{campaign_id}/dm-suggestion
@@ -261,6 +261,8 @@ POST /rules/search
 ```
 
 `GET /health` 会返回已启用能力，例如 rules search、AI DM 和持久化状态，方便前端显示当前 API 的启动配置。
+
+`GET /campaigns/{campaign_id}/log` 支持 `limit` 和可选 `visibility` 查询参数；`visibility` 可为 `public`、`dm_only` 或 `dm-only`。响应中的 `event_count` 是完整日志总数，`filtered_count` 是过滤后的日志数，`returned_count` 是本次实际返回数量。
 
 导入冒险时提交：
 

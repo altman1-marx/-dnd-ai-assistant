@@ -13,7 +13,7 @@ from .adventure_importer import campaign_from_adventure
 from .adventure_runtime import AdventureRuntime, handle_adventure_action
 from .ai_dm import generate_dm_suggestion
 from .ai_provider import AIProvider
-from .core.campaign import Campaign
+from .core.campaign import Campaign, Visibility
 from .core.serialization import campaign_to_dict, load_campaign, save_campaign
 from .rules_corpus import RuleCorpus
 from .sample_data import sample_adventure_character, sample_adventure_template
@@ -97,14 +97,20 @@ def campaign_state(state: APIState, campaign_id: str) -> dict:
     return campaign_to_dict(_campaign_or_404(state, campaign_id))
 
 
-def campaign_log(state: APIState, campaign_id: str, limit: int = 50) -> dict:
+def campaign_log(state: APIState, campaign_id: str, limit: int = 50, visibility: str | None = None) -> dict:
     if limit < 1:
         raise APIError(400, "limit must be at least 1.", "invalid_limit")
     campaign = _campaign_or_404(state, campaign_id)
-    events = campaign.session_log[-limit:]
+    selected_visibility = _parse_visibility(visibility)
+    filtered_events = [
+        event for event in campaign.session_log if selected_visibility is None or event.visibility == selected_visibility
+    ]
+    events = filtered_events[-limit:]
     return {
         "campaign_id": campaign.id,
+        "visibility": None if selected_visibility is None else selected_visibility.value,
         "event_count": len(campaign.session_log),
+        "filtered_count": len(filtered_events),
         "returned_count": len(events),
         "events": [_event_message(event) for event in events],
     }
@@ -331,7 +337,12 @@ def route_request(state: APIState, method: str, path: str, body: dict) -> dict:
     if method == "GET" and len(parts) == 3 and parts[0] == "campaigns" and parts[2] == "summary":
         return campaign_summary(state, parts[1])
     if method == "GET" and len(parts) == 3 and parts[0] == "campaigns" and parts[2] == "log":
-        return campaign_log(state, parts[1], limit=_int_query(query, "limit", 50))
+        return campaign_log(
+            state,
+            parts[1],
+            limit=_int_query(query, "limit", 50),
+            visibility=query.get("visibility"),
+        )
     if method == "POST" and len(parts) == 3 and parts[0] == "campaigns" and parts[2] == "sample-character":
         return add_sample_character(state, parts[1])
     if method == "POST" and len(parts) == 3 and parts[0] == "campaigns" and parts[2] == "actions":
@@ -437,6 +448,16 @@ def _int_query(query: dict[str, str], key: str, default: int) -> int:
         return int(value)
     except (TypeError, ValueError) as exc:
         raise APIError(400, f"{key} must be an integer.", "invalid_integer") from exc
+
+
+def _parse_visibility(value: str | None) -> Visibility | None:
+    if value is None or value == "":
+        return None
+    normalized = value.lower().replace("-", "_")
+    try:
+        return Visibility(normalized)
+    except ValueError as exc:
+        raise APIError(400, "visibility must be public or dm_only.", "invalid_visibility") from exc
 
 
 def _active_combat_summary(campaign: Campaign) -> dict | None:

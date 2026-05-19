@@ -29,7 +29,7 @@ from dnd_ai_assistant.api import (
     suggest_dm_turn,
 )
 from dnd_ai_assistant.ai_provider import MockProvider
-from dnd_ai_assistant.core.campaign import SessionEvent
+from dnd_ai_assistant.core.campaign import SessionEvent, Visibility
 from dnd_ai_assistant.core.serialization import load_campaign
 from dnd_ai_assistant.rules_corpus import RuleChunk, RuleCorpus
 
@@ -226,8 +226,33 @@ class APITests(unittest.TestCase):
         self.assertEqual(response["campaign_id"], campaign_id)
         self.assertEqual(len(response["events"]), 1)
         self.assertGreaterEqual(response["event_count"], 2)
+        self.assertGreaterEqual(response["filtered_count"], 2)
         self.assertEqual(response["returned_count"], 1)
         self.assertEqual(response["events"][0]["content"], "Second")
+
+    def test_campaign_log_filters_by_visibility(self) -> None:
+        state = APIState()
+        campaign_id = import_adventure(state, create_adventure_template("Moonlit Road"))["campaign_id"]
+        campaign = state.campaigns[campaign_id]
+        campaign.record_event(SessionEvent(actor="DM", content="Public", visibility=Visibility.PUBLIC))
+        campaign.record_event(SessionEvent(actor="DM", content="Secret", visibility=Visibility.DM_ONLY))
+
+        response = campaign_log(state, campaign_id, limit=10, visibility="dm-only")
+
+        self.assertEqual(response["visibility"], "dm_only")
+        self.assertEqual(response["filtered_count"], 2)
+        self.assertTrue(all(event["visibility"] == "dm_only" for event in response["events"]))
+        self.assertEqual(response["events"][-1]["content"], "Secret")
+
+    def test_campaign_log_rejects_unknown_visibility(self) -> None:
+        state = APIState()
+        campaign_id = import_adventure(state, create_adventure_template("Moonlit Road"))["campaign_id"]
+
+        with self.assertRaises(APIError) as context:
+            campaign_log(state, campaign_id, visibility="players")
+
+        self.assertEqual(context.exception.status, 400)
+        self.assertEqual(context.exception.code, "invalid_visibility")
 
     def test_campaign_log_rejects_non_positive_limit(self) -> None:
         state = APIState()
@@ -324,12 +349,14 @@ class APITests(unittest.TestCase):
         fetched = route_request(state, "GET", f"/campaigns/{campaign_id}", {})
         summary = route_request(state, "GET", f"/campaigns/{campaign_id}/summary", {})
         log = route_request(state, "GET", f"/campaigns/{campaign_id}/log?limit=2", {})
+        dm_log = route_request(state, "GET", f"/campaigns/{campaign_id}/log?visibility=dm_only", {})
         default_log = route_request(state, "GET", f"/campaigns/{campaign_id}/log?limit=", {})
         action = route_request(state, "POST", f"/campaigns/{campaign_id}/actions", {"action": "inspect", "seed": 3})
 
         self.assertEqual(fetched["id"], campaign_id)
         self.assertEqual(summary["characters"][0]["name"], "Leth")
         self.assertLessEqual(len(log["events"]), 2)
+        self.assertEqual(dm_log["visibility"], "dm_only")
         self.assertIn("events", default_log)
         self.assertIn("Clue found", action["transcript"])
 
