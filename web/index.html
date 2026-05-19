@@ -768,10 +768,15 @@
     }
 
     function renderCombat(activeCombat) {
+      const resources = activeCombat.current_resources || {};
       const lines = [
         metric("Round", activeCombat.round),
         metric("Turn", activeCombat.turn || "unknown"),
-        metric("Combatants", activeCombat.combatant_count || 0)
+        metric("Combatants", activeCombat.combatant_count || 0),
+        metric("Action", resourceLabel(resources.action)),
+        metric("Bonus", resourceLabel(resources.bonus_action)),
+        metric("Reaction", resourceLabel(resources.reaction)),
+        metric("Movement", String(resources.movement ?? 0) + " ft")
       ];
       const initiative = activeCombat.initiative || [];
       lines.push(initiative.map((entry) => {
@@ -780,6 +785,10 @@
           + " | HP " + escapeHtml(String(entry.current_hp || "?")) + "</p></div>";
       }).join(""));
       return lines.join("");
+    }
+
+    function resourceLabel(value) {
+      return value ? "available" : "spent";
     }
 
     function renderRulesResults(results) {
