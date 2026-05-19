@@ -670,7 +670,9 @@
         metric("Characters", summary.characters.length),
         metric("Quests", summary.active_quest_count + "/" + summary.quest_count + " active"),
         metric("Clues", summary.discovered_clue_count + "/" + summary.clue_count + " discovered"),
+        metric("Exit count", location ? location.exits.length : 0),
         metric("Exits", location ? location.exits.map((exit) => exit.name).join(", ") || "None" : "None"),
+        metric("NPC count", location ? location.npcs.length : 0),
         metric("NPCs", location ? location.npcs.map((npc) => npc.name).join(", ") || "None" : "None")
       ].join("");
       renderQuickActions(summary.available_actions || []);

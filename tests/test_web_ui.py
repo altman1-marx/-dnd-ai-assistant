@@ -62,6 +62,8 @@ class WebUITests(unittest.TestCase):
         self.assertIn("renderQuickActions", html)
         self.assertIn("spellcasting.slots", html)
         self.assertIn("location.exits", html)
+        self.assertIn("Exit count", html)
+        self.assertIn("NPC count", html)
         self.assertNotIn("DEMO_ADVENTURE", html)
 
     def test_index_does_not_depend_on_external_assets(self) -> None:
