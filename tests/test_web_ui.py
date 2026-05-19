@@ -57,6 +57,7 @@ class WebUITests(unittest.TestCase):
         self.assertIn("persistent_state", html)
         self.assertIn("checkHealth();", html)
         self.assertIn("session_event_count", html)
+        self.assertIn("String(value ?? \"\")", html)
         self.assertIn("current_location_id", html)
         self.assertIn("available_actions", html)
         self.assertIn("renderQuickActions", html)

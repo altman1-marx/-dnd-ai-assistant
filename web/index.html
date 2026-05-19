@@ -873,7 +873,7 @@
     }
 
     function escapeHtml(value) {
-      return value.replace(/[&<>"']/g, (character) => {
+      return String(value ?? "").replace(/[&<>"']/g, (character) => {
         return {
           "&": "&amp;",
           "<": "&lt;",
