@@ -190,7 +190,10 @@ class APITests(unittest.TestCase):
             "encounter_id": "enc_lantern_sprites",
             "round": 2,
             "turn": "Leth",
-            "initiative": [{"name": "Leth", "initiative_total": 18, "armor_class": 16, "current_hp": 24, "is_player": True}],
+            "initiative": [
+                {"name": "Leth", "initiative_total": 18, "armor_class": 16, "current_hp": 24, "is_player": True},
+                {"name": "Lantern Sprite", "initiative_total": 12, "armor_class": 13, "current_hp": 7, "is_player": False},
+            ],
             "resources": {"Leth": {"action": True, "bonus_action": False, "reaction": True, "movement": 20}},
         }
 
@@ -208,11 +211,13 @@ class APITests(unittest.TestCase):
         self.assertEqual(summary["clue_count"], 1)
         self.assertGreater(summary["session_event_count"], 0)
         self.assertEqual(summary["active_combat"]["round"], 2)
-        self.assertEqual(summary["active_combat"]["combatant_count"], 1)
+        self.assertEqual(summary["active_combat"]["combatant_count"], 2)
         self.assertEqual(summary["active_combat"]["current_resources"]["movement"], 20)
         self.assertEqual(summary["recent_events"][-1]["content"], "The village waits.")
         self.assertIn("talk mayor elin", summary["available_actions"])
         self.assertIn("talk mayor", summary["available_actions"])
+        self.assertIn("attack lantern sprite", summary["available_actions"])
+        self.assertIn("cast sacred flame lantern sprite", summary["available_actions"])
         self.assertIn("combat", summary["available_actions"])
 
     def test_campaign_log_returns_limited_events(self) -> None:

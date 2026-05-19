@@ -529,6 +529,13 @@ def _available_actions(campaign: Campaign, active_combat: dict | None) -> list[s
             actions.append("fight")
     if active_combat is not None:
         actions.extend(["combat", "attack", "cast sacred flame", "cast cure wounds", "end turn", "resolve encounter"])
+        turn = str(active_combat.get("turn") or "")
+        for combatant in active_combat.get("initiative", []):
+            name = str(combatant.get("name") or "")
+            if not name or name == turn or int(combatant.get("current_hp") or 0) <= 0:
+                continue
+            actions.append(f"attack {name.lower()}")
+            actions.append(f"cast sacred flame {name.lower()}")
     return list(dict.fromkeys(actions))
 
 
