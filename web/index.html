@@ -720,6 +720,7 @@
           + " | Level " + escapeHtml(String(campaign.party_level))
           + " | " + escapeHtml(campaign.current_location_name || "No location")
           + " | Characters " + escapeHtml(String(campaign.character_count))
+          + " | Combat " + escapeHtml(campaign.active_combat ? "active" : "none")
           + " | Events " + escapeHtml(String(campaign.session_event_count || 0))
           + "</p></div><button type=\"button\" class=\"secondary\" data-load-campaign=\"" + escapeHtml(campaign.id)
           + "\">" + active + "</button><button type=\"button\" class=\"secondary danger\" data-delete-campaign=\""
