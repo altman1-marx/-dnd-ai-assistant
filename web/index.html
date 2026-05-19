@@ -666,6 +666,7 @@
       metrics.innerHTML = [
         metric("Campaign", summary.title),
         metric("Party level", summary.party_level),
+        metric("Location ID", summary.current_location_id || "None"),
         metric("Characters", summary.characters.length),
         metric("Quests", summary.active_quest_count + "/" + summary.quest_count + " active"),
         metric("Clues", summary.discovered_clue_count + "/" + summary.clue_count + " discovered"),
