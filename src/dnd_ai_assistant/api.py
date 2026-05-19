@@ -516,8 +516,15 @@ def _available_actions(campaign: Campaign, active_combat: dict | None) -> list[s
     location = campaign.locations.get(campaign.current_location_id or "")
     if location is not None:
         actions.extend(f"go {campaign.locations[location_id].name.lower()}" for location_id in location.connected_location_ids if location_id in campaign.locations)
-        if any(npc.location_id == location.id for npc in campaign.npcs.values()):
-            actions.append("talk mayor")
+        for npc in campaign.npcs.values():
+            if npc.location_id != location.id:
+                continue
+            actions.append(f"talk {npc.name.lower()}")
+            name_alias = npc.name.split()[0].lower() if npc.name.split() else ""
+            if name_alias:
+                actions.append(f"talk {name_alias}")
+            if npc.role:
+                actions.append(f"talk {npc.role.lower()}")
         if any(encounter.location_id == location.id and not encounter.resolved for encounter in campaign.encounters.values()):
             actions.append("fight")
     if active_combat is not None:

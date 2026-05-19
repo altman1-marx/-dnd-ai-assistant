@@ -211,6 +211,7 @@ class APITests(unittest.TestCase):
         self.assertEqual(summary["active_combat"]["combatant_count"], 1)
         self.assertEqual(summary["active_combat"]["current_resources"]["movement"], 20)
         self.assertEqual(summary["recent_events"][-1]["content"], "The village waits.")
+        self.assertIn("talk mayor elin", summary["available_actions"])
         self.assertIn("talk mayor", summary["available_actions"])
         self.assertIn("combat", summary["available_actions"])
 
