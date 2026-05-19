@@ -118,6 +118,7 @@ def campaign_summary(state: APIState, campaign_id: str) -> dict:
         "system": campaign.system,
         "tone": campaign.tone,
         "party_level": campaign.party_level,
+        "current_location_id": campaign.current_location_id,
         "current_location": None
         if location is None
         else {
