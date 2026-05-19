@@ -44,6 +44,7 @@ class WebUITests(unittest.TestCase):
         self.assertIn("suggestTypedAction", html)
         self.assertIn("runSuggestedAction", html)
         self.assertIn("pendingSuggestedAction", html)
+        self.assertIn("lastRulesQuery", html)
         self.assertIn("updateSuggestedActionControl", html)
         self.assertIn("apiErrorFromResponse", html)
         self.assertIn("setupHint", html)

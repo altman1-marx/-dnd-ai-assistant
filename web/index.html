@@ -385,6 +385,7 @@
       campaigns: [],
       summary: null,
       pendingSuggestedAction: "",
+      lastRulesQuery: "",
       transcriptEventIds: new Set()
     };
 
@@ -562,7 +563,7 @@
     }
 
     async function suggestTypedAction() {
-      const action = actionInput.value.trim();
+      const action = actionInput.value.trim() || state.lastRulesQuery;
       if (!action || !state.campaignId) return;
       try {
         const data = await api("POST", "/campaigns/" + state.campaignId + "/dm-suggestion", { action });
@@ -614,6 +615,7 @@
         return;
       }
       try {
+        state.lastRulesQuery = query;
         const data = await api("POST", "/rules/search", { query, limit: 5 });
         renderRulesResults(data.results || []);
         setStatus("Rules search returned " + (data.results || []).length + " result(s).");
