@@ -428,6 +428,8 @@ def _query_params(query: str) -> dict[str, str]:
 
 def _int_query(query: dict[str, str], key: str, default: int) -> int:
     value = query.get(key, str(default))
+    if value == "":
+        return default
     try:
         return int(value)
     except (TypeError, ValueError) as exc:

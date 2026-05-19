@@ -320,11 +320,13 @@ class APITests(unittest.TestCase):
         fetched = route_request(state, "GET", f"/campaigns/{campaign_id}", {})
         summary = route_request(state, "GET", f"/campaigns/{campaign_id}/summary", {})
         log = route_request(state, "GET", f"/campaigns/{campaign_id}/log?limit=2", {})
+        default_log = route_request(state, "GET", f"/campaigns/{campaign_id}/log?limit=", {})
         action = route_request(state, "POST", f"/campaigns/{campaign_id}/actions", {"action": "inspect", "seed": 3})
 
         self.assertEqual(fetched["id"], campaign_id)
         self.assertEqual(summary["characters"][0]["name"], "Leth")
         self.assertLessEqual(len(log["events"]), 2)
+        self.assertIn("events", default_log)
         self.assertIn("Clue found", action["transcript"])
 
         state.rules_corpus = self._rules_corpus()
