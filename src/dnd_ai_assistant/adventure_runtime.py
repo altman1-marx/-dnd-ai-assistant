@@ -388,6 +388,9 @@ def attack_active_combat_target(runtime: AdventureRuntime, target: str) -> None:
             f"{attacker['name']} attacks {defender['name']}: {attack.attack.total} vs AC {defender.get('armor_class')}, "
             f"hit for {damage_amount} {damage_type} damage{adjustment}: HP {before} -> {defender['current_hp']}."
         )
+        concentration = _concentration_check_text(runtime, defender, damage_amount)
+        if concentration:
+            content += " " + concentration
     else:
         content = f"{attacker['name']} attacks {defender['name']}: {attack.attack.total} vs AC {defender.get('armor_class')}, miss."
     runtime.campaign.record_event(SessionEvent(actor="DM", content=content))
@@ -781,10 +784,12 @@ def _apply_spell_attack_spell(runtime: AdventureRuntime, caster: Character, spel
         before = target.get("current_hp", 0)
         damage_type = str(spell["damage_type"])
         damage_amount = _apply_combat_damage(runtime.campaign, target, attack.damage.total, damage_type)
-        return (
+        concentration = _concentration_check_text(runtime, target, damage_amount)
+        text = (
             f"{spell_name.title()} spell attack {attack.attack.total} vs AC {target.get('armor_class')}, "
             f"hit for {damage_amount} {damage_type} damage: HP {before} -> {target['current_hp']}."
         )
+        return text if not concentration else text + " " + concentration
     return f"{spell_name.title()} spell attack {attack.attack.total} vs AC {target.get('armor_class')}, miss."
 
 
@@ -810,10 +815,12 @@ def _apply_save_damage_spell(runtime: AdventureRuntime, caster: Character, spell
     before = target.get("current_hp", 0)
     damage_type = str(spell["damage_type"])
     damage_amount = _apply_combat_damage(runtime.campaign, target, damage.total, damage_type)
-    return (
+    concentration = _concentration_check_text(runtime, target, damage_amount)
+    text = (
         f"{target['name']} makes a {label} save {save.total} vs DC {dc} ({outcome}) "
         f"and takes {damage_amount} {damage_type} damage: HP {before} -> {target['current_hp']}."
     )
+    return text if not concentration else text + " " + concentration
 
 
 def _saving_throw_modifier(campaign: Campaign, name: str, ability: str) -> int:
@@ -825,6 +832,24 @@ def _saving_throw_modifier(campaign: Campaign, name: str, ability: str) -> int:
             if monster.name == name:
                 return monster.saving_throw_modifier(ability)
     return 0
+
+
+def _concentration_check_text(runtime: AdventureRuntime, combatant: dict, damage_amount: int) -> str:
+    if damage_amount <= 0:
+        return ""
+    character = runtime.campaign.characters.get(combatant["name"])
+    if character is None or character.spellcasting is None or character.spellcasting.concentration_spell_name is None:
+        return ""
+    dc = max(10, damage_amount // 2)
+    modifier = character.saving_throw_modifier("con")
+    result = roll_d20_check(modifier=modifier, dc=dc, rng=runtime.rng)
+    outcome = "success" if result.success else "failure"
+    text = f"Concentration check: {character.name} rolls CON save {result.total} vs DC {dc} ({outcome})."
+    if not result.success:
+        spell_name = character.spellcasting.concentration_spell_name
+        character.spellcasting.concentration_spell_name = None
+        text += f" Concentration on {spell_name} ends."
+    return text
 
 
 def _signed_expression(base: str, modifier: int) -> str:

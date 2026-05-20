@@ -320,6 +320,42 @@ class AdventureRuntimeTests(unittest.TestCase):
         self.assertEqual(campaign.active_combat["initiative"][1]["current_hp"], 8)
         self.assertIn("4 fire damage (8 before adjustments)", output)
 
+    def test_damage_can_break_concentration(self) -> None:
+        campaign = campaign_from_adventure(AdventureDefinition(create_adventure_template("Moonlit Road")))
+        caster = _caster()
+        caster.max_hp = 100
+        caster.current_hp = 100
+        caster.spellcasting.concentration_spell_name = "Bless"
+        campaign.add_character(caster)
+        campaign.active_combat = {
+            "round": 1,
+            "turn": "Lantern Sprite",
+            "initiative": [
+                {
+                    "name": "Lantern Sprite",
+                    "initiative_total": 18,
+                    "is_player": False,
+                    "armor_class": 13,
+                    "current_hp": 7,
+                    "attack_bonus": 20,
+                    "damage": "60",
+                },
+                {"name": "Leth", "initiative_total": 12, "is_player": True, "armor_class": 16, "current_hp": 100},
+            ],
+            "resources": {
+                "Lantern Sprite": {"action": True, "bonus_action": True, "reaction": True, "movement": 30},
+                "Leth": {"action": True, "bonus_action": True, "reaction": True, "movement": 30},
+            },
+        }
+        runtime = AdventureRuntime(campaign, rng=random.Random(1))
+
+        handle_adventure_action(runtime, "attack leth")
+        output = runtime.flush()
+
+        self.assertIsNone(campaign.characters["Leth"].spellcasting.concentration_spell_name)
+        self.assertIn("Concentration check", output)
+        self.assertIn("Concentration on Bless ends", output)
+
     def test_attack_action_respects_combatant_damage_immunity(self) -> None:
         campaign = campaign_from_adventure(AdventureDefinition(create_adventure_template("Moonlit Road")))
         campaign.add_character(_scout())
