@@ -387,6 +387,8 @@ def attack_active_combat_target(runtime: AdventureRuntime, target: str) -> None:
     runtime.narrate(f"DM: {content}")
     if attack.hit and _all_hostile_combatants_defeated(combat):
         _finish_active_encounter(runtime, "All hostile combatants are defeated.")
+    elif attack.hit and _all_player_combatants_defeated(combat):
+        _end_active_combat(runtime, "All player combatants are defeated.", mark_encounter_resolved=False)
 
 
 def cast_active_combat_spell(runtime: AdventureRuntime, spell_text: str) -> None:
@@ -453,18 +455,25 @@ def resolve_active_encounter(runtime: AdventureRuntime) -> bool:
 
 
 def _finish_active_encounter(runtime: AdventureRuntime, reason: str) -> None:
+    _end_active_combat(runtime, reason, mark_encounter_resolved=True)
+
+
+def _end_active_combat(runtime: AdventureRuntime, reason: str, mark_encounter_resolved: bool) -> None:
     combat = runtime.campaign.active_combat
     if combat is None:
         return
     encounter_id = combat.get("encounter_id")
     encounter = runtime.campaign.encounters.get(encounter_id)
     if encounter is not None:
-        encounter.resolved = True
-        content = f"Encounter resolved: {encounter.title}. {reason}"
-        if encounter.reward:
+        if mark_encounter_resolved:
+            encounter.resolved = True
+        status = "Encounter resolved" if mark_encounter_resolved else "Combat ended"
+        content = f"{status}: {encounter.title}. {reason}"
+        if mark_encounter_resolved and encounter.reward:
             content += f" Reward: {encounter.reward}"
     else:
-        content = f"Encounter resolved: {encounter_id}. {reason}"
+        status = "Encounter resolved" if mark_encounter_resolved else "Combat ended"
+        content = f"{status}: {encounter_id}. {reason}"
     runtime.campaign.active_combat = None
     runtime.campaign.record_event(SessionEvent(actor="DM", content=content))
     runtime.narrate(f"DM: {content}")
@@ -896,6 +905,11 @@ def _apply_combat_damage(campaign: Campaign, combatant: dict, amount: int, damag
 def _all_hostile_combatants_defeated(combat: dict) -> bool:
     hostiles = [entry for entry in combat.get("initiative", []) if entry.get("is_player") is False]
     return bool(hostiles) and all(entry.get("current_hp", 0) <= 0 for entry in hostiles)
+
+
+def _all_player_combatants_defeated(combat: dict) -> bool:
+    players = [entry for entry in combat.get("initiative", []) if entry.get("is_player") is True]
+    return bool(players) and all(entry.get("current_hp", 0) <= 0 for entry in players)
 
 
 def _passes_clue_check(runtime: AdventureRuntime, clue: Clue) -> bool:

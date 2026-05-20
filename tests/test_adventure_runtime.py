@@ -400,6 +400,43 @@ class AdventureRuntimeTests(unittest.TestCase):
         self.assertTrue(campaign.encounters["enc_lantern_sprites"].resolved)
         self.assertIn("All hostile combatants are defeated", output)
 
+    def test_attack_action_ends_combat_when_players_are_defeated(self) -> None:
+        raw = create_adventure_template("Moonlit Road")
+        campaign = campaign_from_adventure(AdventureDefinition(raw))
+        scout = _scout()
+        scout.current_hp = 1
+        campaign.add_character(scout)
+        campaign.active_combat = {
+            "encounter_id": "enc_lantern_sprites",
+            "round": 1,
+            "turn": "Lantern Sprite",
+            "initiative": [
+                {
+                    "name": "Lantern Sprite",
+                    "initiative_total": 18,
+                    "is_player": False,
+                    "armor_class": 13,
+                    "current_hp": 7,
+                    "attack_bonus": 20,
+                    "damage": "8",
+                },
+                {"name": "Kael", "initiative_total": 12, "is_player": True, "armor_class": 14, "current_hp": 1},
+            ],
+            "resources": {
+                "Lantern Sprite": {"action": True, "bonus_action": True, "reaction": True, "movement": 30},
+                "Kael": {"action": True, "bonus_action": True, "reaction": True, "movement": 30},
+            },
+        }
+        runtime = AdventureRuntime(campaign, rng=random.Random(1))
+
+        handle_adventure_action(runtime, "attack kael")
+        output = runtime.flush()
+
+        self.assertIsNone(campaign.active_combat)
+        self.assertFalse(campaign.encounters["enc_lantern_sprites"].resolved)
+        self.assertIn("Combat ended: Lantern Sprites", output)
+        self.assertIn("All player combatants are defeated", output)
+
     def test_cast_spell_spends_slot_and_action_resource(self) -> None:
         campaign = campaign_from_adventure(AdventureDefinition(create_adventure_template("Moonlit Road")))
         campaign.add_character(_caster())
