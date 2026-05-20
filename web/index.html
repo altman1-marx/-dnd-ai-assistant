@@ -706,6 +706,7 @@
       combat.innerHTML = summary.active_combat
         ? renderCombat(summary.active_combat)
         : "<p class=\"muted\">No active combat.</p>";
+      bindQuickActions();
     }
 
     function renderCampaignList() {
@@ -788,6 +789,14 @@
           + " | HP " + escapeHtml(String(entry.current_hp || "?"))
           + " | " + escapeHtml(entry.defeated ? "defeated" : "active") + "</p></div>";
       }).join(""));
+      if ((activeCombat.targetable_enemies || []).length) {
+        lines.push("<div class=\"item\"><strong>Target Actions</strong>" + activeCombat.targetable_enemies.map((target) => {
+          const safeTarget = escapeHtml(target);
+          return "<p><button type=\"button\" class=\"secondary\" data-action=\"attack " + safeTarget + "\">Attack "
+            + safeTarget + "</button> <button type=\"button\" class=\"secondary\" data-action=\"cast sacred flame "
+            + safeTarget + "\">Sacred Flame</button></p>";
+        }).join("") + "</div>");
+      }
       return lines.join("");
     }
 
