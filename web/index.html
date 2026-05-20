@@ -794,7 +794,8 @@
           const safeTarget = escapeHtml(target);
           return "<p><button type=\"button\" class=\"secondary\" data-action=\"attack " + safeTarget + "\">Attack "
             + safeTarget + "</button> <button type=\"button\" class=\"secondary\" data-action=\"cast sacred flame "
-            + safeTarget + "\">Sacred Flame</button></p>";
+            + safeTarget + "\">Sacred Flame</button> <button type=\"button\" class=\"secondary\" data-action=\"cast guiding bolt "
+            + safeTarget + "\">Guiding Bolt</button></p>";
         }).join("") + "</div>");
       }
       return lines.join("");

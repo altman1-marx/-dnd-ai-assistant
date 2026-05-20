@@ -208,6 +208,7 @@ class APITests(unittest.TestCase):
         self.assertEqual(summary["characters"][0]["name"], "Leth")
         self.assertEqual(summary["characters"][0]["spellcasting"]["slots"][0]["available"], 4)
         self.assertTrue(any(spell["name"] == "Sacred Flame" for spell in summary["characters"][0]["spellcasting"]["known_spells"]))
+        self.assertTrue(any(spell["name"] == "Guiding Bolt" for spell in summary["characters"][0]["spellcasting"]["known_spells"]))
         self.assertEqual(summary["quest_count"], 1)
         self.assertEqual(summary["clue_count"], 1)
         self.assertGreater(summary["session_event_count"], 0)
@@ -222,6 +223,7 @@ class APITests(unittest.TestCase):
         self.assertIn("talk mayor", summary["available_actions"])
         self.assertIn("attack lantern sprite", summary["available_actions"])
         self.assertIn("cast sacred flame lantern sprite", summary["available_actions"])
+        self.assertIn("cast guiding bolt lantern sprite", summary["available_actions"])
         self.assertIn("combat", summary["available_actions"])
 
     def test_campaign_log_returns_limited_events(self) -> None:

@@ -92,6 +92,8 @@ class WebUITests(unittest.TestCase):
         self.assertIn("Target Actions", html)
         self.assertIn("attack \" + safeTarget", html)
         self.assertIn("cast sacred flame", html)
+        self.assertIn("cast guiding bolt", html)
+        self.assertIn("Guiding Bolt", html)
         self.assertIn("resourceLabel", html)
         self.assertIn("Movement", html)
         self.assertNotIn("DEMO_ADVENTURE", html)

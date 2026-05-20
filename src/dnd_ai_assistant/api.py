@@ -539,7 +539,7 @@ def _available_actions(campaign: Campaign, active_combat: dict | None) -> list[s
         if any(encounter.location_id == location.id and not encounter.resolved for encounter in campaign.encounters.values()):
             actions.append("fight")
     if active_combat is not None:
-        actions.extend(["combat", "attack", "cast sacred flame", "cast cure wounds", "end turn", "resolve encounter"])
+        actions.extend(["combat", "attack", "cast sacred flame", "cast guiding bolt", "cast cure wounds", "end turn", "resolve encounter"])
         turn = str(active_combat.get("turn") or "")
         for combatant in active_combat.get("initiative", []):
             name = str(combatant.get("name") or "")
@@ -547,6 +547,7 @@ def _available_actions(campaign: Campaign, active_combat: dict | None) -> list[s
                 continue
             actions.append(f"attack {name.lower()}")
             actions.append(f"cast sacred flame {name.lower()}")
+            actions.append(f"cast guiding bolt {name.lower()}")
     return list(dict.fromkeys(actions))
 
 
