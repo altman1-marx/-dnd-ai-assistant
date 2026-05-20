@@ -222,9 +222,36 @@ class APITests(unittest.TestCase):
         self.assertIn("talk mayor elin", summary["available_actions"])
         self.assertIn("talk mayor", summary["available_actions"])
         self.assertIn("attack lantern sprite", summary["available_actions"])
+        self.assertIn("cast bless", summary["available_actions"])
+        self.assertIn("cast cure wounds", summary["available_actions"])
         self.assertIn("cast sacred flame lantern sprite", summary["available_actions"])
         self.assertIn("cast guiding bolt lantern sprite", summary["available_actions"])
         self.assertIn("combat", summary["available_actions"])
+
+    def test_campaign_summary_only_suggests_spells_for_current_character(self) -> None:
+        state = APIState()
+        campaign_id = import_adventure(state, create_adventure_template("Moonlit Road"))["campaign_id"]
+        add_sample_character(state, campaign_id)
+        campaign = state.campaigns[campaign_id]
+        campaign.active_combat = {
+            "encounter_id": "enc_lantern_sprites",
+            "round": 1,
+            "turn": "Lantern Sprite",
+            "initiative": [
+                {"name": "Leth", "initiative_total": 18, "is_player": True, "armor_class": 16, "current_hp": 24},
+                {"name": "Lantern Sprite", "initiative_total": 12, "is_player": False, "armor_class": 13, "current_hp": 7},
+            ],
+            "resources": {
+                "Leth": {"action": True, "bonus_action": True, "reaction": True, "movement": 30},
+                "Lantern Sprite": {"action": True, "bonus_action": True, "reaction": True, "movement": 30},
+            },
+        }
+
+        summary = campaign_summary(state, campaign_id)
+
+        self.assertIn("attack leth", summary["available_actions"])
+        self.assertNotIn("cast guiding bolt", summary["available_actions"])
+        self.assertNotIn("cast sacred flame leth", summary["available_actions"])
 
     def test_campaign_log_returns_limited_events(self) -> None:
         state = APIState()
