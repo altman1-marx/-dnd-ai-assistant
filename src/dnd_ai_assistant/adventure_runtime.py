@@ -443,6 +443,10 @@ def cast_active_combat_spell(runtime: AdventureRuntime, spell_text: str) -> None
         content += f" {effect_text}"
     runtime.campaign.record_event(SessionEvent(actor="DM", content=content))
     runtime.narrate(f"DM: {content}")
+    if runtime.campaign.active_combat is not None and _all_hostile_combatants_defeated(runtime.campaign.active_combat):
+        _finish_active_encounter(runtime, "All hostile combatants are defeated.")
+    elif runtime.campaign.active_combat is not None and _all_player_combatants_defeated(runtime.campaign.active_combat):
+        _end_active_combat(runtime, "All player combatants are defeated.", mark_encounter_resolved=False)
 
 
 def resolve_active_encounter(runtime: AdventureRuntime) -> bool:
