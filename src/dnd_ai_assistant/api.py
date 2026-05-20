@@ -489,6 +489,8 @@ def _active_combat_summary(campaign: Campaign) -> dict | None:
             for entry in combat.get("initiative", [])
         ],
         "current_resources": combat.get("resources", {}).get(combat.get("turn"), {}),
+        "targetable_enemies": _targetable_combatant_names(combat, allies=False),
+        "targetable_allies": _targetable_combatant_names(combat, allies=True),
     }
 
 
@@ -550,6 +552,22 @@ def _available_actions(campaign: Campaign, active_combat: dict | None) -> list[s
 
 def _combatant_defeated(entry: dict) -> bool:
     return "current_hp" in entry and int(entry.get("current_hp") or 0) <= 0
+
+
+def _targetable_combatant_names(combat: dict, allies: bool) -> list[str]:
+    turn = combat.get("turn")
+    current = next((entry for entry in combat.get("initiative", []) if entry.get("name") == turn), None)
+    if current is None or "is_player" not in current:
+        return []
+    current_side = bool(current.get("is_player"))
+    return [
+        str(entry.get("name"))
+        for entry in combat.get("initiative", [])
+        if entry.get("name")
+        and entry.get("name") != turn
+        and not _combatant_defeated(entry)
+        and (bool(entry.get("is_player")) == current_side) == allies
+    ]
 
 
 def _event_message(event) -> dict:

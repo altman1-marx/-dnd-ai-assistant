@@ -214,6 +214,8 @@ class APITests(unittest.TestCase):
         self.assertEqual(summary["active_combat"]["round"], 2)
         self.assertEqual(summary["active_combat"]["combatant_count"], 2)
         self.assertFalse(summary["active_combat"]["initiative"][0]["defeated"])
+        self.assertEqual(summary["active_combat"]["targetable_enemies"], ["Lantern Sprite"])
+        self.assertEqual(summary["active_combat"]["targetable_allies"], [])
         self.assertEqual(summary["active_combat"]["current_resources"]["movement"], 20)
         self.assertEqual(summary["recent_events"][-1]["content"], "The village waits.")
         self.assertIn("talk mayor elin", summary["available_actions"])

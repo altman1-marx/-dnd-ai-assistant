@@ -87,6 +87,8 @@ class WebUITests(unittest.TestCase):
         self.assertIn("Combat ", html)
         self.assertIn("defeated", html)
         self.assertIn("current_resources", html)
+        self.assertIn("targetable_enemies", html)
+        self.assertIn("Targets", html)
         self.assertIn("resourceLabel", html)
         self.assertIn("Movement", html)
         self.assertNotIn("DEMO_ADVENTURE", html)
