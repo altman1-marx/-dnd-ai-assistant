@@ -36,6 +36,22 @@ class AIDMTests(unittest.TestCase):
         self.assertIn("Targetable enemies: Lantern Sprite", prompt)
         self.assertIn("Targetable allies: none", prompt)
 
+    def test_build_dm_prompt_excludes_defeated_targets(self) -> None:
+        campaign = campaign_from_adventure(AdventureDefinition(create_adventure_template("Moonlit Road")))
+        campaign.active_combat = {
+            "round": 2,
+            "turn": "Leth",
+            "initiative": [
+                {"name": "Leth", "initiative_total": 18, "is_player": True, "current_hp": 24},
+                {"name": "Fallen Sprite", "initiative_total": 12, "is_player": False, "current_hp": 0},
+            ],
+        }
+
+        prompt = build_dm_prompt(campaign, "attack fallen sprite")
+
+        self.assertIn("Fallen Sprite HP 0", prompt)
+        self.assertIn("Targetable enemies: none", prompt)
+
     def test_generate_dm_suggestion_uses_provider_and_rules_without_mutating_state(self) -> None:
         campaign = campaign_from_adventure(AdventureDefinition(create_adventure_template("Moonlit Road")))
         before_events = len(campaign.session_log)
