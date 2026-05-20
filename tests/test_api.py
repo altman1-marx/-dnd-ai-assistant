@@ -288,6 +288,46 @@ class APITests(unittest.TestCase):
         self.assertEqual(response["messages"][0]["actor"], "Player")
         self.assertEqual(response["messages"][1]["actor"], "DM")
 
+    def test_summary_drops_combat_actions_after_encounter_resolution(self) -> None:
+        state = APIState()
+        campaign_id = import_adventure(state, create_adventure_template("Moonlit Road"))["campaign_id"]
+        add_sample_character(state, campaign_id)
+        campaign = state.campaigns[campaign_id]
+        campaign.active_combat = {
+            "encounter_id": "enc_lantern_sprites",
+            "round": 1,
+            "turn": "Leth",
+            "initiative": [
+                {
+                    "name": "Leth",
+                    "initiative_total": 18,
+                    "is_player": True,
+                    "armor_class": 16,
+                    "current_hp": 24,
+                    "attack_bonus": 20,
+                    "damage": "8",
+                },
+                {
+                    "name": "Lantern Sprite",
+                    "initiative_total": 12,
+                    "is_player": False,
+                    "armor_class": 10,
+                    "current_hp": 1,
+                },
+            ],
+            "resources": {
+                "Leth": {"action": True, "bonus_action": True, "reaction": True, "movement": 30},
+                "Lantern Sprite": {"action": True, "bonus_action": True, "reaction": True, "movement": 30},
+            },
+        }
+
+        run_campaign_action(state, campaign_id, "attack sprite", seed=1)
+        summary = campaign_summary(state, campaign_id)
+
+        self.assertIsNone(summary["active_combat"])
+        self.assertNotIn("attack lantern sprite", summary["available_actions"])
+        self.assertNotIn("end turn", summary["available_actions"])
+
     def test_run_campaign_action_rejects_empty_action(self) -> None:
         state = APIState()
         campaign_id = import_adventure(state, create_adventure_template("Moonlit Road"))["campaign_id"]
