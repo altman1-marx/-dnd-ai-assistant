@@ -21,6 +21,9 @@ SPELL_EFFECTS = {
     "healing word": "healing",
     "sacred flame": "sacred_flame",
 }
+SAVE_DAMAGE_SPELLS = {
+    "sacred flame": {"ability": "dex", "label": "Dexterity", "damage": "1d8", "damage_type": "radiant"},
+}
 
 
 DEFAULT_RUNTIME_ACTIONS = {
@@ -751,6 +754,10 @@ def _validate_spell_effect_target(runtime: AdventureRuntime, spell_name: str, ta
 
 
 def _apply_sacred_flame(runtime: AdventureRuntime, caster: Character, target_text: str) -> str:
+    return _apply_save_damage_spell(runtime, caster, "sacred flame", target_text)
+
+
+def _apply_save_damage_spell(runtime: AdventureRuntime, caster: Character, spell_name: str, target_text: str) -> str:
     combat = runtime.campaign.active_combat
     if combat is None:
         return "The spell has no active combat target."
@@ -758,19 +765,23 @@ def _apply_sacred_flame(runtime: AdventureRuntime, caster: Character, target_tex
     if target is None:
         return "The spell has no valid target."
 
+    spell = SAVE_DAMAGE_SPELLS[spell_name]
+    ability = str(spell["ability"])
     dc = caster.spell_save_dc or 10
-    modifier = _saving_throw_modifier(runtime.campaign, target["name"], "dex")
+    modifier = _saving_throw_modifier(runtime.campaign, target["name"], ability)
     save = roll_d20_check(modifier=modifier, dc=dc, rng=runtime.rng)
     outcome = "success" if save.success else "failure"
+    label = str(spell["label"])
     if save.success:
-        return f"{target['name']} makes a Dexterity save {save.total} vs DC {dc} ({outcome}) and takes no damage."
+        return f"{target['name']} makes a {label} save {save.total} vs DC {dc} ({outcome}) and takes no damage."
 
-    damage = roll_damage("1d8", runtime.rng)
+    damage = roll_damage(str(spell["damage"]), runtime.rng)
     before = target.get("current_hp", 0)
-    damage_amount = _apply_combat_damage(runtime.campaign, target, damage.total, "radiant")
+    damage_type = str(spell["damage_type"])
+    damage_amount = _apply_combat_damage(runtime.campaign, target, damage.total, damage_type)
     return (
-        f"{target['name']} makes a Dexterity save {save.total} vs DC {dc} ({outcome}) "
-        f"and takes {damage_amount} radiant damage: HP {before} -> {target['current_hp']}."
+        f"{target['name']} makes a {label} save {save.total} vs DC {dc} ({outcome}) "
+        f"and takes {damage_amount} {damage_type} damage: HP {before} -> {target['current_hp']}."
     )
 
 
