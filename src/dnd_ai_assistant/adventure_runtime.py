@@ -18,8 +18,12 @@ QUEST_COMPLETE_STATUS = "completed"
 QUEST_FAILED_STATUS = "failed"
 SPELL_EFFECTS = {
     "cure wounds": "healing",
+    "guiding bolt": "spell_attack",
     "healing word": "healing",
     "sacred flame": "sacred_flame",
+}
+ATTACK_SPELLS = {
+    "guiding bolt": {"damage": "4d6", "damage_type": "radiant"},
 }
 SAVE_DAMAGE_SPELLS = {
     "sacred flame": {"ability": "dex", "label": "Dexterity", "damage": "1d8", "damage_type": "radiant"},
@@ -726,6 +730,8 @@ def _apply_spell_effect(
     effect = SPELL_EFFECTS.get(normalized)
     if effect == "sacred_flame":
         return _apply_sacred_flame(runtime, caster, target_text)
+    if effect == "spell_attack":
+        return _apply_spell_attack_spell(runtime, caster, normalized, target_text)
     if effect != "healing":
         return ""
 
@@ -748,13 +754,38 @@ def _validate_spell_effect_target(runtime: AdventureRuntime, spell_name: str, ta
     effect = SPELL_EFFECTS.get(normalized)
     if effect == "healing" and target_text and _match_character(runtime.campaign, target_text) is None:
         return "The healing has no valid target."
-    if effect == "sacred_flame" and _active_combatant(runtime.campaign.active_combat or {}, target_text) is None:
+    if effect in {"sacred_flame", "spell_attack"} and _active_combatant(runtime.campaign.active_combat or {}, target_text) is None:
         return "The spell has no valid target."
     return ""
 
 
 def _apply_sacred_flame(runtime: AdventureRuntime, caster: Character, target_text: str) -> str:
     return _apply_save_damage_spell(runtime, caster, "sacred flame", target_text)
+
+
+def _apply_spell_attack_spell(runtime: AdventureRuntime, caster: Character, spell_name: str, target_text: str) -> str:
+    combat = runtime.campaign.active_combat
+    if combat is None:
+        return "The spell has no active combat target."
+    target = _active_combatant(combat, target_text)
+    if target is None:
+        return "The spell has no valid target."
+    spell = ATTACK_SPELLS[spell_name]
+    attack = roll_attack(
+        attack_bonus=caster.spell_attack_modifier or 0,
+        target_ac=target.get("armor_class", 10),
+        damage_expression=str(spell["damage"]),
+        rng=runtime.rng,
+    )
+    if attack.hit and attack.damage is not None:
+        before = target.get("current_hp", 0)
+        damage_type = str(spell["damage_type"])
+        damage_amount = _apply_combat_damage(runtime.campaign, target, attack.damage.total, damage_type)
+        return (
+            f"{spell_name.title()} spell attack {attack.attack.total} vs AC {target.get('armor_class')}, "
+            f"hit for {damage_amount} {damage_type} damage: HP {before} -> {target['current_hp']}."
+        )
+    return f"{spell_name.title()} spell attack {attack.attack.total} vs AC {target.get('armor_class')}, miss."
 
 
 def _apply_save_damage_spell(runtime: AdventureRuntime, caster: Character, spell_name: str, target_text: str) -> str:
