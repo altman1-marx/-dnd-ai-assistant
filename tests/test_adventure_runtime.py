@@ -193,6 +193,32 @@ class AdventureRuntimeTests(unittest.TestCase):
         self.assertEqual(campaign.active_combat["turn"], "Kael")
         self.assertLess(campaign.characters["Kael"].current_hp, campaign.characters["Kael"].max_hp)
 
+    def test_end_turn_skips_defeated_combatants(self) -> None:
+        campaign = campaign_from_adventure(AdventureDefinition(create_adventure_template("Moonlit Road")))
+        campaign.active_combat = {
+            "round": 1,
+            "turn": "Kael",
+            "initiative": [
+                {"name": "Kael", "initiative_total": 18, "is_player": True, "current_hp": 12},
+                {"name": "Fallen Sprite", "initiative_total": 14, "is_player": False, "current_hp": 0},
+                {"name": "Mira", "initiative_total": 12, "is_player": True, "current_hp": 9},
+            ],
+            "resources": {
+                "Kael": {"action": False, "bonus_action": True, "reaction": True, "movement": 0},
+                "Fallen Sprite": {"action": True, "bonus_action": True, "reaction": True, "movement": 30},
+                "Mira": {"action": False, "bonus_action": False, "reaction": False, "movement": 0},
+            },
+        }
+        runtime = AdventureRuntime(campaign)
+
+        handle_adventure_action(runtime, "end turn")
+        output = runtime.flush()
+
+        self.assertEqual(campaign.active_combat["turn"], "Mira")
+        self.assertIn("turn: Mira", output)
+        self.assertTrue(campaign.active_combat["resources"]["Mira"]["action"])
+        self.assertTrue(campaign.active_combat["resources"]["Mira"]["bonus_action"])
+
     def test_combat_resource_actions_spend_current_turn_resources(self) -> None:
         campaign = campaign_from_adventure(AdventureDefinition(create_adventure_template("Moonlit Road")))
         campaign.active_combat = {

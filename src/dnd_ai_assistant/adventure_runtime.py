@@ -286,12 +286,10 @@ def advance_active_combat(runtime: AdventureRuntime) -> None:
 
     current_turn = combat.get("turn")
     current_index = next((index for index, entry in enumerate(initiative) if entry["name"] == current_turn), 0)
-    next_index = current_index + 1
-    if next_index >= len(initiative):
-        next_index = 0
-        combat["round"] = combat.get("round", 1) + 1
-        for resources in _active_resources(combat).values():
-            resources["reaction"] = True
+    next_index = _next_active_combatant_index(combat, current_index)
+    if next_index is None:
+        runtime.narrate("DM: No combatants are able to take a turn.")
+        return
     combat["turn"] = initiative[next_index]["name"]
     _reset_turn_resources(combat, combat["turn"])
     runtime.campaign.record_event(
@@ -806,6 +804,32 @@ def _reset_turn_resources(combat: dict, name: str) -> None:
     resources["action"] = True
     resources["bonus_action"] = True
     resources["movement"] = DEFAULT_RULES_CONFIG.default_movement_speed
+
+
+def _next_active_combatant_index(combat: dict, current_index: int) -> int | None:
+    initiative = combat.get("initiative", [])
+    if not initiative:
+        return None
+    index = current_index
+    wrapped = False
+    for _ in range(len(initiative)):
+        index += 1
+        if index >= len(initiative):
+            index = 0
+            wrapped = True
+        if _combatant_can_take_turn(initiative[index]):
+            if wrapped:
+                combat["round"] = combat.get("round", 1) + 1
+                for resources in _active_resources(combat).values():
+                    resources["reaction"] = True
+            return index
+    return None
+
+
+def _combatant_can_take_turn(combatant: dict) -> bool:
+    if "current_hp" not in combatant:
+        return True
+    return int(combatant.get("current_hp") or 0) > 0
 
 
 def _attack_profile(encounter: Encounter, name: str) -> dict:
