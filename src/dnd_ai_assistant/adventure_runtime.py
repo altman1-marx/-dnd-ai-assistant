@@ -298,6 +298,9 @@ def advance_active_combat(runtime: AdventureRuntime) -> None:
         SessionEvent(actor="DM", content=f"Combat advanced to round {combat['round']}: {combat['turn']}.")
     )
     runtime.narrate(f"DM: Combat advances to round {combat['round']}, turn: {combat['turn']}.")
+    active = _active_combatant(combat, combat["turn"])
+    if active is not None and active.get("is_player") is False and active.get("current_hp", 0) > 0:
+        _run_automatic_monster_turn(runtime, active)
 
 
 def spend_active_combat_resource(runtime: AdventureRuntime, resource: str) -> None:
@@ -467,6 +470,31 @@ def _finish_active_encounter(runtime: AdventureRuntime, reason: str) -> None:
     runtime.campaign.active_combat = None
     runtime.campaign.record_event(SessionEvent(actor="DM", content=content))
     runtime.narrate(f"DM: {content}")
+
+
+def _run_automatic_monster_turn(runtime: AdventureRuntime, monster: dict) -> None:
+    combat = runtime.campaign.active_combat
+    if combat is None:
+        return
+    target = _automatic_monster_target(combat)
+    if target is None:
+        runtime.narrate(f"DM: {monster['name']} has no valid player target.")
+        return
+    attack_active_combat_target(runtime, target["name"])
+    if runtime.campaign.active_combat is None:
+        return
+    advance_active_combat(runtime)
+
+
+def _automatic_monster_target(combat: dict) -> dict | None:
+    targets = [
+        entry
+        for entry in combat.get("initiative", [])
+        if entry.get("is_player") is True and entry.get("current_hp", 0) > 0
+    ]
+    if not targets:
+        return None
+    return min(targets, key=lambda entry: (entry.get("current_hp", 0), entry.get("name", "")))
 
 
 def describe_quests(runtime: AdventureRuntime) -> None:

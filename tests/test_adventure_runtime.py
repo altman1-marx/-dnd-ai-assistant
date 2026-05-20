@@ -160,6 +160,39 @@ class AdventureRuntimeTests(unittest.TestCase):
         self.assertIn("round 2, turn: Kael", second_output)
         self.assertEqual(campaign.active_combat["round"], 2)
 
+    def test_end_turn_runs_automatic_monster_action(self) -> None:
+        campaign = campaign_from_adventure(AdventureDefinition(create_adventure_template("Moonlit Road")))
+        campaign.add_character(_scout())
+        campaign.active_combat = {
+            "round": 1,
+            "turn": "Kael",
+            "initiative": [
+                {"name": "Kael", "initiative_total": 18, "is_player": True, "armor_class": 14, "current_hp": 12},
+                {
+                    "name": "Lantern Sprite",
+                    "initiative_total": 12,
+                    "is_player": False,
+                    "armor_class": 13,
+                    "current_hp": 7,
+                    "attack_bonus": 20,
+                    "damage": "1d4+2",
+                },
+            ],
+            "resources": {
+                "Kael": {"action": False, "bonus_action": True, "reaction": True, "movement": 0},
+                "Lantern Sprite": {"action": True, "bonus_action": True, "reaction": True, "movement": 30},
+            },
+        }
+        runtime = AdventureRuntime(campaign, rng=random.Random(1))
+
+        handle_adventure_action(runtime, "end turn")
+        output = runtime.flush()
+
+        self.assertIn("Lantern Sprite attacks Kael", output)
+        self.assertIn("round 2, turn: Kael", output)
+        self.assertEqual(campaign.active_combat["turn"], "Kael")
+        self.assertLess(campaign.characters["Kael"].current_hp, campaign.characters["Kael"].max_hp)
+
     def test_combat_resource_actions_spend_current_turn_resources(self) -> None:
         campaign = campaign_from_adventure(AdventureDefinition(create_adventure_template("Moonlit Road")))
         campaign.active_combat = {
