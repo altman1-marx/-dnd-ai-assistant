@@ -484,6 +484,7 @@ def _active_combat_summary(campaign: Campaign) -> dict | None:
                 "armor_class": entry.get("armor_class"),
                 "current_hp": entry.get("current_hp"),
                 "is_player": entry.get("is_player", False),
+                "defeated": _combatant_defeated(entry),
             }
             for entry in combat.get("initiative", [])
         ],
@@ -545,6 +546,10 @@ def _available_actions(campaign: Campaign, active_combat: dict | None) -> list[s
             actions.append(f"attack {name.lower()}")
             actions.append(f"cast sacred flame {name.lower()}")
     return list(dict.fromkeys(actions))
+
+
+def _combatant_defeated(entry: dict) -> bool:
+    return "current_hp" in entry and int(entry.get("current_hp") or 0) <= 0
 
 
 def _event_message(event) -> dict:

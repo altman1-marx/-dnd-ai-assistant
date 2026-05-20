@@ -784,7 +784,8 @@
       lines.push(initiative.map((entry) => {
         return "<div class=\"item\"><strong>" + escapeHtml(entry.name || "unknown") + "</strong><p class=\"muted\">Initiative "
           + escapeHtml(String(entry.initiative_total)) + " | AC " + escapeHtml(String(entry.armor_class || "?"))
-          + " | HP " + escapeHtml(String(entry.current_hp || "?")) + "</p></div>";
+          + " | HP " + escapeHtml(String(entry.current_hp || "?"))
+          + " | " + escapeHtml(entry.defeated ? "defeated" : "active") + "</p></div>";
       }).join(""));
       return lines.join("");
     }
