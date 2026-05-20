@@ -501,6 +501,10 @@ def _run_automatic_monster_turn(runtime: AdventureRuntime, monster: dict) -> Non
     if target is None:
         runtime.narrate(f"DM: {monster['name']} has no valid player target.")
         return
+    runtime.campaign.record_event(
+        SessionEvent(actor="System", content=f"Automatic monster action: {monster['name']} targets {target['name']}.")
+    )
+    runtime.narrate(f"System: Automatic monster action: {monster['name']} targets {target['name']}.")
     attack_active_combat_target(runtime, target["name"])
     if runtime.campaign.active_combat is None:
         return

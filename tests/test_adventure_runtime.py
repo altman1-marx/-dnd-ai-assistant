@@ -188,8 +188,10 @@ class AdventureRuntimeTests(unittest.TestCase):
         handle_adventure_action(runtime, "end turn")
         output = runtime.flush()
 
+        self.assertIn("Automatic monster action", output)
         self.assertIn("Lantern Sprite attacks Kael", output)
         self.assertIn("round 2, turn: Kael", output)
+        self.assertTrue(any(event.actor == "System" and "Automatic monster action" in event.content for event in campaign.session_log))
         self.assertEqual(campaign.active_combat["turn"], "Kael")
         self.assertLess(campaign.characters["Kael"].current_hp, campaign.characters["Kael"].max_hp)
 
