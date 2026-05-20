@@ -206,6 +206,7 @@ class APITests(unittest.TestCase):
         self.assertEqual(summary["current_location"]["exits"][0]["name"], "Old Road")
         self.assertEqual(summary["current_location"]["npcs"][0]["name"], "Mayor Elin")
         self.assertEqual(summary["characters"][0]["name"], "Leth")
+        self.assertEqual(summary["characters"][0]["conditions"], [])
         self.assertEqual(summary["characters"][0]["spellcasting"]["slots"][0]["available"], 4)
         self.assertTrue(any(spell["name"] == "Sacred Flame" for spell in summary["characters"][0]["spellcasting"]["known_spells"]))
         self.assertTrue(any(spell["name"] == "Guiding Bolt" for spell in summary["characters"][0]["spellcasting"]["known_spells"]))

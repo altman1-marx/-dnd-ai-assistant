@@ -160,6 +160,7 @@ def campaign_summary(state: APIState, campaign_id: str) -> dict:
                 "armor_class": character.armor_class,
                 "current_hp": character.current_hp,
                 "max_hp": character.max_hp,
+                "conditions": sorted(character.conditions),
                 "spellcasting": _spellcasting_summary(character),
             }
             for character in campaign.characters.values()

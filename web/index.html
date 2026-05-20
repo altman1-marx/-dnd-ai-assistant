@@ -769,7 +769,8 @@
         + escapeHtml(String(character.level)) + " " + escapeHtml(character.ancestry) + " "
         + escapeHtml(character.class_name) + "</p><p>HP "
         + escapeHtml(String(character.current_hp)) + "/" + escapeHtml(String(character.max_hp))
-        + " | AC " + escapeHtml(String(character.armor_class)) + "</p>" + spellcasting + "</div>";
+        + " | AC " + escapeHtml(String(character.armor_class)) + "</p><p class=\"muted\">Conditions "
+        + escapeHtml((character.conditions || []).join(", ") || "none") + "</p>" + spellcasting + "</div>";
     }
 
     function renderCombat(activeCombat, availableActions) {

@@ -85,16 +85,20 @@ class Character:
             self.damage_vulnerabilities,
         )
         self.current_hp = max(0, self.current_hp - adjusted)
+        if self.current_hp == 0:
+            self.conditions.add("unconscious")
         return adjusted
 
     def heal(self, amount: int) -> None:
         if amount < 0:
             raise ValueError("Healing cannot be negative.")
         self.current_hp = min(self.max_hp, self.current_hp + amount)
+        if self.current_hp > 0:
+            self.conditions.discard("unconscious")
 
     @property
     def is_unconscious(self) -> bool:
-        return self.current_hp == 0
+        return self.current_hp == 0 or "unconscious" in self.conditions
 
     @property
     def spell_save_dc(self) -> int | None:
