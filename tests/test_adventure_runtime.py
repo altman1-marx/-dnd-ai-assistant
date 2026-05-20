@@ -506,6 +506,7 @@ class AdventureRuntimeTests(unittest.TestCase):
 
         self.assertIsNone(campaign.active_combat)
         self.assertFalse(campaign.encounters["enc_lantern_sprites"].resolved)
+        self.assertIn("unconscious", campaign.characters["Kael"].conditions)
         self.assertIn("Combat ended: Lantern Sprites", output)
         self.assertIn("All player combatants are defeated", output)
 
