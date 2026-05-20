@@ -761,7 +761,9 @@
       const spellcasting = character.spellcasting
         ? "<p class=\"muted\">Slots " + character.spellcasting.slots.map((slot) => {
             return escapeHtml("L" + slot.level + " " + slot.available + "/" + slot.total);
-          }).join(", ") + "</p><p class=\"muted\">" + character.spellcasting.known_spells.map((spell) => escapeHtml(spell.name)).join(", ") + "</p>"
+          }).join(", ") + "</p><p class=\"muted\">Concentration "
+          + escapeHtml(character.spellcasting.concentration_spell_name || "none")
+          + "</p><p class=\"muted\">" + character.spellcasting.known_spells.map((spell) => escapeHtml(spell.name)).join(", ") + "</p>"
         : "";
       return "<div class=\"item\"><strong>" + escapeHtml(character.name) + "</strong><p class=\"muted\">Level "
         + escapeHtml(String(character.level)) + " " + escapeHtml(character.ancestry) + " "

@@ -79,6 +79,8 @@ class WebUITests(unittest.TestCase):
         self.assertIn("available_actions", html)
         self.assertIn("renderQuickActions", html)
         self.assertIn("spellcasting.slots", html)
+        self.assertIn("concentration_spell_name", html)
+        self.assertIn("Concentration ", html)
         self.assertIn("location.exits", html)
         self.assertIn("Exit count", html)
         self.assertIn("NPC count", html)
