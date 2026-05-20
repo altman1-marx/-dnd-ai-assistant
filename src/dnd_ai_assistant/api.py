@@ -541,16 +541,23 @@ def _available_actions(campaign: Campaign, active_combat: dict | None) -> list[s
     if active_combat is not None:
         actions.extend(["combat", "attack", "end turn", "resolve encounter"])
         turn = str(active_combat.get("turn") or "")
+        current = next((entry for entry in active_combat.get("initiative", []) if entry.get("name") == turn), None)
         known_spells = _known_spell_action_names(campaign, turn)
         actions.extend(f"cast {spell}" for spell in known_spells)
         for combatant in active_combat.get("initiative", []):
             name = str(combatant.get("name") or "")
-            if not name or name == turn or int(combatant.get("current_hp") or 0) <= 0:
+            if not name or int(combatant.get("current_hp") or 0) <= 0:
                 continue
-            actions.append(f"attack {name.lower()}")
-            for spell in known_spells:
-                if spell in {"sacred flame", "guiding bolt"}:
-                    actions.append(f"cast {spell} {name.lower()}")
+            same_side = current is not None and bool(combatant.get("is_player")) == bool(current.get("is_player"))
+            if name != turn and not same_side:
+                actions.append(f"attack {name.lower()}")
+                for spell in known_spells:
+                    if spell in {"sacred flame", "guiding bolt"}:
+                        actions.append(f"cast {spell} {name.lower()}")
+            if same_side:
+                for spell in known_spells:
+                    if spell in {"cure wounds", "healing word"}:
+                        actions.append(f"cast {spell} {name.lower()}")
     return list(dict.fromkeys(actions))
 
 

@@ -253,6 +253,33 @@ class APITests(unittest.TestCase):
         self.assertNotIn("cast guiding bolt", summary["available_actions"])
         self.assertNotIn("cast sacred flame leth", summary["available_actions"])
 
+    def test_campaign_summary_suggests_targeted_healing_spells_for_allies(self) -> None:
+        state = APIState()
+        campaign_id = import_adventure(state, create_adventure_template("Moonlit Road"))["campaign_id"]
+        add_sample_character(state, campaign_id)
+        campaign = state.campaigns[campaign_id]
+        campaign.active_combat = {
+            "encounter_id": "enc_lantern_sprites",
+            "round": 1,
+            "turn": "Leth",
+            "initiative": [
+                {"name": "Leth", "initiative_total": 18, "is_player": True, "armor_class": 16, "current_hp": 24},
+                {"name": "Kael", "initiative_total": 14, "is_player": True, "armor_class": 14, "current_hp": 5},
+                {"name": "Lantern Sprite", "initiative_total": 12, "is_player": False, "armor_class": 13, "current_hp": 7},
+            ],
+            "resources": {
+                "Leth": {"action": True, "bonus_action": True, "reaction": True, "movement": 30},
+                "Kael": {"action": True, "bonus_action": True, "reaction": True, "movement": 30},
+                "Lantern Sprite": {"action": True, "bonus_action": True, "reaction": True, "movement": 30},
+            },
+        }
+
+        summary = campaign_summary(state, campaign_id)
+
+        self.assertIn("cast cure wounds leth", summary["available_actions"])
+        self.assertIn("cast cure wounds kael", summary["available_actions"])
+        self.assertIn("cast healing word kael", summary["available_actions"])
+
     def test_campaign_log_returns_limited_events(self) -> None:
         state = APIState()
         campaign_id = import_adventure(state, create_adventure_template("Moonlit Road"))["campaign_id"]
