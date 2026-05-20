@@ -100,6 +100,8 @@ def _campaign_snapshot(campaign: Campaign) -> str:
         f"Discovered clues: {discovered_clues}",
         f"Active combat: {'yes' if campaign.active_combat else 'no'}",
     ]
+    if campaign.active_combat:
+        lines.extend(_combat_snapshot(campaign.active_combat))
     if location is not None:
         npcs = ", ".join(npc.name for npc in campaign.npcs.values() if npc.location_id == location.id) or "none"
         exits = ", ".join(
@@ -109,3 +111,39 @@ def _campaign_snapshot(campaign: Campaign) -> str:
         ) or "none"
         lines.extend([f"Visible NPCs: {npcs}", f"Visible exits: {exits}"])
     return "\n".join(lines)
+
+
+def _combat_snapshot(combat: dict) -> list[str]:
+    turn = str(combat.get("turn") or "unknown")
+    initiative = combat.get("initiative", [])
+    living_enemies = _target_names_for_turn(initiative, turn, same_side=False)
+    living_allies = _target_names_for_turn(initiative, turn, same_side=True)
+    return [
+        f"Combat round: {combat.get('round', 1)}",
+        f"Combat turn: {turn}",
+        "Combatants: "
+        + (
+            ", ".join(
+                f"{entry.get('name', 'unknown')} HP {entry.get('current_hp', '?')} {'PC' if entry.get('is_player') else 'NPC'}"
+                for entry in initiative
+            )
+            or "none"
+        ),
+        f"Targetable enemies: {', '.join(living_enemies) or 'none'}",
+        f"Targetable allies: {', '.join(living_allies) or 'none'}",
+    ]
+
+
+def _target_names_for_turn(initiative: list[dict], turn: str, same_side: bool) -> list[str]:
+    current = next((entry for entry in initiative if entry.get("name") == turn), None)
+    if current is None or "is_player" not in current:
+        return []
+    current_side = bool(current.get("is_player"))
+    return [
+        str(entry.get("name"))
+        for entry in initiative
+        if entry.get("name")
+        and entry.get("name") != turn
+        and int(entry.get("current_hp") or 0) > 0
+        and (bool(entry.get("is_player")) == current_side) == same_side
+    ]

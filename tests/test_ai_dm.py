@@ -18,6 +18,24 @@ class AIDMTests(unittest.TestCase):
         self.assertIn("inspect the ash", prompt)
         self.assertIn("Ability Checks", prompt)
 
+    def test_build_dm_prompt_includes_active_combat_targets(self) -> None:
+        campaign = campaign_from_adventure(AdventureDefinition(create_adventure_template("Moonlit Road")))
+        campaign.active_combat = {
+            "round": 2,
+            "turn": "Leth",
+            "initiative": [
+                {"name": "Leth", "initiative_total": 18, "is_player": True, "current_hp": 24},
+                {"name": "Lantern Sprite", "initiative_total": 12, "is_player": False, "current_hp": 7},
+            ],
+        }
+
+        prompt = build_dm_prompt(campaign, "cast guiding bolt lantern sprite")
+
+        self.assertIn("Combat round: 2", prompt)
+        self.assertIn("Combat turn: Leth", prompt)
+        self.assertIn("Targetable enemies: Lantern Sprite", prompt)
+        self.assertIn("Targetable allies: none", prompt)
+
     def test_generate_dm_suggestion_uses_provider_and_rules_without_mutating_state(self) -> None:
         campaign = campaign_from_adventure(AdventureDefinition(create_adventure_template("Moonlit Road")))
         before_events = len(campaign.session_log)
