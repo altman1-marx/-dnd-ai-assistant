@@ -704,7 +704,7 @@
         : "<p class=\"muted\">No characters yet.</p>";
 
       combat.innerHTML = summary.active_combat
-        ? renderCombat(summary.active_combat)
+        ? renderCombat(summary.active_combat, summary.available_actions || [])
         : "<p class=\"muted\">No active combat.</p>";
       bindQuickActions();
     }
@@ -772,7 +772,7 @@
         + " | AC " + escapeHtml(String(character.armor_class)) + "</p>" + spellcasting + "</div>";
     }
 
-    function renderCombat(activeCombat) {
+    function renderCombat(activeCombat, availableActions) {
       const resources = activeCombat.current_resources || {};
       const lines = [
         metric("Round", activeCombat.round),
@@ -791,16 +791,22 @@
           + " | HP " + escapeHtml(String(entry.current_hp || "?"))
           + " | " + escapeHtml(entry.defeated ? "defeated" : "active") + "</p></div>";
       }).join(""));
-      if ((activeCombat.targetable_enemies || []).length) {
-        lines.push("<div class=\"item\"><strong>Target Actions</strong>" + activeCombat.targetable_enemies.map((target) => {
-          const safeTarget = escapeHtml(target);
-          return "<p><button type=\"button\" class=\"secondary\" data-action=\"attack " + safeTarget + "\">Attack "
-            + safeTarget + "</button> <button type=\"button\" class=\"secondary\" data-action=\"cast sacred flame "
-            + safeTarget + "\">Sacred Flame</button> <button type=\"button\" class=\"secondary\" data-action=\"cast guiding bolt "
-            + safeTarget + "\">Guiding Bolt</button></p>";
-        }).join("") + "</div>");
+      const targetActions = combatTargetActions(activeCombat, availableActions || []);
+      if (targetActions.length) {
+        lines.push("<div class=\"item\"><strong>Target Actions</strong><p>" + targetActions.map((action) => {
+          return "<button type=\"button\" class=\"secondary\" data-action=\"" + escapeHtml(action) + "\">"
+            + escapeHtml(actionLabel(action)) + "</button>";
+        }).join(" ") + "</p></div>");
       }
       return lines.join("");
+    }
+
+    function combatTargetActions(activeCombat, availableActions) {
+      const targets = (activeCombat.targetable_enemies || []).concat(activeCombat.targetable_allies || []);
+      return availableActions.filter((action) => {
+        const normalized = action.toLowerCase();
+        return targets.some((target) => normalized.endsWith(" " + String(target).toLowerCase()));
+      });
     }
 
     function resourceLabel(value) {
