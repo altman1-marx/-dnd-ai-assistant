@@ -84,9 +84,13 @@ class CharacterTests(unittest.TestCase):
         self.assertEqual(character.current_hp, 0)
         self.assertTrue(character.is_unconscious)
         self.assertIn("unconscious", character.conditions)
+        character.death_save_successes = 2
+        character.death_save_failures = 1
         character.heal(7)
         self.assertEqual(character.current_hp, 7)
         self.assertNotIn("unconscious", character.conditions)
+        self.assertEqual(character.death_save_successes, 0)
+        self.assertEqual(character.death_save_failures, 0)
 
     def test_damage_resistance_vulnerability_and_immunity(self) -> None:
         character = Character(

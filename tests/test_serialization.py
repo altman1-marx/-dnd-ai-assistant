@@ -163,6 +163,8 @@ class SerializationTests(unittest.TestCase):
                 max_hp=38,
                 current_hp=38,
                 damage_resistances={"fire"},
+                death_save_successes=1,
+                death_save_failures=2,
                 spellcasting=Spellcasting(
                     ability="wis",
                     slots_by_level={1: 4, 2: 3},
@@ -180,6 +182,8 @@ class SerializationTests(unittest.TestCase):
         self.assertEqual(spellcasting.available_slots(1), 3)
         self.assertEqual(restored.characters["Leth"].spell_save_dc, 14)
         self.assertEqual(restored.characters["Leth"].damage_resistances, {"fire"})
+        self.assertEqual(restored.characters["Leth"].death_save_successes, 1)
+        self.assertEqual(restored.characters["Leth"].death_save_failures, 2)
 
 
 if __name__ == "__main__":

@@ -30,6 +30,8 @@ class Character:
     conditions: set[str] = field(default_factory=set)
     inventory: list[str] = field(default_factory=list)
     spellcasting: Spellcasting | None = None
+    death_save_successes: int = 0
+    death_save_failures: int = 0
 
     def __post_init__(self) -> None:
         missing = set(ABILITY_NAMES) - set(self.ability_scores)
@@ -55,6 +57,10 @@ class Character:
         self.damage_immunities = normalize_damage_types(self.damage_immunities)
         if self.spellcasting is not None and self.spellcasting.ability not in ABILITY_NAMES:
             raise ValueError(f"Unknown spellcasting ability: {self.spellcasting.ability}")
+        if self.death_save_successes < 0 or self.death_save_successes > 3:
+            raise ValueError("Death save successes must be between 0 and 3.")
+        if self.death_save_failures < 0 or self.death_save_failures > 3:
+            raise ValueError("Death save failures must be between 0 and 3.")
 
     @property
     def proficiency_bonus(self) -> int:
@@ -87,6 +93,8 @@ class Character:
         self.current_hp = max(0, self.current_hp - adjusted)
         if self.current_hp == 0:
             self.conditions.add("unconscious")
+            if adjusted > 0 and "stable" in self.conditions:
+                self.conditions.discard("stable")
         return adjusted
 
     def heal(self, amount: int) -> None:
@@ -95,6 +103,9 @@ class Character:
         self.current_hp = min(self.max_hp, self.current_hp + amount)
         if self.current_hp > 0:
             self.conditions.discard("unconscious")
+            self.conditions.discard("stable")
+            self.death_save_successes = 0
+            self.death_save_failures = 0
 
     @property
     def is_unconscious(self) -> bool:

@@ -86,6 +86,8 @@ def character_to_dict(character: Character) -> dict:
         "conditions": sorted(character.conditions),
         "inventory": list(character.inventory),
         "spellcasting": spellcasting_to_dict(character.spellcasting),
+        "death_save_successes": character.death_save_successes,
+        "death_save_failures": character.death_save_failures,
     }
 
 
@@ -108,6 +110,8 @@ def character_from_dict(data: dict) -> Character:
         conditions=set(data.get("conditions", [])),
         inventory=list(data.get("inventory", [])),
         spellcasting=spellcasting_from_dict(data.get("spellcasting")),
+        death_save_successes=data.get("death_save_successes", 0),
+        death_save_failures=data.get("death_save_failures", 0),
     )
 
 
