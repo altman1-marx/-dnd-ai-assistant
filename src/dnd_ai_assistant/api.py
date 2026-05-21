@@ -161,6 +161,10 @@ def campaign_summary(state: APIState, campaign_id: str) -> dict:
                 "current_hp": character.current_hp,
                 "max_hp": character.max_hp,
                 "conditions": sorted(character.conditions),
+                "death_saves": {
+                    "successes": character.death_save_successes,
+                    "failures": character.death_save_failures,
+                },
                 "spellcasting": _spellcasting_summary(character),
             }
             for character in campaign.characters.values()
@@ -486,6 +490,8 @@ def _active_combat_summary(campaign: Campaign) -> dict | None:
                 "current_hp": entry.get("current_hp"),
                 "is_player": entry.get("is_player", False),
                 "defeated": _combatant_defeated(entry),
+                "conditions": _combatant_conditions(campaign, entry),
+                "death_saves": _combatant_death_saves(campaign, entry),
             }
             for entry in combat.get("initiative", [])
         ],
@@ -545,6 +551,7 @@ def _available_actions(campaign: Campaign, active_combat: dict | None) -> list[s
         current = next((entry for entry in active_combat.get("initiative", []) if entry.get("name") == turn), None)
         known_spells = _known_spell_action_names(campaign, turn)
         actions.extend(f"cast {spell}" for spell in known_spells)
+        actions.extend(_death_save_actions(campaign))
         for combatant in active_combat.get("initiative", []):
             name = str(combatant.get("name") or "")
             if not name or int(combatant.get("current_hp") or 0) <= 0:
@@ -560,6 +567,34 @@ def _available_actions(campaign: Campaign, active_combat: dict | None) -> list[s
                     if spell in {"cure wounds", "healing word"}:
                         actions.append(f"cast {spell} {name.lower()}")
     return list(dict.fromkeys(actions))
+
+
+def _death_save_actions(campaign: Campaign) -> list[str]:
+    actions: list[str] = []
+    for character in campaign.characters.values():
+        if character.current_hp > 0 or "dead" in character.conditions:
+            continue
+        if "stable" not in character.conditions:
+            actions.append(f"death save {character.name.lower()}")
+            actions.append(f"stabilize {character.name.lower()}")
+    return actions
+
+
+def _combatant_conditions(campaign: Campaign, entry: dict) -> list[str]:
+    character = campaign.characters.get(str(entry.get("name") or ""))
+    if character is None:
+        return sorted(str(condition) for condition in entry.get("conditions", []))
+    return sorted(character.conditions)
+
+
+def _combatant_death_saves(campaign: Campaign, entry: dict) -> dict | None:
+    character = campaign.characters.get(str(entry.get("name") or ""))
+    if character is None:
+        return None
+    return {
+        "successes": character.death_save_successes,
+        "failures": character.death_save_failures,
+    }
 
 
 def _combatant_defeated(entry: dict) -> bool:

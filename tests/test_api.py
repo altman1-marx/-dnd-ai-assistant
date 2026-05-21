@@ -207,6 +207,7 @@ class APITests(unittest.TestCase):
         self.assertEqual(summary["current_location"]["npcs"][0]["name"], "Mayor Elin")
         self.assertEqual(summary["characters"][0]["name"], "Leth")
         self.assertEqual(summary["characters"][0]["conditions"], [])
+        self.assertEqual(summary["characters"][0]["death_saves"], {"successes": 0, "failures": 0})
         self.assertEqual(summary["characters"][0]["spellcasting"]["slots"][0]["available"], 4)
         self.assertTrue(any(spell["name"] == "Sacred Flame" for spell in summary["characters"][0]["spellcasting"]["known_spells"]))
         self.assertTrue(any(spell["name"] == "Guiding Bolt" for spell in summary["characters"][0]["spellcasting"]["known_spells"]))
@@ -216,6 +217,8 @@ class APITests(unittest.TestCase):
         self.assertEqual(summary["active_combat"]["round"], 2)
         self.assertEqual(summary["active_combat"]["combatant_count"], 2)
         self.assertFalse(summary["active_combat"]["initiative"][0]["defeated"])
+        self.assertEqual(summary["active_combat"]["initiative"][0]["conditions"], [])
+        self.assertEqual(summary["active_combat"]["initiative"][0]["death_saves"], {"successes": 0, "failures": 0})
         self.assertEqual(summary["active_combat"]["targetable_enemies"], ["Lantern Sprite"])
         self.assertEqual(summary["active_combat"]["targetable_allies"], [])
         self.assertEqual(summary["active_combat"]["current_resources"]["movement"], 20)
@@ -228,6 +231,34 @@ class APITests(unittest.TestCase):
         self.assertIn("cast sacred flame lantern sprite", summary["available_actions"])
         self.assertIn("cast guiding bolt lantern sprite", summary["available_actions"])
         self.assertIn("combat", summary["available_actions"])
+
+    def test_campaign_summary_suggests_death_save_and_stabilize_actions(self) -> None:
+        state = APIState()
+        campaign_id = import_adventure(state, create_adventure_template("Moonlit Road"))["campaign_id"]
+        add_sample_character(state, campaign_id)
+        campaign = state.campaigns[campaign_id]
+        leth = campaign.characters["Leth"]
+        leth.current_hp = 0
+        leth.conditions.add("unconscious")
+        leth.death_save_failures = 1
+        campaign.active_combat = {
+            "encounter_id": "enc_lantern_sprites",
+            "round": 1,
+            "turn": "Lantern Sprite",
+            "initiative": [
+                {"name": "Leth", "initiative_total": 18, "is_player": True, "armor_class": 16, "current_hp": 0},
+                {"name": "Lantern Sprite", "initiative_total": 12, "is_player": False, "armor_class": 13, "current_hp": 7},
+            ],
+            "resources": {"Lantern Sprite": {"action": True, "bonus_action": True, "reaction": True, "movement": 30}},
+        }
+
+        summary = campaign_summary(state, campaign_id)
+
+        self.assertEqual(summary["characters"][0]["death_saves"], {"successes": 0, "failures": 1})
+        self.assertEqual(summary["active_combat"]["initiative"][0]["conditions"], ["unconscious"])
+        self.assertEqual(summary["active_combat"]["initiative"][0]["death_saves"], {"successes": 0, "failures": 1})
+        self.assertIn("death save leth", summary["available_actions"])
+        self.assertIn("stabilize leth", summary["available_actions"])
 
     def test_campaign_summary_only_suggests_spells_for_current_character(self) -> None:
         state = APIState()

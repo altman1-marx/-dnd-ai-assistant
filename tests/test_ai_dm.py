@@ -4,6 +4,7 @@ from dnd_ai_assistant.adventure import AdventureDefinition, create_adventure_tem
 from dnd_ai_assistant.adventure_importer import campaign_from_adventure
 from dnd_ai_assistant.ai_dm import build_dm_prompt, generate_dm_suggestion
 from dnd_ai_assistant.ai_provider import MockProvider
+from dnd_ai_assistant.core.character import Character
 from dnd_ai_assistant.rules_corpus import RuleChunk, RuleCorpus
 
 
@@ -20,6 +21,22 @@ class AIDMTests(unittest.TestCase):
 
     def test_build_dm_prompt_includes_active_combat_targets(self) -> None:
         campaign = campaign_from_adventure(AdventureDefinition(create_adventure_template("Moonlit Road")))
+        campaign.add_character(
+            Character(
+                name="Leth",
+                player_name="Player",
+                class_name="Cleric",
+                level=3,
+                ancestry="Human",
+                ability_scores={"str": 10, "dex": 10, "con": 14, "int": 10, "wis": 16, "cha": 12},
+                armor_class=16,
+                max_hp=24,
+                current_hp=0,
+                conditions={"unconscious"},
+                death_save_successes=1,
+                death_save_failures=2,
+            )
+        )
         campaign.active_combat = {
             "round": 2,
             "turn": "Leth",
@@ -35,6 +52,8 @@ class AIDMTests(unittest.TestCase):
         self.assertIn("Combat turn: Leth", prompt)
         self.assertIn("Targetable enemies: Lantern Sprite", prompt)
         self.assertIn("Targetable allies: none", prompt)
+        self.assertIn("conditions: unconscious", prompt)
+        self.assertIn("death saves: 1 successes/2 failures", prompt)
 
     def test_build_dm_prompt_excludes_defeated_targets(self) -> None:
         campaign = campaign_from_adventure(AdventureDefinition(create_adventure_template("Moonlit Road")))

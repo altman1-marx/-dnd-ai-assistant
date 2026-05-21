@@ -79,7 +79,7 @@ def _rules_for_action(campaign: Campaign, action: str, rules_corpus: RuleCorpus 
 def _campaign_snapshot(campaign: Campaign) -> str:
     location = campaign.locations.get(campaign.current_location_id or "")
     characters = ", ".join(
-        f"{character.name} level {character.level} {character.class_name} HP {character.current_hp}/{character.max_hp}"
+        _character_snapshot(character)
         for character in campaign.characters.values()
     ) or "none"
     active_quests = ", ".join(
@@ -101,7 +101,7 @@ def _campaign_snapshot(campaign: Campaign) -> str:
         f"Active combat: {'yes' if campaign.active_combat else 'no'}",
     ]
     if campaign.active_combat:
-        lines.extend(_combat_snapshot(campaign.active_combat))
+        lines.extend(_combat_snapshot(campaign, campaign.active_combat))
     if location is not None:
         npcs = ", ".join(npc.name for npc in campaign.npcs.values() if npc.location_id == location.id) or "none"
         exits = ", ".join(
@@ -113,7 +113,16 @@ def _campaign_snapshot(campaign: Campaign) -> str:
     return "\n".join(lines)
 
 
-def _combat_snapshot(combat: dict) -> list[str]:
+def _character_snapshot(character) -> str:
+    conditions = ", ".join(sorted(character.conditions)) or "none"
+    death_saves = f"{character.death_save_successes} successes/{character.death_save_failures} failures"
+    return (
+        f"{character.name} level {character.level} {character.class_name} "
+        f"HP {character.current_hp}/{character.max_hp}, conditions: {conditions}, death saves: {death_saves}"
+    )
+
+
+def _combat_snapshot(campaign: Campaign, combat: dict) -> list[str]:
     turn = str(combat.get("turn") or "unknown")
     initiative = combat.get("initiative", [])
     living_enemies = _target_names_for_turn(initiative, turn, same_side=False)
@@ -124,7 +133,7 @@ def _combat_snapshot(combat: dict) -> list[str]:
         "Combatants: "
         + (
             ", ".join(
-                f"{entry.get('name', 'unknown')} HP {entry.get('current_hp', '?')} {'PC' if entry.get('is_player') else 'NPC'}"
+                _combatant_snapshot(campaign, entry)
                 for entry in initiative
             )
             or "none"
@@ -132,6 +141,19 @@ def _combat_snapshot(combat: dict) -> list[str]:
         f"Targetable enemies: {', '.join(living_enemies) or 'none'}",
         f"Targetable allies: {', '.join(living_allies) or 'none'}",
     ]
+
+
+def _combatant_snapshot(campaign: Campaign, entry: dict) -> str:
+    name = str(entry.get("name", "unknown"))
+    character = campaign.characters.get(name)
+    status = ""
+    if character is not None:
+        conditions = ", ".join(sorted(character.conditions)) or "none"
+        status = (
+            f", conditions: {conditions}, death saves: "
+            f"{character.death_save_successes} successes/{character.death_save_failures} failures"
+        )
+    return f"{name} HP {entry.get('current_hp', '?')} {'PC' if entry.get('is_player') else 'NPC'}{status}"
 
 
 def _target_names_for_turn(initiative: list[dict], turn: str, same_side: bool) -> list[str]:

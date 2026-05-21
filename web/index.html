@@ -758,6 +758,7 @@
     }
 
     function renderCharacter(character) {
+      const deathSaves = character.death_saves || { successes: 0, failures: 0 };
       const spellcasting = character.spellcasting
         ? "<p class=\"muted\">Slots " + character.spellcasting.slots.map((slot) => {
             return escapeHtml("L" + slot.level + " " + slot.available + "/" + slot.total);
@@ -770,7 +771,9 @@
         + escapeHtml(character.class_name) + "</p><p>HP "
         + escapeHtml(String(character.current_hp)) + "/" + escapeHtml(String(character.max_hp))
         + " | AC " + escapeHtml(String(character.armor_class)) + "</p><p class=\"muted\">Conditions "
-        + escapeHtml((character.conditions || []).join(", ") || "none") + "</p>" + spellcasting + "</div>";
+        + escapeHtml((character.conditions || []).join(", ") || "none") + "</p><p class=\"muted\">Death saves "
+        + escapeHtml(String(deathSaves.successes || 0)) + "S / " + escapeHtml(String(deathSaves.failures || 0))
+        + "F</p>" + spellcasting + "</div>";
     }
 
     function renderCombat(activeCombat, availableActions) {
@@ -787,10 +790,14 @@
       ];
       const initiative = activeCombat.initiative || [];
       lines.push(initiative.map((entry) => {
+        const deathSaves = entry.death_saves || { successes: 0, failures: 0 };
+        const conditions = (entry.conditions || []).join(", ") || "none";
         return "<div class=\"item\"><strong>" + escapeHtml(entry.name || "unknown") + "</strong><p class=\"muted\">Initiative "
           + escapeHtml(String(entry.initiative_total)) + " | AC " + escapeHtml(String(entry.armor_class || "?"))
           + " | HP " + escapeHtml(String(entry.current_hp || "?"))
-          + " | " + escapeHtml(entry.defeated ? "defeated" : "active") + "</p></div>";
+          + " | " + escapeHtml(entry.defeated ? "defeated" : "active") + "</p><p class=\"muted\">Conditions "
+          + escapeHtml(conditions) + " | Death saves " + escapeHtml(String(deathSaves.successes || 0))
+          + "S / " + escapeHtml(String(deathSaves.failures || 0)) + "F</p></div>";
       }).join(""));
       const targetActions = combatTargetActions(activeCombat, availableActions || []);
       if (targetActions.length) {
