@@ -946,6 +946,102 @@ class AdventureRuntimeTests(unittest.TestCase):
 
         self.assertFalse(handle_adventure_action(runtime, "quit"))
 
+    def test_death_save_third_success_stabilizes_character(self) -> None:
+        campaign = campaign_from_adventure(AdventureDefinition(create_adventure_template("Moonlit Road")))
+        scout = _scout()
+        scout.current_hp = 0
+        scout.conditions.add("unconscious")
+        scout.death_save_successes = 2
+        campaign.add_character(scout)
+        runtime = AdventureRuntime(campaign, rng=random.Random(9))
+
+        handle_adventure_action(runtime, "death save kael")
+        output = runtime.flush()
+
+        self.assertIn("stable", campaign.characters["Kael"].conditions)
+        self.assertIn("unconscious", campaign.characters["Kael"].conditions)
+        self.assertEqual(campaign.characters["Kael"].death_save_successes, 0)
+        self.assertEqual(campaign.characters["Kael"].death_save_failures, 0)
+        self.assertIn("succeeds on a death save", output)
+
+    def test_death_save_third_failure_marks_character_dead(self) -> None:
+        campaign = campaign_from_adventure(AdventureDefinition(create_adventure_template("Moonlit Road")))
+        scout = _scout()
+        scout.current_hp = 0
+        scout.conditions.add("unconscious")
+        scout.death_save_failures = 2
+        campaign.add_character(scout)
+        runtime = AdventureRuntime(campaign, rng=random.Random(1))
+
+        handle_adventure_action(runtime, "death save kael")
+
+        self.assertIn("dead", campaign.characters["Kael"].conditions)
+        self.assertEqual(campaign.characters["Kael"].death_save_failures, 3)
+
+    def test_death_save_natural_20_revives_character(self) -> None:
+        campaign = campaign_from_adventure(AdventureDefinition(create_adventure_template("Moonlit Road")))
+        scout = _scout()
+        scout.current_hp = 0
+        scout.conditions.add("unconscious")
+        scout.death_save_failures = 1
+        campaign.add_character(scout)
+        runtime = AdventureRuntime(campaign, rng=random.Random(5))
+
+        handle_adventure_action(runtime, "death save kael")
+
+        self.assertEqual(campaign.characters["Kael"].current_hp, 1)
+        self.assertNotIn("unconscious", campaign.characters["Kael"].conditions)
+        self.assertEqual(campaign.characters["Kael"].death_save_successes, 0)
+        self.assertEqual(campaign.characters["Kael"].death_save_failures, 0)
+
+    def test_stabilize_marks_unconscious_character_stable(self) -> None:
+        campaign = campaign_from_adventure(AdventureDefinition(create_adventure_template("Moonlit Road")))
+        scout = _scout()
+        scout.current_hp = 0
+        scout.conditions.add("unconscious")
+        scout.death_save_failures = 2
+        campaign.add_character(scout)
+        runtime = AdventureRuntime(campaign)
+
+        handle_adventure_action(runtime, "stabilize kael")
+
+        self.assertEqual(campaign.characters["Kael"].current_hp, 0)
+        self.assertIn("stable", campaign.characters["Kael"].conditions)
+        self.assertIn("unconscious", campaign.characters["Kael"].conditions)
+        self.assertEqual(campaign.characters["Kael"].death_save_failures, 0)
+
+    def test_damage_to_unconscious_character_adds_death_save_failure(self) -> None:
+        campaign = campaign_from_adventure(AdventureDefinition(create_adventure_template("Moonlit Road")))
+        scout = _scout()
+        scout.current_hp = 0
+        scout.conditions.update({"unconscious", "stable"})
+        campaign.add_character(scout)
+        campaign.active_combat = {
+            "round": 1,
+            "turn": "Lantern Sprite",
+            "initiative": [
+                {
+                    "name": "Lantern Sprite",
+                    "initiative_total": 18,
+                    "is_player": False,
+                    "armor_class": 13,
+                    "current_hp": 7,
+                    "attack_bonus": 20,
+                    "damage": "1",
+                },
+                {"name": "Kael", "initiative_total": 12, "is_player": True, "armor_class": 14, "current_hp": 0},
+            ],
+            "resources": {"Lantern Sprite": {"action": True, "bonus_action": True, "reaction": True, "movement": 30}},
+        }
+        runtime = AdventureRuntime(campaign, rng=random.Random(1))
+
+        handle_adventure_action(runtime, "attack kael")
+        output = runtime.flush()
+
+        self.assertEqual(campaign.characters["Kael"].death_save_failures, 1)
+        self.assertNotIn("stable", campaign.characters["Kael"].conditions)
+        self.assertIn("takes damage while unconscious", output)
+
 
 def _scout() -> Character:
     return Character(

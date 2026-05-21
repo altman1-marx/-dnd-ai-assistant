@@ -43,6 +43,8 @@ DEFAULT_RUNTIME_ACTIONS = {
     "spend_movement": {"aliases": ["spend movement", "use movement"], "handler": "spend_movement"},
     "attack": {"aliases": ["attack", "strike"], "handler": "attack"},
     "cast_spell": {"aliases": ["cast", "cast spell"], "handler": "cast_spell"},
+    "death_save": {"aliases": ["death save"], "handler": "death_save"},
+    "stabilize": {"aliases": ["stabilize", "stabilise"], "handler": "stabilize"},
     "resolve_encounter": {"aliases": ["resolve encounter", "end encounter"], "handler": "resolve_encounter"},
     "quests": {"aliases": ["quests", "quest log"], "handler": "quests"},
     "complete_quest": {"aliases": ["complete quest", "finish quest"], "handler": "complete_quest"},
@@ -137,6 +139,12 @@ def handle_adventure_action(runtime: AdventureRuntime, action: str) -> bool:
         return True
     if handler == "cast_spell":
         cast_active_combat_spell(runtime, action_match.get("argument", ""))
+        return True
+    if handler == "death_save":
+        roll_death_save(runtime, action_match.get("argument", ""))
+        return True
+    if handler == "stabilize":
+        stabilize_character(runtime, action_match.get("argument", ""))
         return True
     if handler == "resolve_encounter":
         return resolve_active_encounter(runtime)
@@ -380,6 +388,7 @@ def attack_active_combat_target(runtime: AdventureRuntime, target: str) -> None:
     if attack.hit and attack.damage is not None:
         before = defender.get("current_hp", 0)
         damage_type = attacker.get("damage_type", "untyped")
+        was_unconscious = _is_unconscious_character(runtime.campaign, defender)
         damage_amount = _apply_combat_damage(runtime.campaign, defender, attack.damage.total, damage_type)
         adjustment = ""
         if damage_amount != attack.damage.total:
@@ -391,9 +400,12 @@ def attack_active_combat_target(runtime: AdventureRuntime, target: str) -> None:
         concentration = _concentration_check_text(runtime, defender, damage_amount)
         if concentration:
             content += " " + concentration
+        death_saves = _death_save_damage_text(runtime, defender, damage_amount, was_unconscious)
+        if death_saves:
+            content += " " + death_saves
     else:
         content = f"{attacker['name']} attacks {defender['name']}: {attack.attack.total} vs AC {defender.get('armor_class')}, miss."
-    runtime.campaign.record_event(SessionEvent(actor="DM", content=content))
+    runtime.campaign.record_event(SessionEvent(actor="System", content=content))
     runtime.narrate(f"DM: {content}")
     if attack.hit and _all_hostile_combatants_defeated(combat):
         _finish_active_encounter(runtime, "All hostile combatants are defeated.")
@@ -451,12 +463,66 @@ def cast_active_combat_spell(runtime: AdventureRuntime, spell_text: str) -> None
     content = f"{caster.name} casts {cast_spell.name}{slot_text}, spending {resource_name.replace('_', ' ')}."
     if effect_text:
         content += f" {effect_text}"
-    runtime.campaign.record_event(SessionEvent(actor="DM", content=content))
+    runtime.campaign.record_event(SessionEvent(actor="System", content=content))
     runtime.narrate(f"DM: {content}")
     if runtime.campaign.active_combat is not None and _all_hostile_combatants_defeated(runtime.campaign.active_combat):
         _finish_active_encounter(runtime, "All hostile combatants are defeated.")
     elif runtime.campaign.active_combat is not None and _all_player_combatants_defeated(runtime.campaign.active_combat):
         _end_active_combat(runtime, "All player combatants are defeated.", mark_encounter_resolved=False)
+
+
+def roll_death_save(runtime: AdventureRuntime, target: str) -> None:
+    character = _match_character(runtime.campaign, target)
+    if character is None:
+        runtime.narrate("DM: Which character is making a death save?")
+        return
+    if character.current_hp > 0 or "unconscious" not in character.conditions:
+        runtime.narrate(f"DM: {character.name} does not need a death save.")
+        return
+    if "stable" in character.conditions:
+        runtime.narrate(f"DM: {character.name} is stable and does not need a death save.")
+        return
+    if "dead" in character.conditions:
+        runtime.narrate(f"DM: {character.name} is already dead.")
+        return
+
+    result = roll_d20_check(rng=runtime.rng)
+    if result.natural_20:
+        character.heal(1)
+        content = f"{character.name} rolls a natural 20 death save and regains 1 HP."
+    elif result.natural_1:
+        _add_death_save_failure(character, 2)
+        content = f"{character.name} rolls a natural 1 death save: 2 failures."
+    elif result.total >= 10:
+        character.death_save_successes = min(3, character.death_save_successes + 1)
+        content = f"{character.name} succeeds on a death save ({character.death_save_successes}/3 successes)."
+        if character.death_save_successes >= 3:
+            _stabilize(character)
+            content += " They are stable."
+    else:
+        _add_death_save_failure(character, 1)
+        content = f"{character.name} fails a death save ({character.death_save_failures}/3 failures)."
+    if "dead" in character.conditions:
+        content += " They die."
+    runtime.campaign.record_event(SessionEvent(actor="DM", content=content))
+    runtime.narrate(f"DM: {content}")
+
+
+def stabilize_character(runtime: AdventureRuntime, target: str) -> None:
+    character = _match_character(runtime.campaign, target)
+    if character is None:
+        runtime.narrate("DM: Which character do you want to stabilize?")
+        return
+    if character.current_hp > 0:
+        runtime.narrate(f"DM: {character.name} is conscious and does not need stabilization.")
+        return
+    if "dead" in character.conditions:
+        runtime.narrate(f"DM: {character.name} cannot be stabilized because they are dead.")
+        return
+    _stabilize(character)
+    content = f"{character.name} is stable at 0 HP."
+    runtime.campaign.record_event(SessionEvent(actor="DM", content=content))
+    runtime.narrate(f"DM: {content}")
 
 
 def resolve_active_encounter(runtime: AdventureRuntime) -> bool:
@@ -787,13 +853,18 @@ def _apply_spell_attack_spell(runtime: AdventureRuntime, caster: Character, spel
     if attack.hit and attack.damage is not None:
         before = target.get("current_hp", 0)
         damage_type = str(spell["damage_type"])
+        was_unconscious = _is_unconscious_character(runtime.campaign, target)
         damage_amount = _apply_combat_damage(runtime.campaign, target, attack.damage.total, damage_type)
         concentration = _concentration_check_text(runtime, target, damage_amount)
         text = (
             f"{spell_name.title()} spell attack {attack.attack.total} vs AC {target.get('armor_class')}, "
             f"hit for {damage_amount} {damage_type} damage: HP {before} -> {target['current_hp']}."
         )
-        return text if not concentration else text + " " + concentration
+        death_saves = _death_save_damage_text(runtime, target, damage_amount, was_unconscious)
+        for extra in (concentration, death_saves):
+            if extra:
+                text += " " + extra
+        return text
     return f"{spell_name.title()} spell attack {attack.attack.total} vs AC {target.get('armor_class')}, miss."
 
 
@@ -818,13 +889,18 @@ def _apply_save_damage_spell(runtime: AdventureRuntime, caster: Character, spell
     damage = roll_damage(str(spell["damage"]), runtime.rng)
     before = target.get("current_hp", 0)
     damage_type = str(spell["damage_type"])
+    was_unconscious = _is_unconscious_character(runtime.campaign, target)
     damage_amount = _apply_combat_damage(runtime.campaign, target, damage.total, damage_type)
     concentration = _concentration_check_text(runtime, target, damage_amount)
     text = (
         f"{target['name']} makes a {label} save {save.total} vs DC {dc} ({outcome}) "
         f"and takes {damage_amount} {damage_type} damage: HP {before} -> {target['current_hp']}."
     )
-    return text if not concentration else text + " " + concentration
+    death_saves = _death_save_damage_text(runtime, target, damage_amount, was_unconscious)
+    for extra in (concentration, death_saves):
+        if extra:
+            text += " " + extra
+    return text
 
 
 def _saving_throw_modifier(campaign: Campaign, name: str, ability: str) -> int:
@@ -854,6 +930,35 @@ def _concentration_check_text(runtime: AdventureRuntime, combatant: dict, damage
         character.spellcasting.concentration_spell_name = None
         text += f" Concentration on {spell_name} ends."
     return text
+
+
+def _death_save_damage_text(
+    runtime: AdventureRuntime, combatant: dict, damage_amount: int, was_unconscious: bool
+) -> str:
+    if damage_amount <= 0 or not was_unconscious:
+        return ""
+    character = runtime.campaign.characters.get(combatant["name"])
+    if character is None or character.current_hp > 0 or "unconscious" not in character.conditions:
+        return ""
+    text = f"{character.name} takes damage while unconscious: 1 death save failure ({character.death_save_failures}/3)."
+    if "dead" in character.conditions:
+        text += " They die."
+    return text
+
+
+def _add_death_save_failure(character: Character, amount: int) -> None:
+    character.death_save_failures = min(3, character.death_save_failures + amount)
+    character.conditions.discard("stable")
+    if character.death_save_failures >= 3:
+        character.conditions.add("dead")
+
+
+def _stabilize(character: Character) -> None:
+    character.death_save_successes = 0
+    character.death_save_failures = 0
+    if character.current_hp == 0:
+        character.conditions.add("unconscious")
+    character.conditions.add("stable")
 
 
 def _signed_expression(base: str, modifier: int) -> str:
@@ -948,7 +1053,10 @@ def _active_combatant(combat: dict, name: str) -> dict | None:
 def _apply_combat_damage(campaign: Campaign, combatant: dict, amount: int, damage_type: str | None) -> int:
     character = campaign.characters.get(combatant["name"])
     if character is not None:
+        was_unconscious = character.is_unconscious
         adjusted = character.apply_damage(amount, damage_type)
+        if was_unconscious and adjusted > 0 and character.current_hp == 0 and "dead" not in character.conditions:
+            _add_death_save_failure(character, 1)
         combatant["current_hp"] = character.current_hp
         return adjusted
 
@@ -975,6 +1083,11 @@ def _apply_combat_damage(campaign: Campaign, combatant: dict, amount: int, damag
     )
     combatant["current_hp"] = max(0, combatant.get("current_hp", 0) - adjusted)
     return adjusted
+
+
+def _is_unconscious_character(campaign: Campaign, combatant: dict) -> bool:
+    character = campaign.characters.get(combatant["name"])
+    return bool(character is not None and character.is_unconscious and "dead" not in character.conditions)
 
 
 def _all_hostile_combatants_defeated(combat: dict) -> bool:
@@ -1020,7 +1133,11 @@ def _first_character(campaign: Campaign) -> Character | None:
 
 
 def _runtime_actions(campaign: Campaign) -> dict[str, dict]:
-    return campaign.runtime_actions or DEFAULT_RUNTIME_ACTIONS
+    if not campaign.runtime_actions:
+        return DEFAULT_RUNTIME_ACTIONS
+    merged = dict(DEFAULT_RUNTIME_ACTIONS)
+    merged.update(campaign.runtime_actions)
+    return merged
 
 
 def _runtime_action_names(campaign: Campaign) -> list[str]:
@@ -1044,6 +1161,8 @@ def _match_runtime_action(campaign: Campaign, normalized: str) -> dict:
                 "spend_movement",
                 "attack",
                 "cast_spell",
+                "death_save",
+                "stabilize",
             } and normalized.startswith(alias_text + " "):
                 return {"name": action_name, "handler": handler, "argument": normalized[len(alias_text) :].strip()}
             if normalized == alias_text:
