@@ -481,6 +481,8 @@ def _active_combat_summary(campaign: Campaign) -> dict | None:
         "encounter_id": combat.get("encounter_id"),
         "round": combat.get("round", 1),
         "turn": combat.get("turn"),
+        "monster_action_strategy": combat.get("monster_action_strategy", _current_monster_action_strategy(combat)),
+        "last_automatic_action": combat.get("last_automatic_action", ""),
         "combatant_count": len(combat.get("initiative", [])),
         "initiative": [
             {
@@ -492,6 +494,7 @@ def _active_combat_summary(campaign: Campaign) -> dict | None:
                 "defeated": _combatant_defeated(entry),
                 "conditions": _combatant_conditions(campaign, entry),
                 "death_saves": _combatant_death_saves(campaign, entry),
+                "action_strategy": entry.get("action_strategy"),
             }
             for entry in combat.get("initiative", [])
         ],
@@ -527,6 +530,14 @@ def _spellcasting_summary(character) -> dict | None:
         ],
         "concentration_spell_name": spellcasting.concentration_spell_name,
     }
+
+
+def _current_monster_action_strategy(combat: dict) -> str:
+    turn = combat.get("turn")
+    current = next((entry for entry in combat.get("initiative", []) if entry.get("name") == turn), None)
+    if current is None or current.get("is_player") is not False:
+        return "default_attack"
+    return str(current.get("action_strategy") or "default_attack")
 
 
 def _available_actions(campaign: Campaign, active_combat: dict | None) -> list[str]:

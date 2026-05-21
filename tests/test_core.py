@@ -228,6 +228,16 @@ class MonsterTests(unittest.TestCase):
                 ability_scores={"str": 8},
             )
 
+    def test_monster_rejects_unknown_action_strategy(self) -> None:
+        with self.assertRaisesRegex(ValueError, "Unsupported monster action strategy"):
+            Monster(
+                name="Confused Goblin",
+                armor_class=13,
+                max_hp=7,
+                current_hp=7,
+                action_strategy="panic",
+            )
+
 
 if __name__ == "__main__":
     unittest.main()

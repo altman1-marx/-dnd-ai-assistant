@@ -199,6 +199,7 @@ def campaign_to_dict(campaign: Campaign) -> dict:
                         "attack_bonus": monster.attack_bonus,
                         "damage": monster.damage,
                         "damage_type": monster.damage_type,
+                        "action_strategy": monster.action_strategy,
                     }
                     for monster in encounter.monsters
                 ],
@@ -308,6 +309,7 @@ def campaign_from_dict(data: dict) -> Campaign:
                         attack_bonus=monster.get("attack_bonus", 0),
                         damage=monster.get("damage", "1d4"),
                         damage_type=monster.get("damage_type", "untyped"),
+                        action_strategy=monster.get("action_strategy", "default_attack"),
                     )
                     for monster in encounter.get("monsters", [])
                 ],

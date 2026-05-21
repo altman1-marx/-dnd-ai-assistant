@@ -31,6 +31,7 @@ REQUIRED_MONSTER_KEYS = ("name", "armor_class", "max_hp")
 REQUIRED_ENDING_KEYS = ("id", "title", "summary")
 REQUIRED_OPENING_KEYS = ("player_text", "dm_notes")
 ABILITY_NAMES = ("str", "dex", "con", "int", "wis", "cha")
+MONSTER_ACTION_STRATEGIES = {"default_attack", "lowest_hp", "concentrating"}
 SUPPORTED_RUNTIME_HANDLERS = {
     "look",
     "inspect",
@@ -414,6 +415,9 @@ def _validate_optional_monster_abilities(name: str, monster: dict, errors: list[
     proficiency = monster.get("proficiency_bonus")
     if proficiency is not None and (not isinstance(proficiency, int) or proficiency < 0):
         errors.append(f"{name}.proficiency_bonus must be a non-negative integer.")
+    strategy = monster.get("action_strategy")
+    if strategy is not None and strategy not in MONSTER_ACTION_STRATEGIES:
+        errors.append(f"{name}.action_strategy must be one of: {', '.join(sorted(MONSTER_ACTION_STRATEGIES))}.")
 
     for key in ("damage_resistances", "damage_vulnerabilities", "damage_immunities"):
         value = monster.get(key)

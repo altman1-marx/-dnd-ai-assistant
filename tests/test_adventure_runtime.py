@@ -195,6 +195,83 @@ class AdventureRuntimeTests(unittest.TestCase):
         self.assertEqual(campaign.active_combat["turn"], "Kael")
         self.assertLess(campaign.characters["Kael"].current_hp, campaign.characters["Kael"].max_hp)
 
+    def test_automatic_monster_strategy_targets_lowest_hp(self) -> None:
+        campaign = campaign_from_adventure(AdventureDefinition(create_adventure_template("Moonlit Road")))
+        scout = _scout()
+        scout.current_hp = 4
+        campaign.add_character(scout)
+        campaign.add_character(_caster())
+        campaign.active_combat = {
+            "round": 1,
+            "turn": "Leth",
+            "initiative": [
+                {"name": "Leth", "initiative_total": 20, "is_player": True, "armor_class": 16, "current_hp": 24},
+                {
+                    "name": "Lantern Sprite",
+                    "initiative_total": 18,
+                    "is_player": False,
+                    "armor_class": 13,
+                    "current_hp": 7,
+                    "attack_bonus": 20,
+                    "damage": "1",
+                    "action_strategy": "lowest_hp",
+                },
+                {"name": "Kael", "initiative_total": 12, "is_player": True, "armor_class": 14, "current_hp": 4},
+            ],
+            "resources": {
+                "Leth": {"action": False, "bonus_action": True, "reaction": True, "movement": 0},
+                "Lantern Sprite": {"action": True, "bonus_action": True, "reaction": True, "movement": 30},
+                "Kael": {"action": True, "bonus_action": True, "reaction": True, "movement": 30},
+            },
+        }
+        runtime = AdventureRuntime(campaign, rng=random.Random(1))
+
+        handle_adventure_action(runtime, "end turn")
+        output = runtime.flush()
+
+        self.assertIn("uses lowest_hp and targets Kael", output)
+        self.assertLess(campaign.characters["Kael"].current_hp, 4)
+        self.assertEqual(campaign.active_combat["last_automatic_action"], "Automatic monster action: Lantern Sprite uses lowest_hp and targets Kael.")
+
+    def test_automatic_monster_strategy_targets_concentrating_character(self) -> None:
+        campaign = campaign_from_adventure(AdventureDefinition(create_adventure_template("Moonlit Road")))
+        scout = _scout()
+        scout.current_hp = 4
+        caster = _caster()
+        caster.spellcasting.concentration_spell_name = "Bless"
+        campaign.add_character(scout)
+        campaign.add_character(caster)
+        campaign.active_combat = {
+            "round": 1,
+            "turn": "Kael",
+            "initiative": [
+                {"name": "Kael", "initiative_total": 20, "is_player": True, "armor_class": 14, "current_hp": 4},
+                {
+                    "name": "Lantern Sprite",
+                    "initiative_total": 18,
+                    "is_player": False,
+                    "armor_class": 13,
+                    "current_hp": 7,
+                    "attack_bonus": 20,
+                    "damage": "1",
+                    "action_strategy": "concentrating",
+                },
+                {"name": "Leth", "initiative_total": 12, "is_player": True, "armor_class": 16, "current_hp": 24},
+            ],
+            "resources": {
+                "Kael": {"action": False, "bonus_action": True, "reaction": True, "movement": 0},
+                "Lantern Sprite": {"action": True, "bonus_action": True, "reaction": True, "movement": 30},
+                "Leth": {"action": True, "bonus_action": True, "reaction": True, "movement": 30},
+            },
+        }
+        runtime = AdventureRuntime(campaign, rng=random.Random(2))
+
+        handle_adventure_action(runtime, "end turn")
+        output = runtime.flush()
+
+        self.assertIn("uses concentrating and targets Leth", output)
+        self.assertLess(campaign.characters["Leth"].current_hp, 24)
+
     def test_end_turn_skips_defeated_combatants(self) -> None:
         campaign = campaign_from_adventure(AdventureDefinition(create_adventure_template("Moonlit Road")))
         campaign.active_combat = {

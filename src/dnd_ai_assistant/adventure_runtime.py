@@ -567,21 +567,32 @@ def _run_automatic_monster_turn(runtime: AdventureRuntime, monster: dict) -> Non
     combat = runtime.campaign.active_combat
     if combat is None:
         return
-    target = _automatic_monster_target(combat)
+    strategy = _monster_action_strategy(combat, monster)
+    target = _automatic_monster_target(runtime.campaign, combat, strategy)
     if target is None:
         runtime.narrate(f"DM: {monster['name']} has no valid player target.")
         return
+    summary = f"Automatic monster action: {monster['name']} uses {strategy} and targets {target['name']}."
+    combat["monster_action_strategy"] = strategy
+    combat["last_automatic_action"] = summary
     runtime.campaign.record_event(
-        SessionEvent(actor="System", content=f"Automatic monster action: {monster['name']} targets {target['name']}.")
+        SessionEvent(actor="System", content=summary)
     )
-    runtime.narrate(f"System: Automatic monster action: {monster['name']} targets {target['name']}.")
+    runtime.narrate(f"System: {summary}")
     attack_active_combat_target(runtime, target["name"])
     if runtime.campaign.active_combat is None:
         return
     advance_active_combat(runtime)
 
 
-def _automatic_monster_target(combat: dict) -> dict | None:
+def _monster_action_strategy(combat: dict, monster: dict) -> str:
+    strategy = str(monster.get("action_strategy") or combat.get("monster_action_strategy") or "default_attack")
+    if strategy not in {"default_attack", "lowest_hp", "concentrating"}:
+        return "default_attack"
+    return strategy
+
+
+def _automatic_monster_target(campaign: Campaign, combat: dict, strategy: str) -> dict | None:
     targets = [
         entry
         for entry in combat.get("initiative", [])
@@ -589,7 +600,17 @@ def _automatic_monster_target(combat: dict) -> dict | None:
     ]
     if not targets:
         return None
-    return min(targets, key=lambda entry: (entry.get("current_hp", 0), entry.get("name", "")))
+    if strategy == "lowest_hp":
+        return min(targets, key=lambda entry: (entry.get("current_hp", 0), entry.get("name", "")))
+    if strategy == "concentrating":
+        concentrating = [
+            entry
+            for entry in targets
+            if _character_is_concentrating(campaign, str(entry.get("name") or ""))
+        ]
+        if concentrating:
+            return min(concentrating, key=lambda entry: (entry.get("current_hp", 0), entry.get("name", "")))
+    return targets[0]
 
 
 def describe_quests(runtime: AdventureRuntime) -> None:
@@ -1068,8 +1089,13 @@ def _combatant_can_take_turn(combatant: dict) -> bool:
 def _attack_profile(encounter: Encounter, name: str) -> dict:
     for monster in encounter.monsters:
         if monster.name == name:
-            return {"attack_bonus": monster.attack_bonus, "damage": monster.damage, "damage_type": monster.damage_type}
-    return {"attack_bonus": 0, "damage": "1d4", "damage_type": "untyped"}
+            return {
+                "attack_bonus": monster.attack_bonus,
+                "damage": monster.damage,
+                "damage_type": monster.damage_type,
+                "action_strategy": monster.action_strategy,
+            }
+    return {"attack_bonus": 0, "damage": "1d4", "damage_type": "untyped", "action_strategy": "default_attack"}
 
 
 def _defense_profile(encounter: Encounter, name: str) -> dict:
@@ -1115,6 +1141,15 @@ def _living_hostile_combatants(combat: dict, campaign: Campaign, actor_name: str
 def _character_has_condition(campaign: Campaign, name: str, condition: str) -> bool:
     character = campaign.characters.get(name)
     return bool(character is not None and condition in character.conditions)
+
+
+def _character_is_concentrating(campaign: Campaign, name: str) -> bool:
+    character = campaign.characters.get(name)
+    return bool(
+        character is not None
+        and character.spellcasting is not None
+        and character.spellcasting.concentration_spell_name is not None
+    )
 
 
 def _apply_combat_damage(campaign: Campaign, combatant: dict, amount: int, damage_type: str | None) -> int:

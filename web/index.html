@@ -786,6 +786,8 @@
         metric("Bonus", resourceLabel(resources.bonus_action)),
         metric("Reaction", resourceLabel(resources.reaction)),
         metric("Movement", String(resources.movement ?? 0) + " ft"),
+        metric("Monster AI", activeCombat.monster_action_strategy || "default_attack"),
+        metric("Last Auto", activeCombat.last_automatic_action || "none"),
         metric("Targets", (activeCombat.targetable_enemies || []).join(", ") || "none")
       ];
       const initiative = activeCombat.initiative || [];

@@ -15,6 +15,7 @@ def new_id(prefix: str) -> str:
 
 
 ABILITY_NAMES = ("str", "dex", "con", "int", "wis", "cha")
+MONSTER_ACTION_STRATEGIES = {"default_attack", "lowest_hp", "concentrating"}
 
 
 class Visibility(str, Enum):
@@ -81,6 +82,7 @@ class Monster:
     attack_bonus: int = 0
     damage: str = "1d4"
     damage_type: str = "untyped"
+    action_strategy: str = "default_attack"
     id: str = field(default_factory=lambda: new_id("mon"))
 
     def __post_init__(self) -> None:
@@ -106,6 +108,8 @@ class Monster:
             raise ValueError("Monster current HP cannot exceed max HP.")
         if self.proficiency_bonus < 0:
             raise ValueError("Monster proficiency bonus cannot be negative.")
+        if self.action_strategy not in MONSTER_ACTION_STRATEGIES:
+            raise ValueError(f"Unsupported monster action strategy: {self.action_strategy}")
 
     def ability_modifier(self, ability: str) -> int:
         return ability_modifier(self.ability_scores[ability])
