@@ -483,6 +483,7 @@ def _active_combat_summary(campaign: Campaign) -> dict | None:
         "turn": combat.get("turn"),
         "monster_action_strategy": combat.get("monster_action_strategy", _current_monster_action_strategy(combat)),
         "last_automatic_action": combat.get("last_automatic_action", ""),
+        "morale_hint": combat.get("morale_hint", ""),
         "combatant_count": len(combat.get("initiative", [])),
         "initiative": [
             {

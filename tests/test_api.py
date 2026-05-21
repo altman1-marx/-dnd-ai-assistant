@@ -217,6 +217,7 @@ class APITests(unittest.TestCase):
         self.assertEqual(summary["active_combat"]["round"], 2)
         self.assertEqual(summary["active_combat"]["monster_action_strategy"], "default_attack")
         self.assertEqual(summary["active_combat"]["last_automatic_action"], "")
+        self.assertEqual(summary["active_combat"]["morale_hint"], "")
         self.assertEqual(summary["active_combat"]["combatant_count"], 2)
         self.assertFalse(summary["active_combat"]["initiative"][0]["defeated"])
         self.assertEqual(summary["active_combat"]["initiative"][0]["conditions"], [])
@@ -249,6 +250,7 @@ class APITests(unittest.TestCase):
             "turn": "Lantern Sprite",
             "monster_action_strategy": "concentrating",
             "last_automatic_action": "Automatic monster action: Lantern Sprite uses concentrating and targets Leth.",
+            "morale_hint": "Hostile morale is wavering.",
             "initiative": [
                 {"name": "Leth", "initiative_total": 18, "is_player": True, "armor_class": 16, "current_hp": 24},
                 {
@@ -270,6 +272,7 @@ class APITests(unittest.TestCase):
             summary["active_combat"]["last_automatic_action"],
             "Automatic monster action: Lantern Sprite uses concentrating and targets Leth.",
         )
+        self.assertEqual(summary["active_combat"]["morale_hint"], "Hostile morale is wavering.")
         self.assertEqual(summary["active_combat"]["initiative"][1]["action_strategy"], "concentrating")
 
     def test_campaign_summary_suggests_death_save_and_stabilize_actions(self) -> None:

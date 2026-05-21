@@ -427,6 +427,8 @@ def attack_active_combat_target(runtime: AdventureRuntime, target: str) -> None:
         _finish_active_encounter(runtime, "All hostile combatants are defeated.")
     elif attack.hit and _all_player_combatants_defeated(combat):
         _end_active_combat(runtime, "All player combatants are defeated.", mark_encounter_resolved=False)
+    elif attack.hit:
+        _maybe_record_morale_hint(runtime)
 
 
 def cast_active_combat_spell(runtime: AdventureRuntime, spell_text: str) -> None:
@@ -485,6 +487,8 @@ def cast_active_combat_spell(runtime: AdventureRuntime, spell_text: str) -> None
         _finish_active_encounter(runtime, "All hostile combatants are defeated.")
     elif runtime.campaign.active_combat is not None and _all_player_combatants_defeated(runtime.campaign.active_combat):
         _end_active_combat(runtime, "All player combatants are defeated.", mark_encounter_resolved=False)
+    elif runtime.campaign.active_combat is not None and effect_text:
+        _maybe_record_morale_hint(runtime)
 
 
 def roll_death_save(runtime: AdventureRuntime, target: str) -> None:
@@ -634,6 +638,31 @@ def _run_automatic_monster_turn(runtime: AdventureRuntime, monster: dict) -> Non
     if runtime.campaign.active_combat is None:
         return
     advance_active_combat(runtime)
+
+
+def _maybe_record_morale_hint(runtime: AdventureRuntime) -> None:
+    combat = runtime.campaign.active_combat
+    if combat is None or combat.get("morale_prompted"):
+        return
+    if not _hostiles_are_wavering(combat):
+        return
+    hint = (
+        "Hostile morale is wavering; consider parley, accept surrender if they yield, "
+        "or let them flee instead of fighting to the last hit point."
+    )
+    combat["morale_prompted"] = True
+    combat["morale_hint"] = hint
+    runtime.campaign.record_event(SessionEvent(actor="System", content=f"Morale pressure: {hint}"))
+    runtime.narrate(f"System: Morale pressure: {hint}")
+
+
+def _hostiles_are_wavering(combat: dict) -> bool:
+    hostiles = [entry for entry in combat.get("initiative", []) if entry.get("is_player") is False]
+    if len(hostiles) < 2:
+        return False
+    living = [entry for entry in hostiles if int(entry.get("current_hp") or 0) > 0]
+    defeated_count = len(hostiles) - len(living)
+    return defeated_count > 0 and defeated_count >= len(hostiles) / 2
 
 
 def _monster_action_strategy(combat: dict, monster: dict) -> str:

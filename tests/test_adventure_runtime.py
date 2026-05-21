@@ -549,6 +549,51 @@ class AdventureRuntimeTests(unittest.TestCase):
         self.assertTrue(campaign.encounters["enc_lantern_sprites"].resolved)
         self.assertIn("All hostile combatants are defeated", output)
 
+    def test_attack_action_records_morale_hint_when_hostiles_are_wavering(self) -> None:
+        raw = create_adventure_template("Moonlit Road")
+        raw["encounters"][0]["monsters"] = [
+            {"name": "Lantern Sprite", "armor_class": 10, "max_hp": 1, "current_hp": 1},
+            {"name": "Ash Imp", "armor_class": 12, "max_hp": 8, "current_hp": 8},
+        ]
+        campaign = campaign_from_adventure(AdventureDefinition(raw))
+        campaign.active_combat = {
+            "encounter_id": "enc_lantern_sprites",
+            "round": 1,
+            "turn": "Kael",
+            "initiative": [
+                {
+                    "name": "Kael",
+                    "initiative_total": 18,
+                    "is_player": True,
+                    "armor_class": 14,
+                    "current_hp": 12,
+                    "attack_bonus": 20,
+                    "damage": "8",
+                },
+                {
+                    "name": "Lantern Sprite",
+                    "initiative_total": 12,
+                    "is_player": False,
+                    "armor_class": 10,
+                    "current_hp": 1,
+                },
+                {"name": "Ash Imp", "initiative_total": 10, "is_player": False, "armor_class": 12, "current_hp": 8},
+            ],
+            "resources": {
+                "Kael": {"action": True, "bonus_action": True, "reaction": True, "movement": 30},
+                "Lantern Sprite": {"action": True, "bonus_action": True, "reaction": True, "movement": 30},
+                "Ash Imp": {"action": True, "bonus_action": True, "reaction": True, "movement": 30},
+            },
+        }
+        runtime = AdventureRuntime(campaign, rng=random.Random(1))
+
+        handle_adventure_action(runtime, "attack sprite")
+        output = runtime.flush()
+
+        self.assertIsNotNone(campaign.active_combat)
+        self.assertIn("morale", campaign.active_combat["morale_hint"].lower())
+        self.assertIn("Morale pressure", output)
+
     def test_attack_action_ends_combat_when_players_are_defeated(self) -> None:
         raw = create_adventure_template("Moonlit Road")
         campaign = campaign_from_adventure(AdventureDefinition(raw))
