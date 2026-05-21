@@ -11,7 +11,7 @@
 - 战斗系统：先攻排序、回合推进、行动/附赠动作/反应/移动资源、攻击、伤害结算、怪物自动行动、战斗结束判定、战斗中施法。
 - 冒险数据结构：地点、NPC、线索、任务、遭遇、结局、地点可达性和线索门校验。
 - AI 冒险生成：支持 mock provider 和 OpenAI-compatible provider，可接 OpenAI、DeepSeek、OpenRouter 或其他兼容 `/chat/completions` 的服务。
-- 冒险运行时：可导入冒险 JSON 为 campaign state，并通过 `look`、`inspect`、`talk`、`go`、`fight`、`combat`、`attack`、`cast`、`end turn` 等动作推进；怪物回合可自动选择目标并攻击。
+- 冒险运行时：可导入冒险 JSON 为 campaign state，并通过 `look`、`inspect`、`talk`、`go`、`fight`、`combat`、`attack`、`cast`、`death save`、`stabilize`、`end turn` 等动作推进；怪物回合可按策略自动选择目标并攻击。
 - 规则检索 RAG：可从开放 SRD 构建本地 JSONL 语料，使用零依赖关键词/BM25 风格检索，为 AI DM 提供可追溯规则片段。
 - 序列化与审查：campaign JSON 存档、冒险质量 review、文本/mermaid 地图输出。
 - CI：GitHub Actions 自动运行测试。
@@ -198,10 +198,13 @@ fight
 combat
 attack goblin
 cast bless
+cast burning hands
 cast cure wounds leth
 cast healing word
 cast sacred flame goblin
 cast guiding bolt goblin
+death save leth
+stabilize leth
 use action
 use bonus action
 use reaction
@@ -371,8 +374,8 @@ python -m dnd_ai_assistant.demo serve-api `
 
 ## 近期路线
 
-1. 继续完善 active combat：死亡/昏迷处理、怪物多行动模板、逃跑/投降等非全灭结局。
-2. 扩展施法：范围伤害、更多豁免/法术攻击模板、专注相关优势/劣势与条件互动。
+1. 继续完善 active combat：逃跑/投降等非全灭结局、更多怪物行动模板和自动战斗结束提示。
+2. 扩展施法：更多豁免/法术攻击模板、专注相关优势/劣势与条件互动。
 3. 让 Adventure 和旧 Scene schema 收敛，减少两套格式并行。
 4. 增强数据驱动 runtime action，让 AI 生成的冒险更少依赖硬编码。
 5. 接入更完整的 AI DM 回合：根据 campaign state 生成叙述、建议检定、调用工具并写回状态。

@@ -45,6 +45,8 @@ SUPPORTED_RUNTIME_HANDLERS = {
     "spend_movement",
     "attack",
     "cast_spell",
+    "death_save",
+    "stabilize",
     "resolve_encounter",
     "quests",
     "complete_quest",
