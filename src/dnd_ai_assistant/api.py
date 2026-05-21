@@ -572,7 +572,7 @@ def _available_actions(campaign: Campaign, active_combat: dict | None) -> list[s
             if name != turn and not same_side:
                 actions.append(f"attack {name.lower()}")
                 for spell in known_spells:
-                    if spell in {"sacred flame", "guiding bolt"}:
+                    if spell in {"sacred flame", "guiding bolt", "magic missile"}:
                         actions.append(f"cast {spell} {name.lower()}")
             if same_side:
                 for spell in known_spells:

@@ -127,6 +127,7 @@ def sample_adventure_character() -> Character:
                 Spell("Cure Wounds", 1),
                 Spell("Guiding Bolt", 1),
                 Spell("Healing Word", 1, casting_time="1 bonus action"),
+                Spell("Magic Missile", 1),
                 Spell("Sacred Flame", 0),
             ],
         ),

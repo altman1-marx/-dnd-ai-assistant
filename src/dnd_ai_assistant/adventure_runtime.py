@@ -21,10 +21,14 @@ SPELL_EFFECTS = {
     "cure wounds": "healing",
     "guiding bolt": "spell_attack",
     "healing word": "healing",
+    "magic missile": "auto_damage",
     "sacred flame": "sacred_flame",
 }
 ATTACK_SPELLS = {
     "guiding bolt": {"damage": "4d6", "damage_type": "radiant"},
+}
+AUTO_DAMAGE_SPELLS = {
+    "magic missile": {"missiles": 3, "damage": "1d4+1", "damage_type": "force"},
 }
 SAVE_DAMAGE_SPELLS = {
     "sacred flame": {"ability": "dex", "label": "Dexterity", "damage": "1d8", "damage_type": "radiant"},
@@ -910,6 +914,8 @@ def _apply_spell_effect(
         return _apply_sacred_flame(runtime, caster, target_text)
     if effect == "spell_attack":
         return _apply_spell_attack_spell(runtime, caster, normalized, target_text)
+    if effect == "auto_damage":
+        return _apply_auto_damage_spell(runtime, normalized, target_text)
     if effect == "area_save_damage":
         return _apply_area_save_damage_spell(runtime, caster, normalized)
     if effect != "healing":
@@ -934,7 +940,7 @@ def _validate_spell_effect_target(runtime: AdventureRuntime, spell_name: str, ta
     effect = SPELL_EFFECTS.get(normalized)
     if effect == "healing" and target_text and _match_character(runtime.campaign, target_text) is None:
         return "The healing has no valid target."
-    if effect in {"sacred_flame", "spell_attack"} and _active_combatant(runtime.campaign.active_combat or {}, target_text) is None:
+    if effect in {"sacred_flame", "spell_attack", "auto_damage"} and _active_combatant(runtime.campaign.active_combat or {}, target_text) is None:
         return "The spell has no valid target."
     if effect == "area_save_damage" and not _living_hostile_combatants(runtime.campaign.active_combat or {}, runtime.campaign, None):
         return "The spell has no valid targets."
@@ -975,6 +981,33 @@ def _apply_spell_attack_spell(runtime: AdventureRuntime, caster: Character, spel
                 text += " " + extra
         return text
     return f"{spell_name.title()} spell attack {attack.attack.total} vs AC {target.get('armor_class')}, miss."
+
+
+def _apply_auto_damage_spell(runtime: AdventureRuntime, spell_name: str, target_text: str) -> str:
+    combat = runtime.campaign.active_combat
+    if combat is None:
+        return "The spell has no active combat target."
+    target = _active_combatant(combat, target_text)
+    if target is None:
+        return "The spell has no valid target."
+    spell = AUTO_DAMAGE_SPELLS[spell_name]
+    missiles = int(spell["missiles"])
+    damage_rolls = [roll_damage(str(spell["damage"]), runtime.rng) for _ in range(missiles)]
+    raw_damage = sum(roll.total for roll in damage_rolls)
+    damage_type = str(spell["damage_type"])
+    before = target.get("current_hp", 0)
+    was_unconscious = _is_unconscious_character(runtime.campaign, target)
+    damage_amount = _apply_combat_damage(runtime.campaign, target, raw_damage, damage_type)
+    text = (
+        f"{spell_name.title()} hits {target['name']} with {missiles} missile(s) "
+        f"for {damage_amount} {damage_type} damage: HP {before} -> {target['current_hp']}."
+    )
+    concentration = _concentration_check_text(runtime, target, damage_amount)
+    death_saves = _death_save_damage_text(runtime, target, damage_amount, was_unconscious)
+    for extra in (concentration, death_saves):
+        if extra:
+            text += " " + extra
+    return text
 
 
 def _apply_save_damage_spell(runtime: AdventureRuntime, caster: Character, spell_name: str, target_text: str) -> str:

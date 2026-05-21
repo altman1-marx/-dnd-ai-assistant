@@ -234,6 +234,7 @@ class APITests(unittest.TestCase):
         self.assertIn("cast cure wounds", summary["available_actions"])
         self.assertIn("cast sacred flame lantern sprite", summary["available_actions"])
         self.assertIn("cast guiding bolt lantern sprite", summary["available_actions"])
+        self.assertIn("cast magic missile lantern sprite", summary["available_actions"])
         self.assertIn("combat", summary["available_actions"])
         self.assertIn("flee", summary["available_actions"])
         self.assertIn("surrender", summary["available_actions"])

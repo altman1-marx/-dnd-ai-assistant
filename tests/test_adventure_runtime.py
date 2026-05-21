@@ -954,6 +954,43 @@ class AdventureRuntimeTests(unittest.TestCase):
         self.assertIn("Guiding Bolt spell attack", output)
         self.assertIn("radiant damage", output)
 
+    def test_magic_missile_auto_hits_and_spends_slot(self) -> None:
+        raw = create_adventure_template("Moonlit Road")
+        raw["encounters"][0]["monsters"] = [
+            {"name": "Lantern Sprite", "armor_class": 30, "max_hp": 20, "current_hp": 20}
+        ]
+        campaign = campaign_from_adventure(AdventureDefinition(raw))
+        campaign.add_character(_caster())
+        campaign.active_combat = {
+            "encounter_id": "enc_lantern_sprites",
+            "round": 1,
+            "turn": "Leth",
+            "initiative": [
+                {"name": "Leth", "initiative_total": 18, "is_player": True, "armor_class": 16, "current_hp": 24},
+                {
+                    "name": "Lantern Sprite",
+                    "initiative_total": 12,
+                    "is_player": False,
+                    "armor_class": 30,
+                    "current_hp": 20,
+                },
+            ],
+            "resources": {
+                "Leth": {"action": True, "bonus_action": True, "reaction": True, "movement": 30},
+                "Lantern Sprite": {"action": True, "bonus_action": True, "reaction": True, "movement": 30},
+            },
+        }
+        runtime = AdventureRuntime(campaign, rng=random.Random(1))
+
+        handle_adventure_action(runtime, "cast magic missile sprite")
+        output = runtime.flush()
+
+        self.assertLess(campaign.encounters["enc_lantern_sprites"].monsters[0].current_hp, 20)
+        self.assertFalse(campaign.active_combat["resources"]["Leth"]["action"])
+        self.assertEqual(campaign.characters["Leth"].spellcasting.available_slots(1), 1)
+        self.assertIn("Magic Missile hits Lantern Sprite with 3 missile", output)
+        self.assertIn("force damage", output)
+
     def test_failed_spell_cast_does_not_spend_action(self) -> None:
         campaign = campaign_from_adventure(AdventureDefinition(create_adventure_template("Moonlit Road")))
         caster = _caster()
@@ -1342,6 +1379,7 @@ def _caster() -> Character:
                 Spell("Cure Wounds", 1),
                 Spell("Guiding Bolt", 1),
                 Spell("Healing Word", 1, casting_time="1 bonus action"),
+                Spell("Magic Missile", 1),
                 Spell("Sacred Flame", 0),
             ],
         ),
