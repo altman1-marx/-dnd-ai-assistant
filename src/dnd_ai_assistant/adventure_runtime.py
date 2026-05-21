@@ -17,6 +17,7 @@ from .core.spells import Spell
 QUEST_COMPLETE_STATUS = "completed"
 QUEST_FAILED_STATUS = "failed"
 SPELL_EFFECTS = {
+    "burning hands": "area_save_damage",
     "cure wounds": "healing",
     "guiding bolt": "spell_attack",
     "healing word": "healing",
@@ -27,6 +28,9 @@ ATTACK_SPELLS = {
 }
 SAVE_DAMAGE_SPELLS = {
     "sacred flame": {"ability": "dex", "label": "Dexterity", "damage": "1d8", "damage_type": "radiant"},
+}
+AREA_SAVE_DAMAGE_SPELLS = {
+    "burning hands": {"ability": "dex", "label": "Dexterity", "damage": "3d6", "damage_type": "fire"},
 }
 
 
@@ -805,6 +809,8 @@ def _apply_spell_effect(
         return _apply_sacred_flame(runtime, caster, target_text)
     if effect == "spell_attack":
         return _apply_spell_attack_spell(runtime, caster, normalized, target_text)
+    if effect == "area_save_damage":
+        return _apply_area_save_damage_spell(runtime, caster, normalized)
     if effect != "healing":
         return ""
 
@@ -829,6 +835,8 @@ def _validate_spell_effect_target(runtime: AdventureRuntime, spell_name: str, ta
         return "The healing has no valid target."
     if effect in {"sacred_flame", "spell_attack"} and _active_combatant(runtime.campaign.active_combat or {}, target_text) is None:
         return "The spell has no valid target."
+    if effect == "area_save_damage" and not _living_hostile_combatants(runtime.campaign.active_combat or {}, runtime.campaign, None):
+        return "The spell has no valid targets."
     return ""
 
 
@@ -901,6 +909,42 @@ def _apply_save_damage_spell(runtime: AdventureRuntime, caster: Character, spell
         if extra:
             text += " " + extra
     return text
+
+
+def _apply_area_save_damage_spell(runtime: AdventureRuntime, caster: Character, spell_name: str) -> str:
+    combat = runtime.campaign.active_combat
+    if combat is None:
+        return "The spell has no active combat targets."
+    targets = _living_hostile_combatants(combat, runtime.campaign, caster.name)
+    if not targets:
+        return "The spell has no valid targets."
+
+    spell = AREA_SAVE_DAMAGE_SPELLS[spell_name]
+    ability = str(spell["ability"])
+    dc = caster.spell_save_dc or 10
+    label = str(spell["label"])
+    damage = roll_damage(str(spell["damage"]), runtime.rng)
+    damage_type = str(spell["damage_type"])
+    results: list[str] = []
+    for target in targets:
+        modifier = _saving_throw_modifier(runtime.campaign, target["name"], ability)
+        save = roll_d20_check(modifier=modifier, dc=dc, rng=runtime.rng)
+        outcome = "success" if save.success else "failure"
+        raw_damage = damage.total // 2 if save.success else damage.total
+        before = target.get("current_hp", 0)
+        was_unconscious = _is_unconscious_character(runtime.campaign, target)
+        damage_amount = _apply_combat_damage(runtime.campaign, target, raw_damage, damage_type)
+        text = (
+            f"{target['name']} makes a {label} save {save.total} vs DC {dc} ({outcome}) "
+            f"and takes {damage_amount} {damage_type} damage: HP {before} -> {target['current_hp']}."
+        )
+        concentration = _concentration_check_text(runtime, target, damage_amount)
+        death_saves = _death_save_damage_text(runtime, target, damage_amount, was_unconscious)
+        for extra in (concentration, death_saves):
+            if extra:
+                text += " " + extra
+        results.append(text)
+    return f"{spell_name.title()} hits {len(results)} hostile target(s). " + " ".join(results)
 
 
 def _saving_throw_modifier(campaign: Campaign, name: str, ability: str) -> int:
@@ -1048,6 +1092,29 @@ def _active_combatant(combat: dict, name: str) -> dict | None:
         if normalized == combatant_name or normalized in combatant_name:
             return combatant
     return None
+
+
+def _living_hostile_combatants(combat: dict, campaign: Campaign, actor_name: str | None) -> list[dict]:
+    initiative = combat.get("initiative", [])
+    actor = _active_combatant(combat, actor_name or combat.get("turn", ""))
+    if actor is None:
+        actor = next((entry for entry in initiative if entry.get("name") == combat.get("turn")), None)
+    if actor is None or "is_player" not in actor:
+        return []
+    actor_side = bool(actor.get("is_player"))
+    return [
+        entry
+        for entry in initiative
+        if entry.get("name")
+        and bool(entry.get("is_player")) != actor_side
+        and int(entry.get("current_hp") or 0) > 0
+        and not _character_has_condition(campaign, str(entry.get("name")), "dead")
+    ]
+
+
+def _character_has_condition(campaign: Campaign, name: str, condition: str) -> bool:
+    character = campaign.characters.get(name)
+    return bool(character is not None and condition in character.conditions)
 
 
 def _apply_combat_damage(campaign: Campaign, combatant: dict, amount: int, damage_type: str | None) -> int:

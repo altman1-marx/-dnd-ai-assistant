@@ -674,6 +674,109 @@ class AdventureRuntimeTests(unittest.TestCase):
         self.assertTrue(campaign.encounters["enc_lantern_sprites"].resolved)
         self.assertIn("All hostile combatants are defeated", output)
 
+    def test_burning_hands_damages_multiple_hostile_targets(self) -> None:
+        raw = create_adventure_template("Moonlit Road")
+        raw["encounters"][0]["monsters"] = [
+            {
+                "name": "Lantern Sprite",
+                "armor_class": 13,
+                "max_hp": 20,
+                "current_hp": 20,
+                "ability_scores": {"str": 8, "dex": 8, "con": 10, "int": 10, "wis": 10, "cha": 10},
+            },
+            {
+                "name": "Ash Imp",
+                "armor_class": 12,
+                "max_hp": 20,
+                "current_hp": 20,
+                "ability_scores": {"str": 8, "dex": 18, "con": 10, "int": 10, "wis": 10, "cha": 10},
+            },
+        ]
+        campaign = campaign_from_adventure(AdventureDefinition(raw))
+        campaign.add_character(_caster())
+        campaign.active_combat = {
+            "encounter_id": "enc_lantern_sprites",
+            "round": 1,
+            "turn": "Leth",
+            "initiative": [
+                {"name": "Leth", "initiative_total": 18, "is_player": True, "armor_class": 16, "current_hp": 24},
+                {
+                    "name": "Lantern Sprite",
+                    "initiative_total": 12,
+                    "is_player": False,
+                    "armor_class": 13,
+                    "current_hp": 20,
+                },
+                {"name": "Ash Imp", "initiative_total": 10, "is_player": False, "armor_class": 12, "current_hp": 20},
+            ],
+            "resources": {
+                "Leth": {"action": True, "bonus_action": True, "reaction": True, "movement": 30},
+                "Lantern Sprite": {"action": True, "bonus_action": True, "reaction": True, "movement": 30},
+                "Ash Imp": {"action": True, "bonus_action": True, "reaction": True, "movement": 30},
+            },
+        }
+        runtime = AdventureRuntime(campaign, rng=random.Random(1))
+
+        handle_adventure_action(runtime, "cast burning hands")
+        output = runtime.flush()
+
+        self.assertLess(campaign.encounters["enc_lantern_sprites"].monsters[0].current_hp, 20)
+        self.assertLess(campaign.encounters["enc_lantern_sprites"].monsters[1].current_hp, 20)
+        self.assertFalse(campaign.active_combat["resources"]["Leth"]["action"])
+        self.assertEqual(campaign.characters["Leth"].spellcasting.available_slots(1), 1)
+        self.assertIn("Burning Hands hits 2 hostile target", output)
+        self.assertIn("fire damage", output)
+
+    def test_burning_hands_resolves_encounter_when_all_hostiles_fall(self) -> None:
+        raw = create_adventure_template("Moonlit Road")
+        raw["encounters"][0]["monsters"] = [
+            {
+                "name": "Lantern Sprite",
+                "armor_class": 13,
+                "max_hp": 1,
+                "current_hp": 1,
+                "ability_scores": {"str": 8, "dex": 8, "con": 10, "int": 10, "wis": 10, "cha": 10},
+            },
+            {
+                "name": "Ash Imp",
+                "armor_class": 12,
+                "max_hp": 1,
+                "current_hp": 1,
+                "ability_scores": {"str": 8, "dex": 8, "con": 10, "int": 10, "wis": 10, "cha": 10},
+            },
+        ]
+        campaign = campaign_from_adventure(AdventureDefinition(raw))
+        campaign.add_character(_caster())
+        campaign.active_combat = {
+            "encounter_id": "enc_lantern_sprites",
+            "round": 1,
+            "turn": "Leth",
+            "initiative": [
+                {"name": "Leth", "initiative_total": 18, "is_player": True, "armor_class": 16, "current_hp": 24},
+                {
+                    "name": "Lantern Sprite",
+                    "initiative_total": 12,
+                    "is_player": False,
+                    "armor_class": 13,
+                    "current_hp": 1,
+                },
+                {"name": "Ash Imp", "initiative_total": 10, "is_player": False, "armor_class": 12, "current_hp": 1},
+            ],
+            "resources": {
+                "Leth": {"action": True, "bonus_action": True, "reaction": True, "movement": 30},
+                "Lantern Sprite": {"action": True, "bonus_action": True, "reaction": True, "movement": 30},
+                "Ash Imp": {"action": True, "bonus_action": True, "reaction": True, "movement": 30},
+            },
+        }
+        runtime = AdventureRuntime(campaign, rng=random.Random(1))
+
+        handle_adventure_action(runtime, "cast burning hands")
+        output = runtime.flush()
+
+        self.assertIsNone(campaign.active_combat)
+        self.assertTrue(campaign.encounters["enc_lantern_sprites"].resolved)
+        self.assertIn("All hostile combatants are defeated", output)
+
     def test_sacred_flame_invalid_target_does_not_spend_resources(self) -> None:
         campaign = campaign_from_adventure(AdventureDefinition(create_adventure_template("Moonlit Road")))
         campaign.add_character(_caster())
@@ -1074,6 +1177,7 @@ def _caster() -> Character:
             slots_by_level={1: 2},
             known_spells=[
                 Spell("Bless", 1, concentration=True),
+                Spell("Burning Hands", 1),
                 Spell("Cure Wounds", 1),
                 Spell("Guiding Bolt", 1),
                 Spell("Healing Word", 1, casting_time="1 bonus action"),

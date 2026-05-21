@@ -227,6 +227,7 @@ class APITests(unittest.TestCase):
         self.assertIn("talk mayor", summary["available_actions"])
         self.assertIn("attack lantern sprite", summary["available_actions"])
         self.assertIn("cast bless", summary["available_actions"])
+        self.assertIn("cast burning hands", summary["available_actions"])
         self.assertIn("cast cure wounds", summary["available_actions"])
         self.assertIn("cast sacred flame lantern sprite", summary["available_actions"])
         self.assertIn("cast guiding bolt lantern sprite", summary["available_actions"])

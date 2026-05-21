@@ -123,6 +123,7 @@ def sample_adventure_character() -> Character:
             slots_by_level={1: 4, 2: 2},
             known_spells=[
                 Spell("Bless", 1, concentration=True),
+                Spell("Burning Hands", 1),
                 Spell("Cure Wounds", 1),
                 Spell("Guiding Bolt", 1),
                 Spell("Healing Word", 1, casting_time="1 bonus action"),
