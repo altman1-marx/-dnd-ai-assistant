@@ -49,6 +49,9 @@ DEFAULT_RUNTIME_ACTIONS = {
     "cast_spell": {"aliases": ["cast", "cast spell"], "handler": "cast_spell"},
     "death_save": {"aliases": ["death save"], "handler": "death_save"},
     "stabilize": {"aliases": ["stabilize", "stabilise"], "handler": "stabilize"},
+    "flee_combat": {"aliases": ["flee", "retreat", "run away"], "handler": "flee_combat"},
+    "surrender_combat": {"aliases": ["surrender"], "handler": "surrender_combat"},
+    "accept_surrender": {"aliases": ["accept surrender", "enemy surrender", "hostiles surrender"], "handler": "accept_surrender"},
     "resolve_encounter": {"aliases": ["resolve encounter", "end encounter"], "handler": "resolve_encounter"},
     "quests": {"aliases": ["quests", "quest log"], "handler": "quests"},
     "complete_quest": {"aliases": ["complete quest", "finish quest"], "handler": "complete_quest"},
@@ -149,6 +152,15 @@ def handle_adventure_action(runtime: AdventureRuntime, action: str) -> bool:
         return True
     if handler == "stabilize":
         stabilize_character(runtime, action_match.get("argument", ""))
+        return True
+    if handler == "flee_combat":
+        flee_active_combat(runtime)
+        return True
+    if handler == "surrender_combat":
+        surrender_active_combat(runtime)
+        return True
+    if handler == "accept_surrender":
+        accept_hostile_surrender(runtime)
         return True
     if handler == "resolve_encounter":
         return resolve_active_encounter(runtime)
@@ -538,16 +550,55 @@ def resolve_active_encounter(runtime: AdventureRuntime) -> bool:
     return True
 
 
+def flee_active_combat(runtime: AdventureRuntime) -> None:
+    if runtime.campaign.active_combat is None:
+        runtime.narrate("DM: There is no active combat to flee.")
+        return
+    _end_active_combat(
+        runtime,
+        "The party retreats from combat. The encounter remains unresolved.",
+        mark_encounter_resolved=False,
+        outcome="fled",
+    )
+
+
+def surrender_active_combat(runtime: AdventureRuntime) -> None:
+    if runtime.campaign.active_combat is None:
+        runtime.narrate("DM: There is no active combat to surrender.")
+        return
+    _end_active_combat(
+        runtime,
+        "The party surrenders. The encounter remains unresolved.",
+        mark_encounter_resolved=False,
+        outcome="party_surrendered",
+    )
+
+
+def accept_hostile_surrender(runtime: AdventureRuntime) -> None:
+    if runtime.campaign.active_combat is None:
+        runtime.narrate("DM: There is no active combat where hostiles can surrender.")
+        return
+    _end_active_combat(
+        runtime,
+        "Hostile combatants surrender.",
+        mark_encounter_resolved=True,
+        outcome="hostiles_surrendered",
+    )
+
+
 def _finish_active_encounter(runtime: AdventureRuntime, reason: str) -> None:
-    _end_active_combat(runtime, reason, mark_encounter_resolved=True)
+    _end_active_combat(runtime, reason, mark_encounter_resolved=True, outcome="resolved")
 
 
-def _end_active_combat(runtime: AdventureRuntime, reason: str, mark_encounter_resolved: bool) -> None:
+def _end_active_combat(
+    runtime: AdventureRuntime, reason: str, mark_encounter_resolved: bool, outcome: str = "ended"
+) -> None:
     combat = runtime.campaign.active_combat
     if combat is None:
         return
     encounter_id = combat.get("encounter_id")
     encounter = runtime.campaign.encounters.get(encounter_id)
+    combat["outcome"] = outcome
     if encounter is not None:
         if mark_encounter_resolved:
             encounter.resolved = True

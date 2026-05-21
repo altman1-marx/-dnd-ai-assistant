@@ -234,6 +234,9 @@ class APITests(unittest.TestCase):
         self.assertIn("cast sacred flame lantern sprite", summary["available_actions"])
         self.assertIn("cast guiding bolt lantern sprite", summary["available_actions"])
         self.assertIn("combat", summary["available_actions"])
+        self.assertIn("flee", summary["available_actions"])
+        self.assertIn("surrender", summary["available_actions"])
+        self.assertIn("accept surrender", summary["available_actions"])
 
     def test_campaign_summary_exposes_monster_action_strategy(self) -> None:
         state = APIState()

@@ -148,6 +148,12 @@ def _default_runtime_actions() -> dict[str, dict]:
         "cast_spell": {"aliases": ["cast", "cast spell"], "handler": "cast_spell"},
         "death_save": {"aliases": ["death save"], "handler": "death_save"},
         "stabilize": {"aliases": ["stabilize", "stabilise"], "handler": "stabilize"},
+        "flee_combat": {"aliases": ["flee", "retreat", "run away"], "handler": "flee_combat"},
+        "surrender_combat": {"aliases": ["surrender"], "handler": "surrender_combat"},
+        "accept_surrender": {
+            "aliases": ["accept surrender", "enemy surrender", "hostiles surrender"],
+            "handler": "accept_surrender",
+        },
         "resolve_encounter": {"aliases": ["resolve encounter", "end encounter"], "handler": "resolve_encounter"},
         "quests": {"aliases": ["quests", "quest log"], "handler": "quests"},
         "complete_quest": {"aliases": ["complete quest", "finish quest"], "handler": "complete_quest"},

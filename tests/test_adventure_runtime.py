@@ -963,6 +963,45 @@ class AdventureRuntimeTests(unittest.TestCase):
         self.assertIn("Encounter resolved: Lantern Sprites", output)
         self.assertTrue(any("Encounter resolved" in event.content for event in campaign.session_log))
 
+    def test_flee_combat_clears_combat_without_resolving_encounter(self) -> None:
+        campaign = campaign_from_adventure(AdventureDefinition(create_adventure_template("Moonlit Road")))
+        campaign.active_combat = {"encounter_id": "enc_lantern_sprites", "round": 1, "turn": "Kael", "initiative": []}
+        runtime = AdventureRuntime(campaign)
+
+        handle_adventure_action(runtime, "flee")
+        output = runtime.flush()
+
+        self.assertIsNone(campaign.active_combat)
+        self.assertFalse(campaign.encounters["enc_lantern_sprites"].resolved)
+        self.assertIn("Combat ended: Lantern Sprites", output)
+        self.assertIn("party retreats", output)
+
+    def test_surrender_combat_clears_combat_without_resolving_encounter(self) -> None:
+        campaign = campaign_from_adventure(AdventureDefinition(create_adventure_template("Moonlit Road")))
+        campaign.active_combat = {"encounter_id": "enc_lantern_sprites", "round": 1, "turn": "Kael", "initiative": []}
+        runtime = AdventureRuntime(campaign)
+
+        handle_adventure_action(runtime, "surrender")
+        output = runtime.flush()
+
+        self.assertIsNone(campaign.active_combat)
+        self.assertFalse(campaign.encounters["enc_lantern_sprites"].resolved)
+        self.assertIn("party surrenders", output)
+
+    def test_accept_surrender_resolves_encounter_and_clears_combat(self) -> None:
+        campaign = campaign_from_adventure(AdventureDefinition(create_adventure_template("Moonlit Road")))
+        campaign.active_combat = {"encounter_id": "enc_lantern_sprites", "round": 1, "turn": "Kael", "initiative": []}
+        runtime = AdventureRuntime(campaign)
+
+        handle_adventure_action(runtime, "accept surrender")
+        output = runtime.flush()
+
+        self.assertIsNone(campaign.active_combat)
+        self.assertTrue(campaign.encounters["enc_lantern_sprites"].resolved)
+        self.assertIn("Encounter resolved: Lantern Sprites", output)
+        self.assertIn("Hostile combatants surrender", output)
+        self.assertIn("Reward", output)
+
     def test_resolve_encounter_reports_when_none_active(self) -> None:
         campaign = campaign_from_adventure(AdventureDefinition(create_adventure_template("Moonlit Road")))
         runtime = AdventureRuntime(campaign)

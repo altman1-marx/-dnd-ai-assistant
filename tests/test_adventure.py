@@ -62,6 +62,16 @@ class AdventureTests(unittest.TestCase):
         self.assertIn("runtime_actions.listen.aliases must be a list of strings", message)
         self.assertIn("runtime_actions.listen.handler is unsupported: unsupported", message)
 
+    def test_validate_adventure_allows_combat_exit_runtime_actions(self) -> None:
+        raw = create_adventure_template("Moonlit Road")
+        raw["runtime_actions"] = {
+            "retreat": {"aliases": ["fall back"], "handler": "flee_combat"},
+            "yield": {"aliases": ["yield"], "handler": "surrender_combat"},
+            "spare": {"aliases": ["spare them"], "handler": "accept_surrender"},
+        }
+
+        validate_adventure(AdventureDefinition(raw))
+
     def test_validate_adventure_reports_unreachable_locations(self) -> None:
         raw = create_adventure_template("Broken Road")
         raw["locations"].append(

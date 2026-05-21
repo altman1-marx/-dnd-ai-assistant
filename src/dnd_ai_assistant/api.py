@@ -557,7 +557,7 @@ def _available_actions(campaign: Campaign, active_combat: dict | None) -> list[s
         if any(encounter.location_id == location.id and not encounter.resolved for encounter in campaign.encounters.values()):
             actions.append("fight")
     if active_combat is not None:
-        actions.extend(["combat", "attack", "end turn", "resolve encounter"])
+        actions.extend(["combat", "attack", "end turn", "flee", "surrender", "accept surrender", "resolve encounter"])
         turn = str(active_combat.get("turn") or "")
         current = next((entry for entry in active_combat.get("initiative", []) if entry.get("name") == turn), None)
         known_spells = _known_spell_action_names(campaign, turn)
