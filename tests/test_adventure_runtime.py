@@ -678,6 +678,95 @@ class AdventureRuntimeTests(unittest.TestCase):
 
         self.assertIn("(advantage)", output)
 
+    def test_poisoned_attacker_has_disadvantage(self) -> None:
+        campaign = campaign_from_adventure(AdventureDefinition(create_adventure_template("Moonlit Road")))
+        campaign.add_character(_scout())
+        campaign.active_combat = {
+            "round": 1,
+            "turn": "Lantern Sprite",
+            "initiative": [
+                {
+                    "name": "Lantern Sprite",
+                    "initiative_total": 18,
+                    "is_player": False,
+                    "armor_class": 13,
+                    "current_hp": 7,
+                    "attack_bonus": 20,
+                    "damage": "1",
+                    "conditions": ["poisoned"],
+                },
+                {"name": "Kael", "initiative_total": 12, "is_player": True, "armor_class": 14, "current_hp": 12},
+            ],
+            "resources": {"Lantern Sprite": {"action": True, "bonus_action": True, "reaction": True, "movement": 30}},
+        }
+        runtime = AdventureRuntime(campaign, rng=random.Random(1))
+
+        handle_adventure_action(runtime, "attack kael")
+        output = runtime.flush()
+
+        self.assertIn("(disadvantage)", output)
+
+    def test_blinded_target_grants_advantage_to_attacker(self) -> None:
+        campaign = campaign_from_adventure(AdventureDefinition(create_adventure_template("Moonlit Road")))
+        campaign.add_character(_scout())
+        campaign.characters["Kael"].conditions.add("blinded")
+        campaign.active_combat = {
+            "round": 1,
+            "turn": "Lantern Sprite",
+            "initiative": [
+                {
+                    "name": "Lantern Sprite",
+                    "initiative_total": 18,
+                    "is_player": False,
+                    "armor_class": 13,
+                    "current_hp": 7,
+                    "attack_bonus": 20,
+                    "damage": "1",
+                },
+                {"name": "Kael", "initiative_total": 12, "is_player": True, "armor_class": 14, "current_hp": 12},
+            ],
+            "resources": {"Lantern Sprite": {"action": True, "bonus_action": True, "reaction": True, "movement": 30}},
+        }
+        runtime = AdventureRuntime(campaign, rng=random.Random(1))
+
+        handle_adventure_action(runtime, "attack kael")
+        output = runtime.flush()
+
+        self.assertIn("(advantage)", output)
+
+    def test_stunned_combatant_cannot_attack_or_move(self) -> None:
+        campaign = campaign_from_adventure(AdventureDefinition(create_adventure_template("Moonlit Road")))
+        campaign.add_character(_scout())
+        campaign.characters["Kael"].conditions.add("stunned")
+        campaign.active_combat = {
+            "round": 1,
+            "turn": "Kael",
+            "initiative": [
+                {"name": "Kael", "initiative_total": 18, "is_player": True, "armor_class": 14, "current_hp": 12},
+                {
+                    "name": "Lantern Sprite",
+                    "initiative_total": 12,
+                    "is_player": False,
+                    "armor_class": 13,
+                    "current_hp": 7,
+                    "attack_bonus": 20,
+                    "damage": "1",
+                },
+            ],
+            "resources": {"Kael": {"action": True, "bonus_action": True, "reaction": True, "movement": 30}},
+        }
+        runtime = AdventureRuntime(campaign, rng=random.Random(1))
+
+        handle_adventure_action(runtime, "attack lantern sprite")
+        attack_output = runtime.flush()
+        handle_adventure_action(runtime, "spend movement 5")
+        movement_output = runtime.flush()
+
+        self.assertIn("cannot attack while stunned", attack_output)
+        self.assertIn("cannot move while stunned", movement_output)
+        self.assertTrue(campaign.active_combat["resources"]["Kael"]["action"])
+        self.assertEqual(campaign.active_combat["resources"]["Kael"]["movement"], 30)
+
     def test_attack_action_reports_missing_target(self) -> None:
         campaign = campaign_from_adventure(AdventureDefinition(create_adventure_template("Moonlit Road")))
         campaign.active_combat = {

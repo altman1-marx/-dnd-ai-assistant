@@ -16,8 +16,18 @@ from .core.spells import Spell
 
 QUEST_COMPLETE_STATUS = "completed"
 QUEST_FAILED_STATUS = "failed"
-SUPPORTED_COMBAT_CONDITIONS = {"frightened", "grappled", "prone", "restrained"}
+SUPPORTED_COMBAT_CONDITIONS = {
+    "blinded",
+    "frightened",
+    "grappled",
+    "incapacitated",
+    "poisoned",
+    "prone",
+    "restrained",
+    "stunned",
+}
 TEMPORARY_COMBAT_CONDITIONS = {"disengaging", "dodging"}
+ACTION_BLOCKING_CONDITIONS = {"dead", "incapacitated", "stunned", "unconscious"}
 SHIELD_AC_BONUS = 5
 SPELL_EFFECTS = {
     "burning hands": "area_save_damage",
@@ -372,6 +382,11 @@ def spend_active_combat_resource(runtime: AdventureRuntime, resource: str) -> No
         runtime.narrate("DM: There is no active combat.")
         return
     turn = combat.get("turn")
+    combatant = _active_combatant(combat, str(turn or ""))
+    block = _combatant_action_block_reason(runtime.campaign, combatant)
+    if block and resource in {"action", "bonus_action", "reaction"}:
+        runtime.narrate(f"DM: {turn} cannot use {resource.replace('_', ' ')} while {block}.")
+        return
     resources = _active_resources(combat).setdefault(turn, _default_turn_resources())
     if not resources.get(resource, True):
         runtime.narrate(f"DM: {turn} has already used {resource.replace('_', ' ')}.")
@@ -396,6 +411,10 @@ def spend_active_combat_movement(runtime: AdventureRuntime, amount_text: str) ->
         return
     turn = combat.get("turn")
     combatant = _active_combatant(combat, str(turn or ""))
+    block = _combatant_action_block_reason(runtime.campaign, combatant)
+    if block in ACTION_BLOCKING_CONDITIONS:
+        runtime.narrate(f"DM: {turn} cannot move while {block}.")
+        return
     if combatant is not None and "grappled" in _combatant_condition_names(runtime.campaign, combatant):
         runtime.narrate(f"DM: {turn} is grappled and cannot spend movement.")
         return
@@ -419,6 +438,10 @@ def perform_basic_combat_action(runtime: AdventureRuntime, action: str) -> None:
     combatant = _active_combatant(combat, turn)
     if combatant is None:
         runtime.narrate("DM: Current combatant is not in initiative.")
+        return
+    block = _combatant_action_block_reason(runtime.campaign, combatant)
+    if block:
+        runtime.narrate(f"DM: {turn} cannot take actions while {block}.")
         return
     resources = _active_resources(combat).setdefault(turn, _default_turn_resources())
     if not resources.get("action", True):
@@ -458,6 +481,10 @@ def contest_combat_control(runtime: AdventureRuntime, target_text: str, control:
         return
     if bool(actor.get("is_player")) == bool(target.get("is_player")):
         runtime.narrate("DM: Combat control actions need an opposing target.")
+        return
+    block = _combatant_action_block_reason(runtime.campaign, actor)
+    if block:
+        runtime.narrate(f"DM: {actor['name']} cannot take actions while {block}.")
         return
     resources = _active_resources(combat).setdefault(actor["name"], _default_turn_resources())
     if not resources.get("action", True):
@@ -507,6 +534,10 @@ def escape_grapple(runtime: AdventureRuntime) -> None:
     if "grappled" not in _combatant_condition_names(runtime.campaign, actor):
         runtime.narrate(f"DM: {actor['name']} is not grappled.")
         return
+    block = _combatant_action_block_reason(runtime.campaign, actor)
+    if block:
+        runtime.narrate(f"DM: {actor['name']} cannot take actions while {block}.")
+        return
     resources = _active_resources(combat).setdefault(actor["name"], _default_turn_resources())
     if not resources.get("action", True):
         runtime.narrate(f"DM: {actor['name']} has already used action.")
@@ -540,7 +571,10 @@ def escape_grapple(runtime: AdventureRuntime) -> None:
 def set_combat_condition(runtime: AdventureRuntime, target_text: str, enabled: bool) -> None:
     name, condition = _parse_condition_text(target_text)
     if not name or not condition:
-        runtime.narrate("DM: Use 'condition <target> <grappled|prone|restrained|frightened>'.")
+        runtime.narrate(
+            "DM: Use 'condition <target> <blinded|frightened|grappled|incapacitated|"
+            "poisoned|prone|restrained|stunned>'."
+        )
         return
     if condition not in SUPPORTED_COMBAT_CONDITIONS:
         runtime.narrate(f"DM: Unsupported condition: {condition}.")
@@ -581,6 +615,10 @@ def attack_active_combat_target(runtime: AdventureRuntime, target: str) -> None:
         return
     if defender is None:
         runtime.narrate("DM: Target is not in active combat.")
+        return
+    block = _combatant_action_block_reason(runtime.campaign, attacker)
+    if block:
+        runtime.narrate(f"DM: {attacker['name']} cannot attack while {block}.")
         return
     if attacker["name"] == defender["name"]:
         runtime.narrate("DM: A combatant cannot attack itself.")
@@ -650,6 +688,11 @@ def cast_active_combat_spell(runtime: AdventureRuntime, spell_text: str) -> None
     combat = runtime.campaign.active_combat
     if combat is None:
         runtime.narrate("DM: There is no active combat.")
+        return
+    caster_combatant = _active_combatant(combat, str(combat.get("turn") or ""))
+    block = _combatant_action_block_reason(runtime.campaign, caster_combatant)
+    if block:
+        runtime.narrate(f"DM: {combat.get('turn')} cannot cast spells while {block}.")
         return
     spell_name, slot_level = _parse_spell_cast_text(spell_text)
     if not spell_name:
@@ -888,6 +931,8 @@ def _maybe_resolve_opportunity_attack(runtime: AdventureRuntime, mover_name: str
 
 def _first_opportunity_attacker(campaign: Campaign, combat: dict, mover: dict) -> dict | None:
     for candidate in _living_hostile_combatants(combat, campaign, str(mover.get("name") or "")):
+        if _combatant_action_block_reason(campaign, candidate):
+            continue
         resources = _active_resources(combat).setdefault(candidate["name"], _default_turn_resources())
         if resources.get("reaction", True):
             return candidate
@@ -1457,9 +1502,9 @@ def _attack_mode(campaign: Campaign, attacker: dict, defender: dict) -> RollMode
     disadvantage = False
     attacker_conditions = _combatant_condition_names(campaign, attacker)
     defender_conditions = _combatant_condition_names(campaign, defender)
-    if attacker_conditions & {"frightened", "prone", "restrained"}:
+    if attacker_conditions & {"blinded", "frightened", "poisoned", "prone", "restrained"}:
         disadvantage = True
-    if defender_conditions & {"prone", "restrained", "unconscious"}:
+    if defender_conditions & {"blinded", "prone", "restrained", "stunned", "unconscious"}:
         advantage = True
     if "dodging" in defender_conditions:
         disadvantage = True
@@ -1468,7 +1513,7 @@ def _attack_mode(campaign: Campaign, attacker: dict, defender: dict) -> RollMode
 
 def _saving_throw_mode(campaign: Campaign, combatant: dict, ability: str) -> RollMode:
     conditions = _combatant_condition_names(campaign, combatant)
-    if ability == "dex" and conditions & {"restrained", "unconscious"}:
+    if ability == "dex" and conditions & {"restrained", "stunned", "unconscious"}:
         return RollMode.DISADVANTAGE
     return RollMode.NORMAL
 
@@ -1482,11 +1527,23 @@ def _combined_roll_mode(advantage: bool, disadvantage: bool) -> RollMode:
 
 
 def _combatant_condition_names(campaign: Campaign, combatant: dict) -> set[str]:
+    if not combatant:
+        return set()
     conditions = {str(condition).lower() for condition in combatant.get("conditions", [])}
     character = campaign.characters.get(str(combatant.get("name") or ""))
     if character is not None:
         conditions.update(condition.lower() for condition in character.conditions)
     return conditions
+
+
+def _combatant_action_block_reason(campaign: Campaign, combatant: dict | None) -> str:
+    if combatant is None:
+        return ""
+    conditions = _combatant_condition_names(campaign, combatant)
+    for condition in ("dead", "unconscious", "stunned", "incapacitated"):
+        if condition in conditions:
+            return condition
+    return ""
 
 
 def _set_combatant_condition(
@@ -1511,6 +1568,8 @@ def _try_apply_shield_reaction(
     runtime: AdventureRuntime, defender: dict, attack_total: int, base_ac: int, natural_20: bool
 ) -> str:
     if natural_20 or attack_total >= base_ac + SHIELD_AC_BONUS:
+        return ""
+    if _combatant_action_block_reason(runtime.campaign, defender):
         return ""
     character = runtime.campaign.characters.get(defender["name"])
     if character is None or character.spellcasting is None:
