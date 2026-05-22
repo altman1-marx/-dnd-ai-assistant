@@ -68,6 +68,11 @@ class AdventureTests(unittest.TestCase):
             "retreat": {"aliases": ["fall back"], "handler": "flee_combat"},
             "yield": {"aliases": ["yield"], "handler": "surrender_combat"},
             "spare": {"aliases": ["spare them"], "handler": "accept_surrender"},
+            "dash": {"aliases": ["dash"], "handler": "dash"},
+            "disengage": {"aliases": ["disengage"], "handler": "disengage"},
+            "dodge": {"aliases": ["dodge"], "handler": "dodge"},
+            "condition": {"aliases": ["condition"], "handler": "set_condition"},
+            "clear_condition": {"aliases": ["clear condition"], "handler": "clear_condition"},
         }
 
         validate_adventure(AdventureDefinition(raw))

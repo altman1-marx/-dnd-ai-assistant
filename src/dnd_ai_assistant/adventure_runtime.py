@@ -16,6 +16,9 @@ from .core.spells import Spell
 
 QUEST_COMPLETE_STATUS = "completed"
 QUEST_FAILED_STATUS = "failed"
+SUPPORTED_COMBAT_CONDITIONS = {"frightened", "prone", "restrained"}
+TEMPORARY_COMBAT_CONDITIONS = {"disengaging", "dodging"}
+SHIELD_AC_BONUS = 5
 SPELL_EFFECTS = {
     "burning hands": "area_save_damage",
     "cure wounds": "healing",
@@ -23,6 +26,7 @@ SPELL_EFFECTS = {
     "healing word": "healing",
     "magic missile": "auto_damage",
     "sacred flame": "sacred_flame",
+    "shield": "reaction_defense",
 }
 ATTACK_SPELLS = {
     "guiding bolt": {"damage": "4d6", "damage_type": "radiant"},
@@ -48,6 +52,11 @@ DEFAULT_RUNTIME_ACTIONS = {
     "use_action": {"aliases": ["use action"], "handler": "use_action"},
     "use_bonus_action": {"aliases": ["use bonus action"], "handler": "use_bonus_action"},
     "use_reaction": {"aliases": ["use reaction"], "handler": "use_reaction"},
+    "dash": {"aliases": ["dash"], "handler": "dash"},
+    "disengage": {"aliases": ["disengage"], "handler": "disengage"},
+    "dodge": {"aliases": ["dodge"], "handler": "dodge"},
+    "set_condition": {"aliases": ["condition", "apply condition"], "handler": "set_condition"},
+    "clear_condition": {"aliases": ["clear condition", "remove condition"], "handler": "clear_condition"},
     "spend_movement": {"aliases": ["spend movement", "use movement"], "handler": "spend_movement"},
     "attack": {"aliases": ["attack", "strike"], "handler": "attack"},
     "cast_spell": {"aliases": ["cast", "cast spell"], "handler": "cast_spell"},
@@ -141,6 +150,15 @@ def handle_adventure_action(runtime: AdventureRuntime, action: str) -> bool:
         return True
     if handler == "use_reaction":
         spend_active_combat_resource(runtime, "reaction")
+        return True
+    if handler in {"dash", "disengage", "dodge"}:
+        perform_basic_combat_action(runtime, handler)
+        return True
+    if handler == "set_condition":
+        set_combat_condition(runtime, action_match.get("argument", ""), enabled=True)
+        return True
+    if handler == "clear_condition":
+        set_combat_condition(runtime, action_match.get("argument", ""), enabled=False)
         return True
     if handler == "spend_movement":
         spend_active_combat_movement(runtime, action_match.get("argument", ""))
@@ -375,6 +393,63 @@ def spend_active_combat_movement(runtime: AdventureRuntime, amount_text: str) ->
     runtime.narrate(f"DM: {turn} moves {amount} feet, {resources['movement']} feet remaining.")
 
 
+def perform_basic_combat_action(runtime: AdventureRuntime, action: str) -> None:
+    combat = runtime.campaign.active_combat
+    if combat is None:
+        runtime.narrate("DM: There is no active combat.")
+        return
+    turn = str(combat.get("turn") or "")
+    combatant = _active_combatant(combat, turn)
+    if combatant is None:
+        runtime.narrate("DM: Current combatant is not in initiative.")
+        return
+    resources = _active_resources(combat).setdefault(turn, _default_turn_resources())
+    if not resources.get("action", True):
+        runtime.narrate(f"DM: {turn} has already used action.")
+        return
+    resources["action"] = False
+    if action == "dash":
+        resources["movement"] = int(resources.get("movement", 0)) + DEFAULT_RULES_CONFIG.default_movement_speed
+        content = f"{turn} dashes, increasing remaining movement to {resources['movement']} feet."
+    elif action == "dodge":
+        _set_combatant_condition(runtime.campaign, combatant, "dodging", True, persist_character=False)
+        content = f"{turn} dodges; attacks against them have disadvantage until their next turn."
+    elif action == "disengage":
+        _set_combatant_condition(runtime.campaign, combatant, "disengaging", True, persist_character=False)
+        content = f"{turn} disengages; they avoid opportunity attacks this turn."
+    else:
+        content = f"{turn} uses action."
+    runtime.campaign.record_event(SessionEvent(actor="DM", content=content))
+    runtime.narrate(f"DM: {content}")
+
+
+def set_combat_condition(runtime: AdventureRuntime, target_text: str, enabled: bool) -> None:
+    name, condition = _parse_condition_text(target_text)
+    if not name or not condition:
+        runtime.narrate("DM: Use 'condition <target> <prone|restrained|frightened>'.")
+        return
+    if condition not in SUPPORTED_COMBAT_CONDITIONS:
+        runtime.narrate(f"DM: Unsupported condition: {condition}.")
+        return
+    combatant = _active_combatant(runtime.campaign.active_combat or {}, name)
+    character = _match_character(runtime.campaign, name)
+    if combatant is None and character is None:
+        runtime.narrate("DM: Target is not in active combat or party characters.")
+        return
+    target_name = combatant["name"] if combatant is not None else character.name
+    if character is not None:
+        if enabled:
+            character.conditions.add(condition)
+        else:
+            character.conditions.discard(condition)
+    if combatant is not None:
+        _set_combatant_condition(runtime.campaign, combatant, condition, enabled, persist_character=False)
+    verb = "gains" if enabled else "loses"
+    content = f"{target_name} {verb} {condition}."
+    runtime.campaign.record_event(SessionEvent(actor="DM", content=content))
+    runtime.narrate(f"DM: {content}")
+
+
 def attack_active_combat_target(runtime: AdventureRuntime, target: str) -> None:
     combat = runtime.campaign.active_combat
     if combat is None:
@@ -398,12 +473,28 @@ def attack_active_combat_target(runtime: AdventureRuntime, target: str) -> None:
         runtime.narrate(f"DM: {attacker['name']} has already used action.")
         return
 
+    mode = _attack_mode(runtime.campaign, attacker, defender)
+    effective_ac = defender.get("armor_class", 10)
     attack = roll_attack(
         attack_bonus=attacker.get("attack_bonus", 0),
-        target_ac=defender.get("armor_class", 10),
+        target_ac=effective_ac,
         damage_expression=attacker.get("damage", "1d4"),
+        mode=mode,
         rng=runtime.rng,
     )
+    shield_text = ""
+    if attack.hit:
+        shield_text = _try_apply_shield_reaction(
+            runtime, defender, attack.attack.total, effective_ac, attack.attack.natural_20
+        )
+        if shield_text:
+            effective_ac += SHIELD_AC_BONUS
+            attack = type(attack)(
+                attack=attack.attack,
+                target_ac=effective_ac,
+                hit=attack.attack.natural_20 or (attack.attack.total >= effective_ac and not attack.attack.natural_1),
+                damage=attack.damage if attack.attack.total >= effective_ac or attack.attack.natural_20 else None,
+            )
     _active_resources(combat)[attacker["name"]]["action"] = False
     if attack.hit and attack.damage is not None:
         before = defender.get("current_hp", 0)
@@ -414,9 +505,11 @@ def attack_active_combat_target(runtime: AdventureRuntime, target: str) -> None:
         if damage_amount != attack.damage.total:
             adjustment = f" ({attack.damage.total} before adjustments)"
         content = (
-            f"{attacker['name']} attacks {defender['name']}: {attack.attack.total} vs AC {defender.get('armor_class')}, "
+            f"{attacker['name']} attacks {defender['name']}: {attack.attack.total} vs AC {effective_ac} ({mode.value}), "
             f"hit for {damage_amount} {damage_type} damage{adjustment}: HP {before} -> {defender['current_hp']}."
         )
+        if shield_text:
+            content += " " + shield_text
         concentration = _concentration_check_text(runtime, defender, damage_amount)
         if concentration:
             content += " " + concentration
@@ -424,7 +517,9 @@ def attack_active_combat_target(runtime: AdventureRuntime, target: str) -> None:
         if death_saves:
             content += " " + death_saves
     else:
-        content = f"{attacker['name']} attacks {defender['name']}: {attack.attack.total} vs AC {defender.get('armor_class')}, miss."
+        content = f"{attacker['name']} attacks {defender['name']}: {attack.attack.total} vs AC {effective_ac} ({mode.value}), miss."
+        if shield_text:
+            content += " " + shield_text
     runtime.campaign.record_event(SessionEvent(actor="System", content=content))
     runtime.narrate(f"DM: {content}")
     if attack.hit and _all_hostile_combatants_defeated(combat):
@@ -901,6 +996,13 @@ def _match_known_spell_with_target(caster: Character, spell_text: str) -> tuple[
     return None, ""
 
 
+def _parse_condition_text(text: str) -> tuple[str, str]:
+    words = text.strip().split()
+    if len(words) < 2:
+        return "", ""
+    return " ".join(words[:-1]), words[-1].lower()
+
+
 def _apply_spell_effect(
     runtime: AdventureRuntime,
     caster: Character,
@@ -959,10 +1061,12 @@ def _apply_spell_attack_spell(runtime: AdventureRuntime, caster: Character, spel
     if target is None:
         return "The spell has no valid target."
     spell = ATTACK_SPELLS[spell_name]
+    mode = _attack_mode(runtime.campaign, {"name": caster.name}, target)
     attack = roll_attack(
         attack_bonus=caster.spell_attack_modifier or 0,
         target_ac=target.get("armor_class", 10),
         damage_expression=str(spell["damage"]),
+        mode=mode,
         rng=runtime.rng,
     )
     if attack.hit and attack.damage is not None:
@@ -972,7 +1076,7 @@ def _apply_spell_attack_spell(runtime: AdventureRuntime, caster: Character, spel
         damage_amount = _apply_combat_damage(runtime.campaign, target, attack.damage.total, damage_type)
         concentration = _concentration_check_text(runtime, target, damage_amount)
         text = (
-            f"{spell_name.title()} spell attack {attack.attack.total} vs AC {target.get('armor_class')}, "
+            f"{spell_name.title()} spell attack {attack.attack.total} vs AC {target.get('armor_class')} ({mode.value}), "
             f"hit for {damage_amount} {damage_type} damage: HP {before} -> {target['current_hp']}."
         )
         death_saves = _death_save_damage_text(runtime, target, damage_amount, was_unconscious)
@@ -980,7 +1084,7 @@ def _apply_spell_attack_spell(runtime: AdventureRuntime, caster: Character, spel
             if extra:
                 text += " " + extra
         return text
-    return f"{spell_name.title()} spell attack {attack.attack.total} vs AC {target.get('armor_class')}, miss."
+    return f"{spell_name.title()} spell attack {attack.attack.total} vs AC {target.get('armor_class')} ({mode.value}), miss."
 
 
 def _apply_auto_damage_spell(runtime: AdventureRuntime, spell_name: str, target_text: str) -> str:
@@ -1022,11 +1126,12 @@ def _apply_save_damage_spell(runtime: AdventureRuntime, caster: Character, spell
     ability = str(spell["ability"])
     dc = caster.spell_save_dc or 10
     modifier = _saving_throw_modifier(runtime.campaign, target["name"], ability)
-    save = roll_d20_check(modifier=modifier, dc=dc, rng=runtime.rng)
+    mode = _saving_throw_mode(runtime.campaign, target, ability)
+    save = roll_d20_check(modifier=modifier, dc=dc, mode=mode, rng=runtime.rng)
     outcome = "success" if save.success else "failure"
     label = str(spell["label"])
     if save.success:
-        return f"{target['name']} makes a {label} save {save.total} vs DC {dc} ({outcome}) and takes no damage."
+        return f"{target['name']} makes a {label} save {save.total} vs DC {dc} ({outcome}, {mode.value}) and takes no damage."
 
     damage = roll_damage(str(spell["damage"]), runtime.rng)
     before = target.get("current_hp", 0)
@@ -1035,7 +1140,7 @@ def _apply_save_damage_spell(runtime: AdventureRuntime, caster: Character, spell
     damage_amount = _apply_combat_damage(runtime.campaign, target, damage.total, damage_type)
     concentration = _concentration_check_text(runtime, target, damage_amount)
     text = (
-        f"{target['name']} makes a {label} save {save.total} vs DC {dc} ({outcome}) "
+        f"{target['name']} makes a {label} save {save.total} vs DC {dc} ({outcome}, {mode.value}) "
         f"and takes {damage_amount} {damage_type} damage: HP {before} -> {target['current_hp']}."
     )
     death_saves = _death_save_damage_text(runtime, target, damage_amount, was_unconscious)
@@ -1062,14 +1167,15 @@ def _apply_area_save_damage_spell(runtime: AdventureRuntime, caster: Character, 
     results: list[str] = []
     for target in targets:
         modifier = _saving_throw_modifier(runtime.campaign, target["name"], ability)
-        save = roll_d20_check(modifier=modifier, dc=dc, rng=runtime.rng)
+        mode = _saving_throw_mode(runtime.campaign, target, ability)
+        save = roll_d20_check(modifier=modifier, dc=dc, mode=mode, rng=runtime.rng)
         outcome = "success" if save.success else "failure"
         raw_damage = damage.total // 2 if save.success else damage.total
         before = target.get("current_hp", 0)
         was_unconscious = _is_unconscious_character(runtime.campaign, target)
         damage_amount = _apply_combat_damage(runtime.campaign, target, raw_damage, damage_type)
         text = (
-            f"{target['name']} makes a {label} save {save.total} vs DC {dc} ({outcome}) "
+            f"{target['name']} makes a {label} save {save.total} vs DC {dc} ({outcome}, {mode.value}) "
             f"and takes {damage_amount} {damage_type} damage: HP {before} -> {target['current_hp']}."
         )
         concentration = _concentration_check_text(runtime, target, damage_amount)
@@ -1090,6 +1196,86 @@ def _saving_throw_modifier(campaign: Campaign, name: str, ability: str) -> int:
             if monster.name == name:
                 return monster.saving_throw_modifier(ability)
     return 0
+
+
+def _attack_mode(campaign: Campaign, attacker: dict, defender: dict) -> RollMode:
+    advantage = False
+    disadvantage = False
+    attacker_conditions = _combatant_condition_names(campaign, attacker)
+    defender_conditions = _combatant_condition_names(campaign, defender)
+    if attacker_conditions & {"frightened", "prone", "restrained"}:
+        disadvantage = True
+    if defender_conditions & {"prone", "restrained", "unconscious"}:
+        advantage = True
+    if "dodging" in defender_conditions:
+        disadvantage = True
+    return _combined_roll_mode(advantage, disadvantage)
+
+
+def _saving_throw_mode(campaign: Campaign, combatant: dict, ability: str) -> RollMode:
+    conditions = _combatant_condition_names(campaign, combatant)
+    if ability == "dex" and conditions & {"restrained", "unconscious"}:
+        return RollMode.DISADVANTAGE
+    return RollMode.NORMAL
+
+
+def _combined_roll_mode(advantage: bool, disadvantage: bool) -> RollMode:
+    if advantage and not disadvantage:
+        return RollMode.ADVANTAGE
+    if disadvantage and not advantage:
+        return RollMode.DISADVANTAGE
+    return RollMode.NORMAL
+
+
+def _combatant_condition_names(campaign: Campaign, combatant: dict) -> set[str]:
+    conditions = {str(condition).lower() for condition in combatant.get("conditions", [])}
+    character = campaign.characters.get(str(combatant.get("name") or ""))
+    if character is not None:
+        conditions.update(condition.lower() for condition in character.conditions)
+    return conditions
+
+
+def _set_combatant_condition(
+    campaign: Campaign, combatant: dict, condition: str, enabled: bool, persist_character: bool
+) -> None:
+    conditions = {str(item).lower() for item in combatant.get("conditions", [])}
+    if enabled:
+        conditions.add(condition)
+    else:
+        conditions.discard(condition)
+    combatant["conditions"] = sorted(conditions)
+    if persist_character:
+        character = campaign.characters.get(str(combatant.get("name") or ""))
+        if character is not None:
+            if enabled:
+                character.conditions.add(condition)
+            else:
+                character.conditions.discard(condition)
+
+
+def _try_apply_shield_reaction(
+    runtime: AdventureRuntime, defender: dict, attack_total: int, base_ac: int, natural_20: bool
+) -> str:
+    if natural_20 or attack_total >= base_ac + SHIELD_AC_BONUS:
+        return ""
+    character = runtime.campaign.characters.get(defender["name"])
+    if character is None or character.spellcasting is None:
+        return ""
+    try:
+        spell = character.spellcasting.spell_named("Shield")
+    except ValueError:
+        return ""
+    if spell.level != 1:
+        return ""
+    resources = _active_resources(runtime.campaign.active_combat or {}).setdefault(character.name, _default_turn_resources())
+    if not resources.get("reaction", True):
+        return ""
+    try:
+        character.spellcasting.expend_slot(1)
+    except ValueError:
+        return ""
+    resources["reaction"] = False
+    return f"{character.name} casts Shield as a reaction, raising AC to {base_ac + SHIELD_AC_BONUS}."
 
 
 def _concentration_check_text(runtime: AdventureRuntime, combatant: dict, damage_amount: int) -> str:
@@ -1171,6 +1357,11 @@ def _reset_turn_resources(combat: dict, name: str) -> None:
     resources["action"] = True
     resources["bonus_action"] = True
     resources["movement"] = DEFAULT_RULES_CONFIG.default_movement_speed
+    combatant = _active_combatant(combat, name)
+    if combatant is not None:
+        conditions = {str(item).lower() for item in combatant.get("conditions", [])}
+        conditions -= TEMPORARY_COMBAT_CONDITIONS
+        combatant["conditions"] = sorted(conditions)
 
 
 def _next_active_combatant_index(combat: dict, current_index: int) -> int | None:
@@ -1378,6 +1569,8 @@ def _match_runtime_action(campaign: Campaign, normalized: str) -> dict:
                 "cast_spell",
                 "death_save",
                 "stabilize",
+                "set_condition",
+                "clear_condition",
             } and normalized.startswith(alias_text + " "):
                 return {"name": action_name, "handler": handler, "argument": normalized[len(alias_text) :].strip()}
             if normalized == alias_text:

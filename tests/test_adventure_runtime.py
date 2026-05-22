@@ -320,6 +320,68 @@ class AdventureRuntimeTests(unittest.TestCase):
         self.assertEqual(campaign.active_combat["resources"]["Kael"]["movement"], 20)
         self.assertIn("20 feet remaining", movement_output)
 
+    def test_dash_dodge_and_disengage_use_action_resource(self) -> None:
+        campaign = campaign_from_adventure(AdventureDefinition(create_adventure_template("Moonlit Road")))
+        campaign.active_combat = {
+            "round": 1,
+            "turn": "Kael",
+            "initiative": [{"name": "Kael", "initiative_total": 18, "is_player": True, "armor_class": 14, "current_hp": 12}],
+            "resources": {"Kael": {"action": True, "bonus_action": True, "reaction": True, "movement": 10}},
+        }
+        runtime = AdventureRuntime(campaign)
+
+        handle_adventure_action(runtime, "dash")
+        dash_output = runtime.flush()
+
+        self.assertFalse(campaign.active_combat["resources"]["Kael"]["action"])
+        self.assertEqual(campaign.active_combat["resources"]["Kael"]["movement"], 40)
+        self.assertIn("dashes", dash_output)
+
+        campaign.active_combat["resources"]["Kael"]["action"] = True
+        handle_adventure_action(runtime, "dodge")
+        dodge_output = runtime.flush()
+
+        self.assertIn("dodging", campaign.active_combat["initiative"][0]["conditions"])
+        self.assertIn("dodges", dodge_output)
+
+        campaign.active_combat["resources"]["Kael"]["action"] = True
+        handle_adventure_action(runtime, "disengage")
+
+        self.assertIn("disengaging", campaign.active_combat["initiative"][0]["conditions"])
+
+    def test_dodge_gives_attackers_disadvantage_until_next_turn(self) -> None:
+        campaign = campaign_from_adventure(AdventureDefinition(create_adventure_template("Moonlit Road")))
+        campaign.add_character(_scout())
+        campaign.active_combat = {
+            "round": 1,
+            "turn": "Kael",
+            "initiative": [
+                {"name": "Kael", "initiative_total": 18, "is_player": True, "armor_class": 14, "current_hp": 12},
+                {
+                    "name": "Lantern Sprite",
+                    "initiative_total": 12,
+                    "is_player": False,
+                    "armor_class": 13,
+                    "current_hp": 7,
+                    "attack_bonus": 20,
+                    "damage": "1",
+                },
+            ],
+            "resources": {
+                "Kael": {"action": True, "bonus_action": True, "reaction": True, "movement": 30},
+                "Lantern Sprite": {"action": True, "bonus_action": True, "reaction": True, "movement": 30},
+            },
+        }
+        runtime = AdventureRuntime(campaign, rng=random.Random(1))
+
+        handle_adventure_action(runtime, "dodge")
+        handle_adventure_action(runtime, "end turn")
+        output = runtime.flush()
+
+        self.assertIn("(disadvantage)", output)
+        self.assertIn("round 2, turn: Kael", output)
+        self.assertNotIn("dodging", campaign.active_combat["initiative"][0].get("conditions", []))
+
     def test_attack_action_hits_target_and_spends_action(self) -> None:
         campaign = campaign_from_adventure(AdventureDefinition(create_adventure_template("Moonlit Road")))
         campaign.add_character(_scout())
@@ -350,6 +412,86 @@ class AdventureRuntimeTests(unittest.TestCase):
         self.assertIn("attacks Kael", output)
         self.assertLess(campaign.characters["Kael"].current_hp, campaign.characters["Kael"].max_hp)
         self.assertFalse(campaign.active_combat["resources"]["Lantern Sprite"]["action"])
+
+    def test_shield_reaction_can_turn_hit_into_miss(self) -> None:
+        campaign = campaign_from_adventure(AdventureDefinition(create_adventure_template("Moonlit Road")))
+        caster = _caster()
+        caster.spellcasting.known_spells.append(Spell("Shield", 1, casting_time="1 reaction"))
+        campaign.add_character(caster)
+        campaign.active_combat = {
+            "round": 1,
+            "turn": "Lantern Sprite",
+            "initiative": [
+                {
+                    "name": "Lantern Sprite",
+                    "initiative_total": 18,
+                    "is_player": False,
+                    "armor_class": 13,
+                    "current_hp": 7,
+                    "attack_bonus": 8,
+                    "damage": "1d4+2",
+                },
+                {"name": "Leth", "initiative_total": 12, "is_player": True, "armor_class": 16, "current_hp": 24},
+            ],
+            "resources": {
+                "Lantern Sprite": {"action": True, "bonus_action": True, "reaction": True, "movement": 30},
+                "Leth": {"action": True, "bonus_action": True, "reaction": True, "movement": 30},
+            },
+        }
+        runtime = AdventureRuntime(campaign, rng=random.Random(7))
+
+        handle_adventure_action(runtime, "attack leth")
+        output = runtime.flush()
+
+        self.assertEqual(campaign.characters["Leth"].current_hp, 24)
+        self.assertFalse(campaign.active_combat["resources"]["Leth"]["reaction"])
+        self.assertEqual(campaign.characters["Leth"].spellcasting.available_slots(1), 1)
+        self.assertIn("casts Shield as a reaction", output)
+        self.assertIn("miss", output)
+
+    def test_condition_action_applies_and_clears_combat_condition(self) -> None:
+        campaign = campaign_from_adventure(AdventureDefinition(create_adventure_template("Moonlit Road")))
+        campaign.add_character(_scout())
+        campaign.active_combat = {
+            "round": 1,
+            "turn": "Kael",
+            "initiative": [{"name": "Kael", "initiative_total": 18, "is_player": True, "armor_class": 14, "current_hp": 12}],
+        }
+        runtime = AdventureRuntime(campaign)
+
+        handle_adventure_action(runtime, "condition kael prone")
+        handle_adventure_action(runtime, "clear condition kael prone")
+
+        self.assertNotIn("prone", campaign.characters["Kael"].conditions)
+        self.assertEqual(campaign.active_combat["initiative"][0]["conditions"], [])
+
+    def test_attack_conditions_apply_advantage_and_disadvantage(self) -> None:
+        campaign = campaign_from_adventure(AdventureDefinition(create_adventure_template("Moonlit Road")))
+        campaign.add_character(_scout())
+        campaign.characters["Kael"].conditions.add("prone")
+        campaign.active_combat = {
+            "round": 1,
+            "turn": "Lantern Sprite",
+            "initiative": [
+                {
+                    "name": "Lantern Sprite",
+                    "initiative_total": 18,
+                    "is_player": False,
+                    "armor_class": 13,
+                    "current_hp": 7,
+                    "attack_bonus": 20,
+                    "damage": "1",
+                },
+                {"name": "Kael", "initiative_total": 12, "is_player": True, "armor_class": 14, "current_hp": 12},
+            ],
+            "resources": {"Lantern Sprite": {"action": True, "bonus_action": True, "reaction": True, "movement": 30}},
+        }
+        runtime = AdventureRuntime(campaign, rng=random.Random(1))
+
+        handle_adventure_action(runtime, "attack kael")
+        output = runtime.flush()
+
+        self.assertIn("(advantage)", output)
 
     def test_attack_action_reports_missing_target(self) -> None:
         campaign = campaign_from_adventure(AdventureDefinition(create_adventure_template("Moonlit Road")))
@@ -754,6 +896,46 @@ class AdventureRuntimeTests(unittest.TestCase):
         self.assertEqual(campaign.characters["Leth"].spellcasting.available_slots(1), 2)
         self.assertIn("Dexterity save", output)
         self.assertIn("radiant damage", output)
+
+    def test_restrained_target_has_disadvantage_on_dexterity_save(self) -> None:
+        raw = create_adventure_template("Moonlit Road")
+        raw["encounters"][0]["monsters"] = [
+            {
+                "name": "Lantern Sprite",
+                "armor_class": 13,
+                "max_hp": 7,
+                "current_hp": 7,
+                "ability_scores": {"str": 8, "dex": 14, "con": 10, "int": 10, "wis": 10, "cha": 10},
+            }
+        ]
+        campaign = campaign_from_adventure(AdventureDefinition(raw))
+        campaign.add_character(_caster())
+        campaign.active_combat = {
+            "encounter_id": "enc_lantern_sprites",
+            "round": 1,
+            "turn": "Leth",
+            "initiative": [
+                {"name": "Leth", "initiative_total": 18, "is_player": True, "armor_class": 16, "current_hp": 24},
+                {
+                    "name": "Lantern Sprite",
+                    "initiative_total": 12,
+                    "is_player": False,
+                    "armor_class": 13,
+                    "current_hp": 7,
+                    "conditions": ["restrained"],
+                },
+            ],
+            "resources": {
+                "Leth": {"action": True, "bonus_action": True, "reaction": True, "movement": 30},
+                "Lantern Sprite": {"action": True, "bonus_action": True, "reaction": True, "movement": 30},
+            },
+        }
+        runtime = AdventureRuntime(campaign, rng=random.Random(1))
+
+        handle_adventure_action(runtime, "cast sacred flame sprite")
+        output = runtime.flush()
+
+        self.assertIn("disadvantage", output)
 
     def test_spell_damage_resolves_encounter_when_hostiles_are_defeated(self) -> None:
         raw = create_adventure_template("Moonlit Road")

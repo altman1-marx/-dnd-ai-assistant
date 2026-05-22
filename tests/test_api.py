@@ -229,6 +229,9 @@ class APITests(unittest.TestCase):
         self.assertIn("talk mayor elin", summary["available_actions"])
         self.assertIn("talk mayor", summary["available_actions"])
         self.assertIn("attack lantern sprite", summary["available_actions"])
+        self.assertIn("dash", summary["available_actions"])
+        self.assertIn("disengage", summary["available_actions"])
+        self.assertIn("dodge", summary["available_actions"])
         self.assertIn("cast bless", summary["available_actions"])
         self.assertIn("cast burning hands", summary["available_actions"])
         self.assertIn("cast cure wounds", summary["available_actions"])
@@ -236,6 +239,8 @@ class APITests(unittest.TestCase):
         self.assertIn("cast guiding bolt lantern sprite", summary["available_actions"])
         self.assertIn("cast magic missile lantern sprite", summary["available_actions"])
         self.assertIn("combat", summary["available_actions"])
+        self.assertIn("condition", summary["available_actions"])
+        self.assertIn("clear condition", summary["available_actions"])
         self.assertIn("flee", summary["available_actions"])
         self.assertIn("surrender", summary["available_actions"])
         self.assertIn("accept surrender", summary["available_actions"])
@@ -275,6 +280,33 @@ class APITests(unittest.TestCase):
         )
         self.assertEqual(summary["active_combat"]["morale_hint"], "Hostile morale is wavering.")
         self.assertEqual(summary["active_combat"]["initiative"][1]["action_strategy"], "concentrating")
+
+    def test_campaign_summary_combines_character_and_temporary_combat_conditions(self) -> None:
+        state = APIState()
+        campaign_id = import_adventure(state, create_adventure_template("Moonlit Road"))["campaign_id"]
+        add_sample_character(state, campaign_id)
+        campaign = state.campaigns[campaign_id]
+        campaign.characters["Leth"].conditions.add("prone")
+        campaign.active_combat = {
+            "encounter_id": "enc_lantern_sprites",
+            "round": 1,
+            "turn": "Leth",
+            "initiative": [
+                {
+                    "name": "Leth",
+                    "initiative_total": 18,
+                    "is_player": True,
+                    "armor_class": 16,
+                    "current_hp": 24,
+                    "conditions": ["dodging"],
+                }
+            ],
+            "resources": {"Leth": {"action": True, "bonus_action": True, "reaction": True, "movement": 30}},
+        }
+
+        summary = campaign_summary(state, campaign_id)
+
+        self.assertEqual(summary["active_combat"]["initiative"][0]["conditions"], ["dodging", "prone"])
 
     def test_campaign_summary_suggests_death_save_and_stabilize_actions(self) -> None:
         state = APIState()

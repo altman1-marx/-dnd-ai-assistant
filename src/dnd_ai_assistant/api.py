@@ -558,7 +558,20 @@ def _available_actions(campaign: Campaign, active_combat: dict | None) -> list[s
         if any(encounter.location_id == location.id and not encounter.resolved for encounter in campaign.encounters.values()):
             actions.append("fight")
     if active_combat is not None:
-        actions.extend(["combat", "attack", "end turn", "flee", "surrender", "accept surrender", "resolve encounter"])
+        actions.extend([
+            "combat",
+            "attack",
+            "dash",
+            "disengage",
+            "dodge",
+            "condition",
+            "clear condition",
+            "end turn",
+            "flee",
+            "surrender",
+            "accept surrender",
+            "resolve encounter",
+        ])
         turn = str(active_combat.get("turn") or "")
         current = next((entry for entry in active_combat.get("initiative", []) if entry.get("name") == turn), None)
         known_spells = _known_spell_action_names(campaign, turn)
@@ -593,10 +606,11 @@ def _death_save_actions(campaign: Campaign) -> list[str]:
 
 
 def _combatant_conditions(campaign: Campaign, entry: dict) -> list[str]:
+    conditions = {str(condition) for condition in entry.get("conditions", [])}
     character = campaign.characters.get(str(entry.get("name") or ""))
-    if character is None:
-        return sorted(str(condition) for condition in entry.get("conditions", []))
-    return sorted(character.conditions)
+    if character is not None:
+        conditions.update(character.conditions)
+    return sorted(conditions)
 
 
 def _combatant_death_saves(campaign: Campaign, entry: dict) -> dict | None:
