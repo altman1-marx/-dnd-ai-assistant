@@ -564,6 +564,9 @@ def _available_actions(campaign: Campaign, active_combat: dict | None) -> list[s
             "dash",
             "disengage",
             "dodge",
+            "grapple",
+            "shove",
+            "escape grapple",
             "condition",
             "clear condition",
             "end turn",
@@ -584,6 +587,8 @@ def _available_actions(campaign: Campaign, active_combat: dict | None) -> list[s
             same_side = current is not None and bool(combatant.get("is_player")) == bool(current.get("is_player"))
             if name != turn and not same_side:
                 actions.append(f"attack {name.lower()}")
+                actions.append(f"grapple {name.lower()}")
+                actions.append(f"shove {name.lower()}")
                 for spell in known_spells:
                     if spell in {"sacred flame", "guiding bolt", "magic missile"}:
                         actions.append(f"cast {spell} {name.lower()}")

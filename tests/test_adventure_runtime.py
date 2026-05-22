@@ -320,6 +320,191 @@ class AdventureRuntimeTests(unittest.TestCase):
         self.assertEqual(campaign.active_combat["resources"]["Kael"]["movement"], 20)
         self.assertIn("20 feet remaining", movement_output)
 
+    def test_movement_can_provoke_opportunity_attack(self) -> None:
+        campaign = campaign_from_adventure(AdventureDefinition(create_adventure_template("Moonlit Road")))
+        campaign.add_character(_scout())
+        campaign.active_combat = {
+            "round": 1,
+            "turn": "Kael",
+            "initiative": [
+                {"name": "Kael", "initiative_total": 18, "is_player": True, "armor_class": 14, "current_hp": 12},
+                {
+                    "name": "Lantern Sprite",
+                    "initiative_total": 12,
+                    "is_player": False,
+                    "armor_class": 13,
+                    "current_hp": 7,
+                    "attack_bonus": 20,
+                    "damage": "1",
+                },
+            ],
+            "resources": {
+                "Kael": {"action": True, "bonus_action": True, "reaction": True, "movement": 30},
+                "Lantern Sprite": {"action": True, "bonus_action": True, "reaction": True, "movement": 30},
+            },
+        }
+        runtime = AdventureRuntime(campaign, rng=random.Random(1))
+
+        handle_adventure_action(runtime, "spend movement 10")
+        output = runtime.flush()
+
+        self.assertIn("Opportunity attack", output)
+        self.assertIn("Lantern Sprite makes an opportunity attack against Kael", output)
+        self.assertEqual(campaign.characters["Kael"].current_hp, 11)
+        self.assertFalse(campaign.active_combat["resources"]["Lantern Sprite"]["reaction"])
+        self.assertTrue(campaign.active_combat["resources"]["Kael"]["provoked_opportunity_attack"])
+
+    def test_disengage_prevents_opportunity_attack_from_movement(self) -> None:
+        campaign = campaign_from_adventure(AdventureDefinition(create_adventure_template("Moonlit Road")))
+        campaign.add_character(_scout())
+        campaign.active_combat = {
+            "round": 1,
+            "turn": "Kael",
+            "initiative": [
+                {"name": "Kael", "initiative_total": 18, "is_player": True, "armor_class": 14, "current_hp": 12},
+                {
+                    "name": "Lantern Sprite",
+                    "initiative_total": 12,
+                    "is_player": False,
+                    "armor_class": 13,
+                    "current_hp": 7,
+                    "attack_bonus": 20,
+                    "damage": "1",
+                },
+            ],
+            "resources": {
+                "Kael": {"action": True, "bonus_action": True, "reaction": True, "movement": 30},
+                "Lantern Sprite": {"action": True, "bonus_action": True, "reaction": True, "movement": 30},
+            },
+        }
+        runtime = AdventureRuntime(campaign, rng=random.Random(1))
+
+        handle_adventure_action(runtime, "disengage")
+        runtime.flush()
+        handle_adventure_action(runtime, "spend movement 10")
+        output = runtime.flush()
+
+        self.assertIn("avoids opportunity attacks", output)
+        self.assertNotIn("Opportunity attack", output)
+        self.assertEqual(campaign.characters["Kael"].current_hp, 12)
+        self.assertTrue(campaign.active_combat["resources"]["Lantern Sprite"]["reaction"])
+
+    def test_grapple_sets_grappled_and_blocks_movement(self) -> None:
+        campaign = campaign_from_adventure(AdventureDefinition(create_adventure_template("Moonlit Road")))
+        campaign.active_combat = {
+            "round": 1,
+            "turn": "Kael",
+            "initiative": [
+                {
+                    "name": "Kael",
+                    "initiative_total": 18,
+                    "is_player": True,
+                    "armor_class": 14,
+                    "current_hp": 12,
+                    "ability_scores": {"str": 30, "dex": 10},
+                },
+                {
+                    "name": "Lantern Sprite",
+                    "initiative_total": 12,
+                    "is_player": False,
+                    "armor_class": 13,
+                    "current_hp": 7,
+                    "ability_scores": {"str": 1, "dex": 1},
+                },
+            ],
+            "resources": {
+                "Kael": {"action": True, "bonus_action": True, "reaction": True, "movement": 30},
+                "Lantern Sprite": {"action": True, "bonus_action": True, "reaction": True, "movement": 30},
+            },
+        }
+        runtime = AdventureRuntime(campaign, rng=random.Random(1))
+
+        handle_adventure_action(runtime, "grapple lantern sprite")
+        grapple_output = runtime.flush()
+
+        self.assertIn("tries to grapple Lantern Sprite", grapple_output)
+        self.assertIn("grappled", campaign.active_combat["initiative"][1]["conditions"])
+        self.assertEqual(campaign.active_combat["initiative"][1]["grappled_by"], "Kael")
+        self.assertFalse(campaign.active_combat["resources"]["Kael"]["action"])
+
+        campaign.active_combat["turn"] = "Lantern Sprite"
+        handle_adventure_action(runtime, "spend movement 5")
+        movement_output = runtime.flush()
+
+        self.assertIn("is grappled and cannot spend movement", movement_output)
+        self.assertEqual(campaign.active_combat["resources"]["Lantern Sprite"]["movement"], 30)
+
+    def test_shove_can_knock_target_prone(self) -> None:
+        campaign = campaign_from_adventure(AdventureDefinition(create_adventure_template("Moonlit Road")))
+        campaign.active_combat = {
+            "round": 1,
+            "turn": "Kael",
+            "initiative": [
+                {
+                    "name": "Kael",
+                    "initiative_total": 18,
+                    "is_player": True,
+                    "armor_class": 14,
+                    "current_hp": 12,
+                    "ability_scores": {"str": 30, "dex": 10},
+                },
+                {
+                    "name": "Lantern Sprite",
+                    "initiative_total": 12,
+                    "is_player": False,
+                    "armor_class": 13,
+                    "current_hp": 7,
+                    "ability_scores": {"str": 1, "dex": 1},
+                },
+            ],
+            "resources": {"Kael": {"action": True, "bonus_action": True, "reaction": True, "movement": 30}},
+        }
+        runtime = AdventureRuntime(campaign, rng=random.Random(1))
+
+        handle_adventure_action(runtime, "shove lantern sprite")
+        output = runtime.flush()
+
+        self.assertIn("tries to shove Lantern Sprite", output)
+        self.assertIn("knocked prone", output)
+        self.assertIn("prone", campaign.active_combat["initiative"][1]["conditions"])
+
+    def test_escape_grapple_uses_action_and_clears_grapple_on_success(self) -> None:
+        campaign = campaign_from_adventure(AdventureDefinition(create_adventure_template("Moonlit Road")))
+        campaign.active_combat = {
+            "round": 1,
+            "turn": "Lantern Sprite",
+            "initiative": [
+                {
+                    "name": "Kael",
+                    "initiative_total": 18,
+                    "is_player": True,
+                    "armor_class": 14,
+                    "current_hp": 12,
+                    "ability_scores": {"str": 1, "dex": 1},
+                },
+                {
+                    "name": "Lantern Sprite",
+                    "initiative_total": 12,
+                    "is_player": False,
+                    "armor_class": 13,
+                    "current_hp": 7,
+                    "ability_scores": {"str": 30, "dex": 30},
+                    "conditions": ["grappled"],
+                    "grappled_by": "Kael",
+                },
+            ],
+            "resources": {"Lantern Sprite": {"action": True, "bonus_action": True, "reaction": True, "movement": 30}},
+        }
+        runtime = AdventureRuntime(campaign, rng=random.Random(1))
+
+        handle_adventure_action(runtime, "escape grapple")
+        output = runtime.flush()
+
+        self.assertIn("tries to escape the grapple", output)
+        self.assertIn("The grapple ends", output)
+        self.assertNotIn("grappled", campaign.active_combat["initiative"][1]["conditions"])
+        self.assertFalse(campaign.active_combat["resources"]["Lantern Sprite"]["action"])
+
     def test_dash_dodge_and_disengage_use_action_resource(self) -> None:
         campaign = campaign_from_adventure(AdventureDefinition(create_adventure_template("Moonlit Road")))
         campaign.active_combat = {

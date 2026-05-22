@@ -8,7 +8,7 @@ from .core.campaign import Campaign, Encounter, Location, NPC, Clue, SessionEven
 from .core.character import Character
 from .core.config import DEFAULT_RULES_CONFIG
 from .core.damage import adjusted_damage_amount
-from .core.dnd5e import RollMode, roll_attack, roll_d20_check, roll_damage
+from .core.dnd5e import RollMode, ability_modifier, roll_attack, roll_d20_check, roll_damage
 from .core.initiative import Combatant
 from .core.skills import skill_label
 from .core.spells import Spell
@@ -16,7 +16,7 @@ from .core.spells import Spell
 
 QUEST_COMPLETE_STATUS = "completed"
 QUEST_FAILED_STATUS = "failed"
-SUPPORTED_COMBAT_CONDITIONS = {"frightened", "prone", "restrained"}
+SUPPORTED_COMBAT_CONDITIONS = {"frightened", "grappled", "prone", "restrained"}
 TEMPORARY_COMBAT_CONDITIONS = {"disengaging", "dodging"}
 SHIELD_AC_BONUS = 5
 SPELL_EFFECTS = {
@@ -55,6 +55,9 @@ DEFAULT_RUNTIME_ACTIONS = {
     "dash": {"aliases": ["dash"], "handler": "dash"},
     "disengage": {"aliases": ["disengage"], "handler": "disengage"},
     "dodge": {"aliases": ["dodge"], "handler": "dodge"},
+    "grapple": {"aliases": ["grapple"], "handler": "grapple"},
+    "shove": {"aliases": ["shove"], "handler": "shove"},
+    "escape_grapple": {"aliases": ["escape grapple"], "handler": "escape_grapple"},
     "set_condition": {"aliases": ["condition", "apply condition"], "handler": "set_condition"},
     "clear_condition": {"aliases": ["clear condition", "remove condition"], "handler": "clear_condition"},
     "spend_movement": {"aliases": ["spend movement", "use movement"], "handler": "spend_movement"},
@@ -153,6 +156,15 @@ def handle_adventure_action(runtime: AdventureRuntime, action: str) -> bool:
         return True
     if handler in {"dash", "disengage", "dodge"}:
         perform_basic_combat_action(runtime, handler)
+        return True
+    if handler == "grapple":
+        contest_combat_control(runtime, action_match.get("argument", ""), control="grapple")
+        return True
+    if handler == "shove":
+        contest_combat_control(runtime, action_match.get("argument", ""), control="shove")
+        return True
+    if handler == "escape_grapple":
+        escape_grapple(runtime)
         return True
     if handler == "set_condition":
         set_combat_condition(runtime, action_match.get("argument", ""), enabled=True)
@@ -383,6 +395,10 @@ def spend_active_combat_movement(runtime: AdventureRuntime, amount_text: str) ->
         runtime.narrate("DM: Movement must be positive.")
         return
     turn = combat.get("turn")
+    combatant = _active_combatant(combat, str(turn or ""))
+    if combatant is not None and "grappled" in _combatant_condition_names(runtime.campaign, combatant):
+        runtime.narrate(f"DM: {turn} is grappled and cannot spend movement.")
+        return
     resources = _active_resources(combat).setdefault(turn, _default_turn_resources())
     remaining = resources.get("movement", DEFAULT_RULES_CONFIG.default_movement_speed)
     if amount > remaining:
@@ -391,6 +407,7 @@ def spend_active_combat_movement(runtime: AdventureRuntime, amount_text: str) ->
     resources["movement"] = remaining - amount
     runtime.campaign.record_event(SessionEvent(actor="DM", content=f"{turn} moved {amount} feet."))
     runtime.narrate(f"DM: {turn} moves {amount} feet, {resources['movement']} feet remaining.")
+    _maybe_resolve_opportunity_attack(runtime, str(turn), resources)
 
 
 def perform_basic_combat_action(runtime: AdventureRuntime, action: str) -> None:
@@ -423,10 +440,107 @@ def perform_basic_combat_action(runtime: AdventureRuntime, action: str) -> None:
     runtime.narrate(f"DM: {content}")
 
 
+def contest_combat_control(runtime: AdventureRuntime, target_text: str, control: str) -> None:
+    combat = runtime.campaign.active_combat
+    if combat is None:
+        runtime.narrate("DM: There is no active combat.")
+        return
+    actor = _active_combatant(combat, str(combat.get("turn") or ""))
+    target = _active_combatant(combat, target_text)
+    if actor is None:
+        runtime.narrate("DM: Current combatant is not in initiative.")
+        return
+    if target is None:
+        runtime.narrate("DM: Target is not in active combat.")
+        return
+    if actor["name"] == target["name"]:
+        runtime.narrate("DM: A combatant cannot target itself.")
+        return
+    if bool(actor.get("is_player")) == bool(target.get("is_player")):
+        runtime.narrate("DM: Combat control actions need an opposing target.")
+        return
+    resources = _active_resources(combat).setdefault(actor["name"], _default_turn_resources())
+    if not resources.get("action", True):
+        runtime.narrate(f"DM: {actor['name']} has already used action.")
+        return
+    resources["action"] = False
+
+    attacker_check = roll_d20_check(modifier=_athletics_modifier(runtime.campaign, actor["name"]), rng=runtime.rng)
+    defender_athletics = roll_d20_check(modifier=_athletics_modifier(runtime.campaign, target["name"]), rng=runtime.rng)
+    defender_acrobatics = roll_d20_check(modifier=_acrobatics_modifier(runtime.campaign, target["name"]), rng=runtime.rng)
+    defender_check = defender_athletics if defender_athletics.total >= defender_acrobatics.total else defender_acrobatics
+    success = attacker_check.total >= defender_check.total
+
+    if control == "grapple":
+        effect = "grappled"
+        if success:
+            _set_combatant_condition(runtime.campaign, target, effect, True, persist_character=True)
+            target["grappled_by"] = actor["name"]
+            result_text = f"{target['name']} is grappled."
+        else:
+            result_text = "The grapple fails."
+    else:
+        effect = "prone"
+        if success:
+            _set_combatant_condition(runtime.campaign, target, effect, True, persist_character=True)
+            result_text = f"{target['name']} is knocked prone."
+        else:
+            result_text = "The shove fails."
+
+    content = (
+        f"{actor['name']} tries to {control} {target['name']}: Athletics {attacker_check.total} vs "
+        f"{target['name']} {defender_check.total}. {result_text}"
+    )
+    runtime.campaign.record_event(SessionEvent(actor="System", content=content))
+    runtime.narrate(f"DM: {content}")
+
+
+def escape_grapple(runtime: AdventureRuntime) -> None:
+    combat = runtime.campaign.active_combat
+    if combat is None:
+        runtime.narrate("DM: There is no active combat.")
+        return
+    actor = _active_combatant(combat, str(combat.get("turn") or ""))
+    if actor is None:
+        runtime.narrate("DM: Current combatant is not in initiative.")
+        return
+    if "grappled" not in _combatant_condition_names(runtime.campaign, actor):
+        runtime.narrate(f"DM: {actor['name']} is not grappled.")
+        return
+    resources = _active_resources(combat).setdefault(actor["name"], _default_turn_resources())
+    if not resources.get("action", True):
+        runtime.narrate(f"DM: {actor['name']} has already used action.")
+        return
+    resources["action"] = False
+    grappler = _active_combatant(combat, str(actor.get("grappled_by") or ""))
+    if grappler is None:
+        _set_combatant_condition(runtime.campaign, actor, "grappled", False, persist_character=True)
+        actor.pop("grappled_by", None)
+        runtime.narrate(f"DM: {actor['name']} is no longer grappled.")
+        return
+    escape_athletics = roll_d20_check(modifier=_athletics_modifier(runtime.campaign, actor["name"]), rng=runtime.rng)
+    escape_acrobatics = roll_d20_check(modifier=_acrobatics_modifier(runtime.campaign, actor["name"]), rng=runtime.rng)
+    escape_check = escape_athletics if escape_athletics.total >= escape_acrobatics.total else escape_acrobatics
+    hold_check = roll_d20_check(modifier=_athletics_modifier(runtime.campaign, grappler["name"]), rng=runtime.rng)
+    success = escape_check.total >= hold_check.total
+    if success:
+        _set_combatant_condition(runtime.campaign, actor, "grappled", False, persist_character=True)
+        actor.pop("grappled_by", None)
+        result_text = "The grapple ends."
+    else:
+        result_text = "The grapple holds."
+    content = (
+        f"{actor['name']} tries to escape the grapple: {escape_check.total} vs "
+        f"{grappler['name']} Athletics {hold_check.total}. {result_text}"
+    )
+    runtime.campaign.record_event(SessionEvent(actor="System", content=content))
+    runtime.narrate(f"DM: {content}")
+
+
 def set_combat_condition(runtime: AdventureRuntime, target_text: str, enabled: bool) -> None:
     name, condition = _parse_condition_text(target_text)
     if not name or not condition:
-        runtime.narrate("DM: Use 'condition <target> <prone|restrained|frightened>'.")
+        runtime.narrate("DM: Use 'condition <target> <grappled|prone|restrained|frightened>'.")
         return
     if condition not in SUPPORTED_COMBAT_CONDITIONS:
         runtime.narrate(f"DM: Unsupported condition: {condition}.")
@@ -444,6 +558,8 @@ def set_combat_condition(runtime: AdventureRuntime, target_text: str, enabled: b
             character.conditions.discard(condition)
     if combatant is not None:
         _set_combatant_condition(runtime.campaign, combatant, condition, enabled, persist_character=False)
+        if condition == "grappled" and not enabled:
+            combatant.pop("grappled_by", None)
     verb = "gains" if enabled else "loses"
     content = f"{target_name} {verb} {condition}."
     runtime.campaign.record_event(SessionEvent(actor="DM", content=content))
@@ -737,6 +853,101 @@ def _run_automatic_monster_turn(runtime: AdventureRuntime, monster: dict) -> Non
     if runtime.campaign.active_combat is None:
         return
     advance_active_combat(runtime)
+
+
+def _maybe_resolve_opportunity_attack(runtime: AdventureRuntime, mover_name: str, mover_resources: dict) -> None:
+    combat = runtime.campaign.active_combat
+    if combat is None or mover_resources.get("provoked_opportunity_attack"):
+        return
+    mover = _active_combatant(combat, mover_name)
+    if mover is None or not _combatant_can_take_turn(mover):
+        return
+    mover_conditions = _combatant_condition_names(runtime.campaign, mover)
+    if "disengaging" in mover_conditions:
+        runtime.narrate(f"DM: {mover['name']} has Disengaged and avoids opportunity attacks.")
+        return
+    attacker = _first_opportunity_attacker(runtime.campaign, combat, mover)
+    if attacker is None:
+        return
+    attacker_resources = _active_resources(combat).setdefault(attacker["name"], _default_turn_resources())
+    attacker_resources["reaction"] = False
+    mover_resources["provoked_opportunity_attack"] = True
+    content = _resolve_reaction_attack(runtime, attacker, mover, "opportunity attack")
+    combat["last_automatic_action"] = f"Opportunity attack: {content}"
+    runtime.campaign.record_event(SessionEvent(actor="System", content=f"Opportunity attack: {content}"))
+    runtime.narrate(f"System: Opportunity attack: {content}")
+    if runtime.campaign.active_combat is None:
+        return
+    if _all_hostile_combatants_defeated(combat):
+        _finish_active_encounter(runtime, "All hostile combatants are defeated.")
+    elif _all_player_combatants_defeated(combat):
+        _end_active_combat(runtime, "All player combatants are defeated.", mark_encounter_resolved=False)
+    else:
+        _maybe_record_morale_hint(runtime)
+
+
+def _first_opportunity_attacker(campaign: Campaign, combat: dict, mover: dict) -> dict | None:
+    for candidate in _living_hostile_combatants(combat, campaign, str(mover.get("name") or "")):
+        resources = _active_resources(combat).setdefault(candidate["name"], _default_turn_resources())
+        if resources.get("reaction", True):
+            return candidate
+    return None
+
+
+def _resolve_reaction_attack(
+    runtime: AdventureRuntime, attacker: dict, defender: dict, attack_label: str
+) -> str:
+    mode = _attack_mode(runtime.campaign, attacker, defender)
+    effective_ac = defender.get("armor_class", 10)
+    attack = roll_attack(
+        attack_bonus=attacker.get("attack_bonus", 0),
+        target_ac=effective_ac,
+        damage_expression=attacker.get("damage", "1d4"),
+        mode=mode,
+        rng=runtime.rng,
+    )
+    shield_text = ""
+    if attack.hit:
+        shield_text = _try_apply_shield_reaction(
+            runtime, defender, attack.attack.total, effective_ac, attack.attack.natural_20
+        )
+        if shield_text:
+            effective_ac += SHIELD_AC_BONUS
+            attack = type(attack)(
+                attack=attack.attack,
+                target_ac=effective_ac,
+                hit=attack.attack.natural_20 or (attack.attack.total >= effective_ac and not attack.attack.natural_1),
+                damage=attack.damage if attack.attack.total >= effective_ac or attack.attack.natural_20 else None,
+            )
+    if attack.hit and attack.damage is not None:
+        before = defender.get("current_hp", 0)
+        damage_type = attacker.get("damage_type", "untyped")
+        was_unconscious = _is_unconscious_character(runtime.campaign, defender)
+        damage_amount = _apply_combat_damage(runtime.campaign, defender, attack.damage.total, damage_type)
+        adjustment = ""
+        if damage_amount != attack.damage.total:
+            adjustment = f" ({attack.damage.total} before adjustments)"
+        content = (
+            f"{attacker['name']} makes an {attack_label} against {defender['name']}: "
+            f"{attack.attack.total} vs AC {effective_ac} ({mode.value}), hit for "
+            f"{damage_amount} {damage_type} damage{adjustment}: HP {before} -> {defender['current_hp']}."
+        )
+        if shield_text:
+            content += " " + shield_text
+        concentration = _concentration_check_text(runtime, defender, damage_amount)
+        if concentration:
+            content += " " + concentration
+        death_saves = _death_save_damage_text(runtime, defender, damage_amount, was_unconscious)
+        if death_saves:
+            content += " " + death_saves
+        return content
+    content = (
+        f"{attacker['name']} makes an {attack_label} against {defender['name']}: "
+        f"{attack.attack.total} vs AC {effective_ac} ({mode.value}), miss."
+    )
+    if shield_text:
+        content += " " + shield_text
+    return content
 
 
 def _maybe_record_morale_hint(runtime: AdventureRuntime) -> None:
@@ -1198,6 +1409,49 @@ def _saving_throw_modifier(campaign: Campaign, name: str, ability: str) -> int:
     return 0
 
 
+def _athletics_modifier(campaign: Campaign, name: str) -> int:
+    character = _match_character(campaign, name)
+    if character is not None:
+        return character.skill_modifier("athletics")
+    monster = _match_monster(campaign, name)
+    if monster is not None:
+        return monster.ability_modifier("str") + monster.proficiency_bonus
+    return _ability_modifier_from_combatant(campaign.active_combat or {}, name, "str")
+
+
+def _acrobatics_modifier(campaign: Campaign, name: str) -> int:
+    character = _match_character(campaign, name)
+    if character is not None:
+        return character.skill_modifier("acrobatics")
+    monster = _match_monster(campaign, name)
+    if monster is not None:
+        return monster.ability_modifier("dex")
+    return _ability_modifier_from_combatant(campaign.active_combat or {}, name, "dex")
+
+
+def _match_monster(campaign: Campaign, name: str):
+    normalized = name.strip().lower()
+    for encounter in campaign.encounters.values():
+        for monster in encounter.monsters:
+            monster_name = monster.name.lower()
+            if normalized == monster_name or normalized in monster_name:
+                return monster
+    return None
+
+
+def _ability_modifier_from_combatant(combat: dict, name: str, ability: str) -> int:
+    combatant = _active_combatant(combat, name)
+    if combatant is None:
+        return 0
+    scores = combatant.get("ability_scores", {})
+    if not isinstance(scores, dict):
+        return 0
+    try:
+        return ability_modifier(int(scores.get(ability, 10)))
+    except (TypeError, ValueError):
+        return 0
+
+
 def _attack_mode(campaign: Campaign, attacker: dict, defender: dict) -> RollMode:
     advantage = False
     disadvantage = False
@@ -1357,6 +1611,7 @@ def _reset_turn_resources(combat: dict, name: str) -> None:
     resources["action"] = True
     resources["bonus_action"] = True
     resources["movement"] = DEFAULT_RULES_CONFIG.default_movement_speed
+    resources.pop("provoked_opportunity_attack", None)
     combatant = _active_combatant(combat, name)
     if combatant is not None:
         conditions = {str(item).lower() for item in combatant.get("conditions", [])}
@@ -1569,6 +1824,8 @@ def _match_runtime_action(campaign: Campaign, normalized: str) -> dict:
                 "cast_spell",
                 "death_save",
                 "stabilize",
+                "grapple",
+                "shove",
                 "set_condition",
                 "clear_condition",
             } and normalized.startswith(alias_text + " "):
