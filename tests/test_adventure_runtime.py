@@ -233,6 +233,39 @@ class AdventureRuntimeTests(unittest.TestCase):
         self.assertLess(campaign.characters["Kael"].current_hp, 4)
         self.assertEqual(campaign.active_combat["last_automatic_action"], "Automatic monster action: Lantern Sprite uses lowest_hp and targets Kael.")
 
+    def test_automatic_monster_multiattack_repeats_attacks(self) -> None:
+        campaign = campaign_from_adventure(AdventureDefinition(create_adventure_template("Moonlit Road")))
+        campaign.add_character(_scout())
+        campaign.active_combat = {
+            "round": 1,
+            "turn": "Kael",
+            "initiative": [
+                {"name": "Kael", "initiative_total": 20, "is_player": True, "armor_class": 14, "current_hp": 12},
+                {
+                    "name": "Lantern Sprite",
+                    "initiative_total": 18,
+                    "is_player": False,
+                    "armor_class": 13,
+                    "current_hp": 7,
+                    "attack_bonus": 20,
+                    "damage": "1",
+                    "multiattack_count": 2,
+                },
+            ],
+            "resources": {
+                "Kael": {"action": False, "bonus_action": True, "reaction": True, "movement": 0},
+                "Lantern Sprite": {"action": True, "bonus_action": True, "reaction": True, "movement": 30},
+            },
+        }
+        runtime = AdventureRuntime(campaign, rng=random.Random(1))
+
+        handle_adventure_action(runtime, "end turn")
+        output = runtime.flush()
+
+        self.assertIn("continues its Multiattack (2/2)", output)
+        self.assertEqual(campaign.characters["Kael"].current_hp, 10)
+        self.assertFalse(campaign.active_combat["resources"]["Lantern Sprite"]["action"])
+
     def test_automatic_monster_strategy_targets_concentrating_character(self) -> None:
         campaign = campaign_from_adventure(AdventureDefinition(create_adventure_template("Moonlit Road")))
         scout = _scout()

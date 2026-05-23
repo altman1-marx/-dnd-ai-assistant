@@ -238,6 +238,16 @@ class MonsterTests(unittest.TestCase):
                 action_strategy="panic",
             )
 
+    def test_monster_rejects_invalid_multiattack_count(self) -> None:
+        with self.assertRaisesRegex(ValueError, "multiattack count"):
+            Monster(
+                name="Overeager Goblin",
+                armor_class=13,
+                max_hp=7,
+                current_hp=7,
+                multiattack_count=0,
+            )
+
 
 if __name__ == "__main__":
     unittest.main()

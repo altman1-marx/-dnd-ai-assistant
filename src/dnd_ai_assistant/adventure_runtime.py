@@ -892,9 +892,20 @@ def _run_automatic_monster_turn(runtime: AdventureRuntime, monster: dict) -> Non
         SessionEvent(actor="System", content=summary)
     )
     runtime.narrate(f"System: {summary}")
-    attack_active_combat_target(runtime, target["name"])
-    if runtime.campaign.active_combat is None:
-        return
+    attack_count = max(1, int(monster.get("multiattack_count") or 1))
+    for attack_index in range(attack_count):
+        if attack_index > 0:
+            current_combat = runtime.campaign.active_combat
+            if current_combat is None:
+                return
+            target = _active_combatant(current_combat, target["name"])
+            if target is None or int(target.get("current_hp") or 0) <= 0:
+                break
+            _active_resources(current_combat).setdefault(monster["name"], _default_turn_resources())["action"] = True
+            runtime.narrate(f"System: {monster['name']} continues its Multiattack ({attack_index + 1}/{attack_count}).")
+        attack_active_combat_target(runtime, target["name"])
+        if runtime.campaign.active_combat is None:
+            return
     advance_active_combat(runtime)
 
 
@@ -1711,9 +1722,16 @@ def _attack_profile(encounter: Encounter, name: str) -> dict:
                 "attack_bonus": monster.attack_bonus,
                 "damage": monster.damage,
                 "damage_type": monster.damage_type,
+                "multiattack_count": monster.multiattack_count,
                 "action_strategy": monster.action_strategy,
             }
-    return {"attack_bonus": 0, "damage": "1d4", "damage_type": "untyped", "action_strategy": "default_attack"}
+    return {
+        "attack_bonus": 0,
+        "damage": "1d4",
+        "damage_type": "untyped",
+        "multiattack_count": 1,
+        "action_strategy": "default_attack",
+    }
 
 
 def _defense_profile(encounter: Encounter, name: str) -> dict:

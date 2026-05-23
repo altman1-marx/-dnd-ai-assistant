@@ -67,6 +67,7 @@ class AdventureImporterTests(unittest.TestCase):
                 "attack_bonus": 4,
                 "damage": "1d4+2",
                 "damage_type": "fire",
+                "multiattack_count": 2,
                 "action_strategy": "concentrating",
             }
         ]
@@ -79,6 +80,7 @@ class AdventureImporterTests(unittest.TestCase):
         self.assertEqual(monster.saving_throw_modifier("dex"), 5)
         self.assertEqual(monster.damage_resistances, {"fire"})
         self.assertEqual(monster.damage_type, "fire")
+        self.assertEqual(monster.multiattack_count, 2)
         self.assertEqual(monster.action_strategy, "concentrating")
 
     def test_campaign_from_adventure_preserves_custom_runtime_actions(self) -> None:

@@ -428,6 +428,9 @@ def _validate_optional_monster_abilities(name: str, monster: dict, errors: list[
     proficiency = monster.get("proficiency_bonus")
     if proficiency is not None and (not isinstance(proficiency, int) or proficiency < 0):
         errors.append(f"{name}.proficiency_bonus must be a non-negative integer.")
+    multiattack_count = monster.get("multiattack_count")
+    if multiattack_count is not None and (not isinstance(multiattack_count, int) or multiattack_count < 1):
+        errors.append(f"{name}.multiattack_count must be a positive integer.")
     strategy = monster.get("action_strategy")
     if strategy is not None and strategy not in MONSTER_ACTION_STRATEGIES:
         errors.append(f"{name}.action_strategy must be one of: {', '.join(sorted(MONSTER_ACTION_STRATEGIES))}.")

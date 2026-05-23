@@ -110,6 +110,7 @@ def _monster_from_data(data: dict) -> Monster:
         attack_bonus=data.get("attack_bonus", 0),
         damage=data.get("damage", "1d4"),
         damage_type=data.get("damage_type", "untyped"),
+        multiattack_count=data.get("multiattack_count", 1),
         action_strategy=data.get("action_strategy", "default_attack"),
         **kwargs,
     )

@@ -99,6 +99,7 @@ class SerializationTests(unittest.TestCase):
                     damage_vulnerabilities={"radiant"},
                     damage_immunities={"poison"},
                     damage_type="slashing",
+                    multiattack_count=2,
                     action_strategy="concentrating",
                 )
             ],
@@ -119,6 +120,7 @@ class SerializationTests(unittest.TestCase):
         self.assertEqual(monster.damage_vulnerabilities, {"radiant"})
         self.assertEqual(monster.damage_immunities, {"poison"})
         self.assertEqual(monster.damage_type, "slashing")
+        self.assertEqual(monster.multiattack_count, 2)
         self.assertEqual(monster.action_strategy, "concentrating")
 
     def test_campaign_round_trip_clue_check(self) -> None:
