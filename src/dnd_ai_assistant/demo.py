@@ -15,6 +15,7 @@ from .ai_dm import generate_dm_suggestion
 from .ai_provider import build_provider
 from .api import run_server
 from .coc_runtime import COCRuntime, create_sample_coc_scenario, describe_coc_scene, handle_coc_action
+from .coc_serialization import load_coc_scenario, save_coc_scenario
 from .core.dnd5e import RollMode
 from .core.initiative import Combatant, InitiativeTracker
 from .core.serialization import load_campaign, save_campaign
@@ -82,22 +83,39 @@ def run_quickstart(seed: int) -> str:
     return "\n".join(lines)
 
 
-def run_scripted_coc(seed: int, actions: list[str]) -> str:
-    runtime = COCRuntime(create_sample_coc_scenario(), rng=random.Random(seed))
+def run_scripted_coc(
+    seed: int,
+    actions: list[str],
+    scenario_path: str | Path | None = None,
+    save_state_path: str | Path | None = None,
+) -> str:
+    scenario = load_coc_scenario(scenario_path) if scenario_path is not None else create_sample_coc_scenario()
+    runtime = COCRuntime(scenario, rng=random.Random(seed))
     describe_coc_scene(runtime)
     for action in actions:
         if not handle_coc_action(runtime, action):
             break
+    if save_state_path is not None:
+        save_coc_scenario(scenario, save_state_path)
+        runtime.narrate(f"Keeper: Saved COC scenario state to {save_state_path}.")
     return runtime.flush()
 
 
-def run_interactive_coc(seed: int) -> int:
-    runtime = COCRuntime(create_sample_coc_scenario(), rng=random.Random(seed))
+def run_interactive_coc(
+    seed: int,
+    scenario_path: str | Path | None = None,
+    save_state_path: str | Path | None = None,
+) -> int:
+    scenario = load_coc_scenario(scenario_path) if scenario_path is not None else create_sample_coc_scenario()
+    runtime = COCRuntime(scenario, rng=random.Random(seed))
     describe_coc_scene(runtime)
     print(runtime.flush())
     while True:
         action = input("> ")
         if not handle_coc_action(runtime, action):
+            if save_state_path is not None:
+                save_coc_scenario(scenario, save_state_path)
+                runtime.narrate(f"Keeper: Saved COC scenario state to {save_state_path}.")
             print(runtime.flush())
             return 0
         if runtime.transcript:
@@ -343,6 +361,8 @@ def main() -> int:
 
     play_coc = subparsers.add_parser("play-coc", help="Run the starter Call of Cthulhu investigation.")
     play_coc.add_argument("--seed", type=int, default=1, help="Random seed for reproducible percentile rolls.")
+    play_coc.add_argument("--scenario", default=None, help="Optional saved COC scenario JSON to load.")
+    play_coc.add_argument("--save-state", default=None, help="Where to save updated COC scenario state.")
     play_coc.add_argument(
         "--action",
         action="append",
@@ -497,9 +517,9 @@ def main() -> int:
         return run_interactive_scene(args.seed, args.scene, args.save_state)
     if args.command == "play-coc":
         if args.action:
-            print(run_scripted_coc(args.seed, args.action))
+            print(run_scripted_coc(args.seed, args.action, args.scenario, args.save_state))
             return 0
-        return run_interactive_coc(args.seed)
+        return run_interactive_coc(args.seed, args.scenario, args.save_state)
     if args.command == "validate-scene":
         scene = validate_scene_file(args.scene)
         scene_path = args.scene or DEFAULT_SCENE_PATH

@@ -41,6 +41,17 @@ class DemoTests(unittest.TestCase):
         self.assertIn("SAN 58/60", output)
         self.assertIn("investigation pauses", output)
 
+    def test_scripted_coc_can_save_and_resume_state(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "coc.json"
+            first = run_scripted_coc(seed=1, actions=["inspect portrait"], save_state_path=path)
+            second = run_scripted_coc(seed=1, actions=["clues"], scenario_path=path)
+            saved = path.exists()
+
+        self.assertTrue(saved)
+        self.assertIn("Saved COC scenario state", first)
+        self.assertIn("Scratched Portrait", second)
+
     def test_stairway_requires_clue_first(self) -> None:
         output = run_scripted_scene(seed=1, actions=["open stairway"])
 
