@@ -107,7 +107,10 @@ def handle_coc_action(runtime: COCRuntime, action: str) -> bool:
         runtime.narrate("Keeper: The investigation pauses here.")
         return False
     if normalized in {"help", "?"}:
-        runtime.narrate("Keeper: Actions: look, inspect <target>, check <skill>, sanity, clues, quit.")
+        runtime.narrate("Keeper: Actions: look, status, inspect <target>, check <skill>, sanity, clues, quit.")
+        return True
+    if normalized == "status":
+        _describe_coc_status(runtime)
         return True
     if normalized in {"look", "look around"}:
         describe_coc_scene(runtime)
@@ -188,6 +191,20 @@ def _describe_discovered_clues(runtime: COCRuntime) -> None:
         runtime.narrate(f"- {clue.title}: {clue.text}")
 
 
+def _describe_coc_status(runtime: COCRuntime) -> None:
+    investigator = runtime.scenario.investigator
+    discovered = sum(1 for clue in runtime.scenario.clues if clue.discovered)
+    total = len(runtime.scenario.clues)
+    runtime.narrate(
+        f"Keeper: {investigator.name} ({investigator.occupation}) - "
+        f"HP {investigator.current_hp}/{investigator.max_hp}, "
+        f"MP {investigator.current_mp}/{investigator.max_mp}, "
+        f"SAN {investigator.current_sanity}/{investigator.max_sanity}, "
+        f"Luck {investigator.luck}, clues {discovered}/{total}, "
+        f"conditions: {', '.join(sorted(investigator.conditions)) or 'none'}."
+    )
+
+
 def _match_clue(clues: list[COCClue], target: str) -> COCClue | None:
     normalized = target.strip().lower()
     for clue in clues:
@@ -213,4 +230,3 @@ def _success_rank(level: str) -> int:
         "extreme": 3,
         "critical": 4,
     }.get(level, 0)
-
