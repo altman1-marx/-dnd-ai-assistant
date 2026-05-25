@@ -7,7 +7,7 @@ from unittest.mock import patch
 from dnd_ai_assistant.adventure import AdventureDefinition, create_adventure_template
 from dnd_ai_assistant.adventure_importer import campaign_from_adventure
 from dnd_ai_assistant.core.serialization import load_campaign, save_campaign
-from dnd_ai_assistant.demo import main, run_combat_demo, run_initiative_demo, run_quickstart, run_scripted_scene, summarize_state
+from dnd_ai_assistant.demo import main, run_combat_demo, run_initiative_demo, run_quickstart, run_scripted_coc, run_scripted_scene, summarize_state
 from dnd_ai_assistant.rules_corpus import RuleChunk, RuleCorpus
 from dnd_ai_assistant.scenario import create_scene_template
 
@@ -31,6 +31,15 @@ class DemoTests(unittest.TestCase):
         self.assertIn("System: Perception with advantage vs DC 15 -> rolls (5, 19), total 23.", output)
         self.assertIn("DM: The seal grinds open.", output)
         self.assertIn("DM: The scene pauses here.", output)
+
+    def test_scripted_coc_investigation_reveals_clue(self) -> None:
+        output = run_scripted_coc(seed=1, actions=["inspect portrait", "sanity", "quit"])
+
+        self.assertIn("Keeper: The Lantern Under Briar House", output)
+        self.assertIn("Clue found - Scratched Portrait", output)
+        self.assertIn("SAN loss 2", output)
+        self.assertIn("SAN 58/60", output)
+        self.assertIn("investigation pauses", output)
 
     def test_stairway_requires_clue_first(self) -> None:
         output = run_scripted_scene(seed=1, actions=["open stairway"])

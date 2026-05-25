@@ -1,6 +1,6 @@
 import unittest
 
-from dnd_ai_assistant.core.coc7e import COCSuccessLevel, PercentileRollMode, roll_percentile_check
+from dnd_ai_assistant.core.coc7e import COCSuccessLevel, Investigator, PercentileRollMode, roll_percentile_check
 
 
 class SequenceRNG:
@@ -49,6 +49,40 @@ class COC7ETests(unittest.TestCase):
     def test_rejects_invalid_skill_value(self) -> None:
         with self.assertRaisesRegex(ValueError, "skill value"):
             roll_percentile_check(101)
+
+    def test_investigator_derives_resources_and_normalizes_skills(self) -> None:
+        investigator = _investigator()
+
+        self.assertEqual(investigator.max_hp, 11)
+        self.assertEqual(investigator.current_hp, 11)
+        self.assertEqual(investigator.max_mp, 12)
+        self.assertEqual(investigator.current_sanity, 60)
+        self.assertEqual(investigator.skill_value("Library-Use"), 55)
+
+    def test_investigator_damage_and_sanity_update_conditions(self) -> None:
+        investigator = _investigator()
+
+        investigator.apply_damage(6)
+        investigator.lose_sanity(5)
+
+        self.assertEqual(investigator.current_hp, 5)
+        self.assertIn("major_wound", investigator.conditions)
+        self.assertEqual(investigator.current_sanity, 55)
+        self.assertIn("temporary_insanity", investigator.conditions)
+
+    def test_investigator_rejects_missing_characteristics(self) -> None:
+        with self.assertRaisesRegex(ValueError, "Missing COC characteristics"):
+            Investigator(name="Broken", occupation="Antiquarian", characteristics={"str": 50})
+
+
+def _investigator() -> Investigator:
+    return Investigator(
+        name="Eleanor Vale",
+        occupation="Antiquarian",
+        characteristics={"str": 45, "con": 55, "siz": 60, "dex": 50, "app": 55, "int": 70, "pow": 60, "edu": 75},
+        skills={"library_use": 55, "spot hidden": 45},
+        luck=50,
+    )
 
 
 if __name__ == "__main__":

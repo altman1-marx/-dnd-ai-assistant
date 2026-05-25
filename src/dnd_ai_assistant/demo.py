@@ -14,6 +14,7 @@ from .adventure_runtime import AdventureRuntime, describe_current_location, hand
 from .ai_dm import generate_dm_suggestion
 from .ai_provider import build_provider
 from .api import run_server
+from .coc_runtime import COCRuntime, create_sample_coc_scenario, describe_coc_scene, handle_coc_action
 from .core.dnd5e import RollMode
 from .core.initiative import Combatant, InitiativeTracker
 from .core.serialization import load_campaign, save_campaign
@@ -79,6 +80,28 @@ def run_quickstart(seed: int) -> str:
     ]
     lines.extend(f"- [{event.actor}] {event.content}" for event in campaign.session_log)
     return "\n".join(lines)
+
+
+def run_scripted_coc(seed: int, actions: list[str]) -> str:
+    runtime = COCRuntime(create_sample_coc_scenario(), rng=random.Random(seed))
+    describe_coc_scene(runtime)
+    for action in actions:
+        if not handle_coc_action(runtime, action):
+            break
+    return runtime.flush()
+
+
+def run_interactive_coc(seed: int) -> int:
+    runtime = COCRuntime(create_sample_coc_scenario(), rng=random.Random(seed))
+    describe_coc_scene(runtime)
+    print(runtime.flush())
+    while True:
+        action = input("> ")
+        if not handle_coc_action(runtime, action):
+            print(runtime.flush())
+            return 0
+        if runtime.transcript:
+            print(runtime.flush())
 
 
 def run_scripted_scene(
@@ -318,6 +341,15 @@ def main() -> int:
         help="Run a non-interactive action. Repeat this option to script a scene.",
     )
 
+    play_coc = subparsers.add_parser("play-coc", help="Run the starter Call of Cthulhu investigation.")
+    play_coc.add_argument("--seed", type=int, default=1, help="Random seed for reproducible percentile rolls.")
+    play_coc.add_argument(
+        "--action",
+        action="append",
+        default=[],
+        help="Run a non-interactive action. Repeat this option to script the investigation.",
+    )
+
     validate = subparsers.add_parser("validate-scene", help="Validate a scene JSON file.")
     validate.add_argument("--scene", default=None, help="Path to a scene JSON file. Defaults to bundled old_chapel.")
 
@@ -463,6 +495,11 @@ def main() -> int:
             print(run_scripted_scene(args.seed, args.action, args.scene, args.save_state))
             return 0
         return run_interactive_scene(args.seed, args.scene, args.save_state)
+    if args.command == "play-coc":
+        if args.action:
+            print(run_scripted_coc(args.seed, args.action))
+            return 0
+        return run_interactive_coc(args.seed)
     if args.command == "validate-scene":
         scene = validate_scene_file(args.scene)
         scene_path = args.scene or DEFAULT_SCENE_PATH
