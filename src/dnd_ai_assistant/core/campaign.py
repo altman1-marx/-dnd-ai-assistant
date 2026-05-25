@@ -8,6 +8,7 @@ from uuid import uuid4
 from .character import Character
 from .damage import normalize_damage_type, normalize_damage_types
 from .dnd5e import ability_modifier
+from .systems import normalize_game_system
 
 
 def new_id(prefix: str) -> str:
@@ -174,6 +175,13 @@ class Campaign:
     quests: dict[str, Quest] = field(default_factory=dict)
     encounters: dict[str, Encounter] = field(default_factory=dict)
     session_log: list[SessionEvent] = field(default_factory=list)
+
+    def __post_init__(self) -> None:
+        self.system = normalize_game_system(self.system).label
+
+    @property
+    def system_id(self) -> str:
+        return normalize_game_system(self.system).id
 
     def add_character(self, character: Character) -> None:
         if character.name in self.characters:

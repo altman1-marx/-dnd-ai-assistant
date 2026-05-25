@@ -5,6 +5,7 @@ from dnd_ai_assistant.core.character import Character
 from dnd_ai_assistant.core.campaign import Campaign, Clue, Encounter, Location, Monster, NPC
 from dnd_ai_assistant.core.dice import ConstantTerm, parse_dice_expression, roll
 from dnd_ai_assistant.core.dnd5e import RollMode, ability_modifier, proficiency_bonus, roll_attack, roll_d20_check
+from dnd_ai_assistant.core.systems import normalize_game_system
 
 
 class DiceTests(unittest.TestCase):
@@ -19,6 +20,22 @@ class DiceTests(unittest.TestCase):
         self.assertEqual(result.rolls, ((2, 5),))
         self.assertEqual(result.total, 10)
         self.assertEqual(result.modifier, 3)
+
+
+class GameSystemTests(unittest.TestCase):
+    def test_normalize_game_system_accepts_dnd_and_coc_aliases(self) -> None:
+        self.assertEqual(normalize_game_system("DND 5e").id, "dnd5e")
+        self.assertEqual(normalize_game_system("coc7e").label, "Call of Cthulhu 7e")
+
+    def test_campaign_normalizes_system_label_and_exposes_system_id(self) -> None:
+        campaign = Campaign("The House in the Fog", system="coc 7e")
+
+        self.assertEqual(campaign.system, "Call of Cthulhu 7e")
+        self.assertEqual(campaign.system_id, "coc7e")
+
+    def test_campaign_rejects_unknown_system(self) -> None:
+        with self.assertRaisesRegex(ValueError, "Unsupported game system"):
+            Campaign("Unknown Lands", system="homebrew unknown")
 
 
 class Dnd5eTests(unittest.TestCase):

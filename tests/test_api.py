@@ -201,6 +201,7 @@ class APITests(unittest.TestCase):
         summary = campaign_summary(state, campaign_id)
 
         self.assertEqual(summary["id"], campaign_id)
+        self.assertEqual(summary["system_id"], "dnd5e")
         self.assertEqual(summary["current_location_id"], "loc_village_square")
         self.assertEqual(summary["current_location"]["name"], "Village Square")
         self.assertEqual(summary["current_location"]["exits"][0]["name"], "Old Road")

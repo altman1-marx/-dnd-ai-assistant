@@ -9,6 +9,7 @@ def campaign_from_adventure(adventure: AdventureDefinition) -> Campaign:
     campaign_data = adventure.campaign
     campaign = Campaign(
         title=campaign_data["title"],
+        system=campaign_data.get("system", "DND 5e"),
         party_level=campaign_data["party_level"],
         tone=campaign_data["tone"],
         public_lore=campaign_data.get("public_hook", ""),

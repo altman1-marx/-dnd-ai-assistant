@@ -125,6 +125,7 @@ def campaign_summary(state: APIState, campaign_id: str) -> dict:
         "id": campaign.id,
         "title": campaign.title,
         "system": campaign.system,
+        "system_id": campaign.system_id,
         "tone": campaign.tone,
         "party_level": campaign.party_level,
         "current_location_id": campaign.current_location_id,
