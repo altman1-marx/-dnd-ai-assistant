@@ -43,6 +43,7 @@ def investigator_from_dict(data: dict) -> Investigator:
 
 def coc_scenario_to_dict(scenario: COCScenario) -> dict:
     return {
+        "id": scenario.id,
         "title": scenario.title,
         "system": "Call of Cthulhu 7e",
         "location": scenario.location,
@@ -83,6 +84,7 @@ def coc_scenario_from_dict(data: dict) -> COCScenario:
             for clue in data.get("clues", [])
         ],
         ending_text=data.get("ending_text", ""),
+        id=data.get("id", None) or "coc_legacy",
     )
 
 
@@ -92,4 +94,3 @@ def save_coc_scenario(scenario: COCScenario, path: str | Path) -> None:
 
 def load_coc_scenario(path: str | Path) -> COCScenario:
     return coc_scenario_from_dict(json.loads(Path(path).read_text(encoding="utf-8")))
-

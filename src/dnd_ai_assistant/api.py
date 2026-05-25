@@ -13,6 +13,8 @@ from .adventure_importer import campaign_from_adventure
 from .adventure_runtime import AdventureRuntime, handle_adventure_action
 from .ai_dm import generate_dm_suggestion
 from .ai_provider import AIProvider
+from .coc_runtime import COCRuntime, COCScenario, create_sample_coc_scenario, handle_coc_action
+from .coc_serialization import coc_scenario_to_dict, load_coc_scenario, save_coc_scenario
 from .core.campaign import Campaign, Visibility
 from .core.serialization import campaign_to_dict, load_campaign, save_campaign
 from .rules_corpus import RuleCorpus
@@ -22,6 +24,7 @@ from .sample_data import sample_adventure_character, sample_adventure_template
 @dataclass
 class APIState:
     campaigns: dict[str, Campaign] = field(default_factory=dict)
+    coc_scenarios: dict[str, COCScenario] = field(default_factory=dict)
     rules_corpus: RuleCorpus | None = None
     ai_provider: AIProvider | None = None
     state_dir: Path | None = None
@@ -231,11 +234,71 @@ def health_status(state: APIState) -> dict:
     return {
         "ok": True,
         "campaign_count": len(state.campaigns),
+        "coc_scenario_count": len(state.coc_scenarios),
         "features": {
             "rules_search": state.rules_corpus is not None,
             "ai_dm": state.ai_provider is not None,
             "persistent_state": state.state_dir is not None,
         },
+    }
+
+
+def create_coc_demo(state: APIState) -> dict:
+    scenario = create_sample_coc_scenario()
+    state.coc_scenarios[scenario.id] = scenario
+    _persist_coc_scenario(state, scenario)
+    return {
+        "scenario_id": scenario.id,
+        "scenario": coc_scenario_to_dict(scenario),
+    }
+
+
+def coc_summary(state: APIState, scenario_id: str) -> dict:
+    scenario = _coc_scenario_or_404(state, scenario_id)
+    investigator = scenario.investigator
+    discovered = [clue for clue in scenario.clues if clue.discovered]
+    return {
+        "id": scenario.id,
+        "title": scenario.title,
+        "system": "Call of Cthulhu 7e",
+        "system_id": "coc7e",
+        "location": scenario.location,
+        "description": scenario.description,
+        "investigator": {
+            "name": investigator.name,
+            "occupation": investigator.occupation,
+            "current_hp": investigator.current_hp,
+            "max_hp": investigator.max_hp,
+            "current_mp": investigator.current_mp,
+            "max_mp": investigator.max_mp,
+            "current_sanity": investigator.current_sanity,
+            "max_sanity": investigator.max_sanity,
+            "luck": investigator.luck,
+            "conditions": sorted(investigator.conditions),
+        },
+        "clue_count": len(scenario.clues),
+        "discovered_clue_count": len(discovered),
+        "discovered_clues": [
+            {"id": clue.id, "title": clue.title, "text": clue.text}
+            for clue in discovered
+        ],
+        "available_actions": _coc_available_actions(scenario),
+    }
+
+
+def run_coc_action(state: APIState, scenario_id: str, action: str, seed: int = 1) -> dict:
+    if not action.strip():
+        raise APIError(400, "Action cannot be empty.", "empty_action")
+    scenario = _coc_scenario_or_404(state, scenario_id)
+    runtime = COCRuntime(scenario, rng=random.Random(seed))
+    keep_going = handle_coc_action(runtime, action)
+    _persist_coc_scenario(state, scenario)
+    return {
+        "scenario_id": scenario.id,
+        "keep_going": keep_going,
+        "transcript": runtime.flush(),
+        "scenario": coc_scenario_to_dict(scenario),
+        "summary": coc_summary(state, scenario.id),
     }
 
 
@@ -333,6 +396,14 @@ def route_request(state: APIState, method: str, path: str, body: dict) -> dict:
         return create_demo_campaign(state)
     if method == "POST" and parts == ["campaigns", "demo-with-character"]:
         return create_playable_demo_campaign(state)
+    if method == "POST" and parts == ["coc", "demo"]:
+        return create_coc_demo(state)
+    if method == "GET" and len(parts) == 3 and parts[0] == "coc" and parts[2] == "summary":
+        return coc_summary(state, parts[1])
+    if method == "POST" and len(parts) == 3 and parts[0] == "coc" and parts[2] == "actions":
+        action = str(body.get("action", ""))
+        seed = _int_body(body, "seed", 1)
+        return run_coc_action(state, parts[1], action, seed=seed)
     if method == "POST" and parts == ["rules", "search"]:
         query = str(body.get("query", ""))
         limit = _int_body(body, "limit", 5)
@@ -389,6 +460,10 @@ def load_campaigns_from_state_dir(state: APIState) -> None:
         return
     state.state_dir.mkdir(parents=True, exist_ok=True)
     for path in sorted(state.state_dir.glob("*.json")):
+        if path.name.startswith("coc_"):
+            scenario = load_coc_scenario(path)
+            state.coc_scenarios[scenario.id] = scenario
+            continue
         campaign = load_campaign(path)
         state.campaigns[campaign.id] = campaign
 
@@ -398,6 +473,13 @@ def _campaign_or_404(state: APIState, campaign_id: str) -> Campaign:
     if campaign is None:
         raise APIError(404, "Campaign not found.", "campaign_not_found")
     return campaign
+
+
+def _coc_scenario_or_404(state: APIState, scenario_id: str) -> COCScenario:
+    scenario = state.coc_scenarios.get(scenario_id)
+    if scenario is None:
+        raise APIError(404, "COC scenario not found.", "coc_scenario_not_found")
+    return scenario
 
 
 def _campaign_location_name(campaign: Campaign) -> str | None:
@@ -432,6 +514,13 @@ def _persist_campaign(state: APIState, campaign: Campaign) -> None:
         return
     state.state_dir.mkdir(parents=True, exist_ok=True)
     save_campaign(campaign, state.state_dir / f"{campaign.id}.json")
+
+
+def _persist_coc_scenario(state: APIState, scenario: COCScenario) -> None:
+    if state.state_dir is None:
+        return
+    state.state_dir.mkdir(parents=True, exist_ok=True)
+    save_coc_scenario(scenario, state.state_dir / f"{scenario.id}.json")
 
 
 def _delete_persisted_campaign(state: APIState, campaign_id: str) -> None:
@@ -597,6 +686,18 @@ def _available_actions(campaign: Campaign, active_combat: dict | None) -> list[s
                 for spell in known_spells:
                     if spell in {"cure wounds", "healing word"}:
                         actions.append(f"cast {spell} {name.lower()}")
+    return list(dict.fromkeys(actions))
+
+
+def _coc_available_actions(scenario: COCScenario) -> list[str]:
+    actions = ["look", "status", "sanity", "clues", "quit"]
+    for clue in scenario.clues:
+        if clue.discovered:
+            continue
+        actions.append(f"inspect {clue.title.lower()}")
+        actions.append(f"inspect {clue.id.replace('_', ' ')}")
+        if clue.skill:
+            actions.append(f"check {clue.skill}")
     return list(dict.fromkeys(actions))
 
 

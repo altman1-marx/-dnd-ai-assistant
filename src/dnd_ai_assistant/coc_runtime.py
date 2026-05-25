@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import random
 from dataclasses import dataclass, field
+from uuid import uuid4
 
 from .core.coc7e import Investigator, PercentileRollMode, roll_percentile_check
 
@@ -25,6 +26,7 @@ class COCScenario:
     investigator: Investigator
     clues: list[COCClue] = field(default_factory=list)
     ending_text: str = ""
+    id: str = field(default_factory=lambda: f"coc_{uuid4().hex[:12]}")
 
 
 @dataclass

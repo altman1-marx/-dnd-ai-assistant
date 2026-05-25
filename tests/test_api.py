@@ -15,6 +15,8 @@ from dnd_ai_assistant.api import (
     campaign_log,
     campaign_state,
     campaign_summary,
+    coc_summary,
+    create_coc_demo,
     create_handler,
     create_demo_campaign,
     create_playable_demo_campaign,
@@ -25,6 +27,7 @@ from dnd_ai_assistant.api import (
     load_campaigns_from_state_dir,
     route_request,
     run_campaign_action,
+    run_coc_action,
     search_rules,
     suggest_dm_turn,
 )
@@ -94,6 +97,29 @@ class APITests(unittest.TestCase):
         self.assertIn("Leth", campaign.characters)
         self.assertIn("Leth", response["campaign"]["characters"])
 
+    def test_create_coc_demo_and_summary(self) -> None:
+        state = APIState()
+
+        response = create_coc_demo(state)
+        summary = coc_summary(state, response["scenario_id"])
+
+        self.assertIn(response["scenario_id"], state.coc_scenarios)
+        self.assertEqual(summary["system_id"], "coc7e")
+        self.assertEqual(summary["investigator"]["name"], "Eleanor Vale")
+        self.assertEqual(summary["clue_count"], 3)
+        self.assertIn("inspect scratched portrait", summary["available_actions"])
+
+    def test_run_coc_action_updates_scenario(self) -> None:
+        state = APIState()
+        scenario_id = create_coc_demo(state)["scenario_id"]
+
+        response = run_coc_action(state, scenario_id, "inspect portrait", seed=1)
+
+        self.assertTrue(response["keep_going"])
+        self.assertIn("Clue found - Scratched Portrait", response["transcript"])
+        self.assertEqual(response["summary"]["investigator"]["current_sanity"], 58)
+        self.assertEqual(response["summary"]["discovered_clue_count"], 1)
+
     def test_list_campaigns_returns_memory_campaigns(self) -> None:
         state = APIState()
         first_id = create_demo_campaign(state)["campaign_id"]
@@ -134,6 +160,18 @@ class APITests(unittest.TestCase):
             self.assertEqual(load_campaign(path).current_location_id, "loc_old_road")
             delete_campaign(state, campaign_id)
             self.assertFalse(path.exists())
+
+    def test_state_dir_persists_and_loads_coc_scenarios(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            writer_state = APIState(state_dir=Path(tmp))
+            scenario_id = create_coc_demo(writer_state)["scenario_id"]
+            run_coc_action(writer_state, scenario_id, "inspect portrait", seed=1)
+
+            reader_state = APIState(state_dir=Path(tmp))
+            load_campaigns_from_state_dir(reader_state)
+
+        self.assertIn(scenario_id, reader_state.coc_scenarios)
+        self.assertEqual(reader_state.coc_scenarios[scenario_id].investigator.current_sanity, 58)
 
     def test_load_campaigns_from_state_dir_reads_existing_json(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -589,6 +627,16 @@ class APITests(unittest.TestCase):
         self.assertIn("Perception", suggestion["suggestion"]["text"])
         deleted = route_request(state, "DELETE", f"/campaigns/{campaign_id}", {})
         self.assertTrue(deleted["deleted"])
+
+    def test_route_request_supports_coc_demo_summary_and_action(self) -> None:
+        state = APIState()
+
+        demo = route_request(state, "POST", "/coc/demo", {})
+        summary = route_request(state, "GET", f"/coc/{demo['scenario_id']}/summary", {})
+        action = route_request(state, "POST", f"/coc/{demo['scenario_id']}/actions", {"action": "inspect portrait"})
+
+        self.assertEqual(summary["system_id"], "coc7e")
+        self.assertIn("Scratched Portrait", action["transcript"])
 
     def test_route_request_reports_bad_import_body(self) -> None:
         with self.assertRaises(APIError) as context:
