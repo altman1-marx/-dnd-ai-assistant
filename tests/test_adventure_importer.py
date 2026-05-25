@@ -68,6 +68,14 @@ class AdventureImporterTests(unittest.TestCase):
                 "damage": "1d4+2",
                 "damage_type": "fire",
                 "multiattack_count": 2,
+                "recharge_ability": {
+                    "name": "Moonfire Flare",
+                    "recharge": 5,
+                    "damage": "2d6",
+                    "damage_type": "radiant",
+                    "save_ability": "dex",
+                    "save_dc": 12,
+                },
                 "action_strategy": "concentrating",
             }
         ]
@@ -81,6 +89,7 @@ class AdventureImporterTests(unittest.TestCase):
         self.assertEqual(monster.damage_resistances, {"fire"})
         self.assertEqual(monster.damage_type, "fire")
         self.assertEqual(monster.multiattack_count, 2)
+        self.assertEqual(monster.recharge_ability["name"], "Moonfire Flare")
         self.assertEqual(monster.action_strategy, "concentrating")
 
     def test_campaign_from_adventure_preserves_custom_runtime_actions(self) -> None:

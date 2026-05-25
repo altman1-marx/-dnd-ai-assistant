@@ -885,6 +885,10 @@ def _run_automatic_monster_turn(runtime: AdventureRuntime, monster: dict) -> Non
     if target is None:
         runtime.narrate(f"DM: {monster['name']} has no valid player target.")
         return
+    if _try_use_recharge_ability(runtime, monster, target, strategy):
+        if runtime.campaign.active_combat is not None:
+            advance_active_combat(runtime)
+        return
     summary = f"Automatic monster action: {monster['name']} uses {strategy} and targets {target['name']}."
     combat["monster_action_strategy"] = strategy
     combat["last_automatic_action"] = summary
@@ -907,6 +911,76 @@ def _run_automatic_monster_turn(runtime: AdventureRuntime, monster: dict) -> Non
         if runtime.campaign.active_combat is None:
             return
     advance_active_combat(runtime)
+
+
+def _try_use_recharge_ability(runtime: AdventureRuntime, monster: dict, target: dict, strategy: str) -> bool:
+    ability = monster.get("recharge_ability")
+    if not isinstance(ability, dict):
+        return False
+    if not _recharge_ability_is_available(runtime, monster, ability):
+        return False
+    content = _resolve_monster_recharge_ability(runtime, monster, target, ability)
+    combat = runtime.campaign.active_combat
+    if combat is not None:
+        summary = f"Automatic monster action: {monster['name']} uses {ability.get('name', 'Recharge Ability')} and targets {target['name']}."
+        combat["monster_action_strategy"] = strategy
+        combat["last_automatic_action"] = summary
+    runtime.campaign.record_event(SessionEvent(actor="System", content=content))
+    runtime.narrate(f"System: {content}")
+    if runtime.campaign.active_combat is None:
+        return True
+    if _all_hostile_combatants_defeated(runtime.campaign.active_combat):
+        _finish_active_encounter(runtime, "All hostile combatants are defeated.")
+    elif _all_player_combatants_defeated(runtime.campaign.active_combat):
+        _end_active_combat(runtime, "All player combatants are defeated.", mark_encounter_resolved=False)
+    else:
+        _maybe_record_morale_hint(runtime)
+    return True
+
+
+def _recharge_ability_is_available(runtime: AdventureRuntime, monster: dict, ability: dict) -> bool:
+    if monster.get("recharge_available", True):
+        return True
+    recharge = int(ability.get("recharge", 5))
+    roll_result = runtime.rng.randint(1, 6)
+    ability_name = str(ability.get("name", "Recharge Ability"))
+    if roll_result >= recharge:
+        monster["recharge_available"] = True
+        runtime.narrate(f"System: {monster['name']} recharges {ability_name} on d6 {roll_result}.")
+        return True
+    runtime.narrate(f"System: {monster['name']} does not recharge {ability_name} on d6 {roll_result}.")
+    return False
+
+
+def _resolve_monster_recharge_ability(runtime: AdventureRuntime, monster: dict, target: dict, ability: dict) -> str:
+    ability_name = str(ability.get("name", "Recharge Ability"))
+    save_ability = str(ability.get("save_ability", "dex"))
+    save_dc = int(ability.get("save_dc", 10))
+    damage_type = str(ability.get("damage_type", "untyped"))
+    damage = roll_damage(str(ability.get("damage", "1d6")), runtime.rng)
+    mode = _saving_throw_mode(runtime.campaign, target, save_ability)
+    modifier = _saving_throw_modifier(runtime.campaign, target["name"], save_ability)
+    save = roll_d20_check(modifier=modifier, dc=save_dc, mode=mode, rng=runtime.rng)
+    failed = not save.success
+    raw_damage = damage.total if failed else damage.total // 2
+    before = target.get("current_hp", 0)
+    was_unconscious = _is_unconscious_character(runtime.campaign, target)
+    damage_amount = _apply_combat_damage(runtime.campaign, target, raw_damage, damage_type)
+    monster["recharge_available"] = False
+    resources = _active_resources(runtime.campaign.active_combat or {}).setdefault(monster["name"], _default_turn_resources())
+    resources["action"] = False
+    outcome = "failure" if failed else "success"
+    content = (
+        f"{monster['name']} uses {ability_name} on {target['name']}: "
+        f"{save_ability.upper()} save {save.total} vs DC {save_dc} ({outcome}, {mode.value}), "
+        f"{damage_amount} {damage_type} damage: HP {before} -> {target['current_hp']}."
+    )
+    concentration = _concentration_check_text(runtime, target, damage_amount)
+    death_saves = _death_save_damage_text(runtime, target, damage_amount, was_unconscious)
+    for extra in (concentration, death_saves):
+        if extra:
+            content += " " + extra
+    return content
 
 
 def _maybe_resolve_opportunity_attack(runtime: AdventureRuntime, mover_name: str, mover_resources: dict) -> None:
@@ -1723,6 +1797,8 @@ def _attack_profile(encounter: Encounter, name: str) -> dict:
                 "damage": monster.damage,
                 "damage_type": monster.damage_type,
                 "multiattack_count": monster.multiattack_count,
+                "recharge_ability": monster.recharge_ability,
+                "recharge_available": True if monster.recharge_ability is not None else None,
                 "action_strategy": monster.action_strategy,
             }
     return {
@@ -1730,6 +1806,7 @@ def _attack_profile(encounter: Encounter, name: str) -> dict:
         "damage": "1d4",
         "damage_type": "untyped",
         "multiattack_count": 1,
+        "recharge_ability": None,
         "action_strategy": "default_attack",
     }
 

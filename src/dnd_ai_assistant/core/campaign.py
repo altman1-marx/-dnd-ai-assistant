@@ -83,6 +83,7 @@ class Monster:
     damage: str = "1d4"
     damage_type: str = "untyped"
     multiattack_count: int = 1
+    recharge_ability: dict | None = None
     action_strategy: str = "default_attack"
     id: str = field(default_factory=lambda: new_id("mon"))
 
@@ -111,6 +112,15 @@ class Monster:
             raise ValueError("Monster proficiency bonus cannot be negative.")
         if self.multiattack_count < 1:
             raise ValueError("Monster multiattack count must be at least 1.")
+        if self.recharge_ability is not None:
+            if not isinstance(self.recharge_ability, dict):
+                raise ValueError("Monster recharge ability must be an object.")
+            recharge = self.recharge_ability.get("recharge", 5)
+            if not isinstance(recharge, int) or recharge < 2 or recharge > 6:
+                raise ValueError("Monster recharge ability recharge must be an integer from 2 to 6.")
+            save_ability = self.recharge_ability.get("save_ability")
+            if save_ability not in ABILITY_NAMES:
+                raise ValueError("Monster recharge ability needs a valid save ability.")
         if self.action_strategy not in MONSTER_ACTION_STRATEGIES:
             raise ValueError(f"Unsupported monster action strategy: {self.action_strategy}")
 

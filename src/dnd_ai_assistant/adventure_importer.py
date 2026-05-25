@@ -111,6 +111,7 @@ def _monster_from_data(data: dict) -> Monster:
         damage=data.get("damage", "1d4"),
         damage_type=data.get("damage_type", "untyped"),
         multiattack_count=data.get("multiattack_count", 1),
+        recharge_ability=data.get("recharge_ability"),
         action_strategy=data.get("action_strategy", "default_attack"),
         **kwargs,
     )

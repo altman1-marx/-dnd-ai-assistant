@@ -200,6 +200,7 @@ def campaign_to_dict(campaign: Campaign) -> dict:
                         "damage": monster.damage,
                         "damage_type": monster.damage_type,
                         "multiattack_count": monster.multiattack_count,
+                        "recharge_ability": monster.recharge_ability,
                         "action_strategy": monster.action_strategy,
                     }
                     for monster in encounter.monsters
@@ -311,6 +312,7 @@ def campaign_from_dict(data: dict) -> Campaign:
                         damage=monster.get("damage", "1d4"),
                         damage_type=monster.get("damage_type", "untyped"),
                         multiattack_count=monster.get("multiattack_count", 1),
+                        recharge_ability=monster.get("recharge_ability"),
                         action_strategy=monster.get("action_strategy", "default_attack"),
                     )
                     for monster in encounter.get("monsters", [])

@@ -431,6 +431,7 @@ def _validate_optional_monster_abilities(name: str, monster: dict, errors: list[
     multiattack_count = monster.get("multiattack_count")
     if multiattack_count is not None and (not isinstance(multiattack_count, int) or multiattack_count < 1):
         errors.append(f"{name}.multiattack_count must be a positive integer.")
+    _validate_optional_recharge_ability(name, monster.get("recharge_ability"), errors)
     strategy = monster.get("action_strategy")
     if strategy is not None and strategy not in MONSTER_ACTION_STRATEGIES:
         errors.append(f"{name}.action_strategy must be one of: {', '.join(sorted(MONSTER_ACTION_STRATEGIES))}.")
@@ -439,6 +440,30 @@ def _validate_optional_monster_abilities(name: str, monster: dict, errors: list[
         value = monster.get(key)
         if value is not None and not isinstance(value, list):
             errors.append(f"{name}.{key} must be a list.")
+
+
+def _validate_optional_recharge_ability(name: str, ability: object, errors: list[str]) -> None:
+    if ability is None:
+        return
+    if not isinstance(ability, dict):
+        errors.append(f"{name}.recharge_ability must be an object.")
+        return
+    for key in ("name", "damage", "damage_type", "save_ability", "save_dc"):
+        if key not in ability:
+            errors.append(f"Missing {name}.recharge_ability key: {key}")
+    if "name" in ability and not isinstance(ability["name"], str):
+        errors.append(f"{name}.recharge_ability.name must be a string.")
+    if "damage" in ability and not isinstance(ability["damage"], str):
+        errors.append(f"{name}.recharge_ability.damage must be a dice expression string.")
+    if "damage_type" in ability and not isinstance(ability["damage_type"], str):
+        errors.append(f"{name}.recharge_ability.damage_type must be a string.")
+    if "save_ability" in ability and ability["save_ability"] not in ABILITY_NAMES:
+        errors.append(f"{name}.recharge_ability.save_ability must be one of: {', '.join(ABILITY_NAMES)}.")
+    if "save_dc" in ability and (not isinstance(ability["save_dc"], int) or ability["save_dc"] < 0):
+        errors.append(f"{name}.recharge_ability.save_dc must be a non-negative integer.")
+    recharge = ability.get("recharge", 5)
+    if not isinstance(recharge, int) or recharge < 2 or recharge > 6:
+        errors.append(f"{name}.recharge_ability.recharge must be an integer from 2 to 6.")
 
 
 def _validate_connections(adventure: AdventureDefinition, location_ids: set[str], errors: list[str]) -> None:

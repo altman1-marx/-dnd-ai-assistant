@@ -100,6 +100,14 @@ class SerializationTests(unittest.TestCase):
                     damage_immunities={"poison"},
                     damage_type="slashing",
                     multiattack_count=2,
+                    recharge_ability={
+                        "name": "Ash Burst",
+                        "recharge": 5,
+                        "damage": "2d6",
+                        "damage_type": "fire",
+                        "save_ability": "dex",
+                        "save_dc": 12,
+                    },
                     action_strategy="concentrating",
                 )
             ],
@@ -121,6 +129,7 @@ class SerializationTests(unittest.TestCase):
         self.assertEqual(monster.damage_immunities, {"poison"})
         self.assertEqual(monster.damage_type, "slashing")
         self.assertEqual(monster.multiattack_count, 2)
+        self.assertEqual(monster.recharge_ability["name"], "Ash Burst")
         self.assertEqual(monster.action_strategy, "concentrating")
 
     def test_campaign_round_trip_clue_check(self) -> None:

@@ -248,6 +248,16 @@ class MonsterTests(unittest.TestCase):
                 multiattack_count=0,
             )
 
+    def test_monster_rejects_invalid_recharge_ability(self) -> None:
+        with self.assertRaisesRegex(ValueError, "recharge ability"):
+            Monster(
+                name="Broken Drake",
+                armor_class=13,
+                max_hp=7,
+                current_hp=7,
+                recharge_ability={"name": "Ash Breath", "recharge": 7, "save_ability": "dex"},
+            )
+
 
 if __name__ == "__main__":
     unittest.main()

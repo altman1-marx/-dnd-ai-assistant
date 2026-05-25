@@ -131,6 +131,7 @@ class AdventureTests(unittest.TestCase):
                 "saving_throw_proficiencies": ["luck"],
                 "damage_resistances": "fire",
                 "multiattack_count": 0,
+                "recharge_ability": {"name": 3, "recharge": 1, "save_ability": "luck", "save_dc": -1},
                 "action_strategy": "panic",
             }
         ]
@@ -143,6 +144,10 @@ class AdventureTests(unittest.TestCase):
         self.assertIn("saving_throw_proficiencies has unknown abilities: luck", message)
         self.assertIn("damage_resistances must be a list", message)
         self.assertIn("multiattack_count must be a positive integer", message)
+        self.assertIn("Missing encounters[0].monsters[0].recharge_ability key: damage", message)
+        self.assertIn("recharge_ability.save_ability", message)
+        self.assertIn("recharge_ability.save_dc", message)
+        self.assertIn("recharge_ability.recharge", message)
         self.assertIn("action_strategy must be one of", message)
 
     def test_validate_adventure_reports_invalid_clue_checks(self) -> None:
