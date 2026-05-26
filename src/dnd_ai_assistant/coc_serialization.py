@@ -5,7 +5,11 @@ from pathlib import Path
 from uuid import uuid4
 
 from .coc_runtime import COCClue, COCScenario
-from .core.coc7e import Investigator
+from .core.coc7e import COC_CHARACTERISTICS, Investigator
+
+
+class COCScenarioValidationError(ValueError):
+    pass
 
 
 def investigator_to_dict(investigator: Investigator) -> dict:
@@ -68,6 +72,7 @@ def coc_scenario_to_dict(scenario: COCScenario) -> dict:
 
 
 def coc_scenario_from_dict(data: dict) -> COCScenario:
+    validate_coc_scenario_data(data)
     return COCScenario(
         title=data["title"],
         location=data["location"],
@@ -97,3 +102,109 @@ def save_coc_scenario(scenario: COCScenario, path: str | Path) -> None:
 
 def load_coc_scenario(path: str | Path) -> COCScenario:
     return coc_scenario_from_dict(json.loads(Path(path).read_text(encoding="utf-8")))
+
+
+def validate_coc_scenario_data(data: dict) -> None:
+    if not isinstance(data, dict):
+        raise COCScenarioValidationError("scenario must be an object")
+    _require_nonempty_string(data, "title")
+    _require_nonempty_string(data, "location")
+    _require_nonempty_string(data, "description")
+    if "id" in data and data["id"] is not None:
+        _require_nonempty_string(data, "id")
+    if "ending_text" in data and not isinstance(data["ending_text"], str):
+        raise COCScenarioValidationError("ending_text must be a string")
+    if "completed" in data and not isinstance(data["completed"], bool):
+        raise COCScenarioValidationError("completed must be a boolean")
+    _validate_investigator_data(_require_object(data, "investigator"))
+    clues = data.get("clues", [])
+    if not isinstance(clues, list):
+        raise COCScenarioValidationError("clues must be a list")
+    if not clues:
+        raise COCScenarioValidationError("clues must contain at least one clue")
+    seen_ids: set[str] = set()
+    for index, clue in enumerate(clues):
+        _validate_clue_data(clue, index, seen_ids)
+
+
+def _validate_investigator_data(data: dict) -> None:
+    _require_nonempty_string(data, "name", prefix="investigator")
+    _require_nonempty_string(data, "occupation", prefix="investigator")
+    characteristics = _require_object(data, "characteristics", prefix="investigator")
+    for characteristic in COC_CHARACTERISTICS:
+        value = characteristics.get(characteristic)
+        if not isinstance(value, int) or isinstance(value, bool):
+            raise COCScenarioValidationError(f"investigator.characteristics.{characteristic} must be an integer")
+        if value < 1 or value > 99:
+            raise COCScenarioValidationError(
+                f"investigator.characteristics.{characteristic} must be between 1 and 99"
+            )
+    skills = data.get("skills", {})
+    if not isinstance(skills, dict):
+        raise COCScenarioValidationError("investigator.skills must be an object")
+    for skill_name, value in skills.items():
+        if not isinstance(skill_name, str) or not skill_name.strip():
+            raise COCScenarioValidationError("investigator.skills keys must be non-empty strings")
+        _validate_int_range(value, f"investigator.skills.{skill_name}", 0, 100)
+    _validate_optional_int_range(data, "max_hp", 1, 999, prefix="investigator")
+    _validate_optional_int_range(data, "current_hp", 0, 999, prefix="investigator")
+    _validate_optional_int_range(data, "max_mp", 0, 999, prefix="investigator")
+    _validate_optional_int_range(data, "current_mp", 0, 999, prefix="investigator")
+    _validate_optional_int_range(data, "max_sanity", 0, 99, prefix="investigator")
+    _validate_optional_int_range(data, "current_sanity", 0, 99, prefix="investigator")
+    _validate_optional_int_range(data, "luck", 0, 100, prefix="investigator")
+    conditions = data.get("conditions", [])
+    if not isinstance(conditions, list):
+        raise COCScenarioValidationError("investigator.conditions must be a list")
+    for condition in conditions:
+        if not isinstance(condition, str) or not condition.strip():
+            raise COCScenarioValidationError("investigator.conditions must contain non-empty strings")
+
+
+def _validate_clue_data(data: object, index: int, seen_ids: set[str]) -> None:
+    if not isinstance(data, dict):
+        raise COCScenarioValidationError(f"clues[{index}] must be an object")
+    clue_id = _require_nonempty_string(data, "id", prefix=f"clues[{index}]")
+    if clue_id in seen_ids:
+        raise COCScenarioValidationError(f"duplicate clue id: {clue_id}")
+    seen_ids.add(clue_id)
+    _require_nonempty_string(data, "title", prefix=f"clues[{index}]")
+    _require_nonempty_string(data, "text", prefix=f"clues[{index}]")
+    if data.get("skill") is not None:
+        _require_nonempty_string(data, "skill", prefix=f"clues[{index}]")
+    difficulty = data.get("difficulty", "regular")
+    if difficulty not in {"regular", "hard", "extreme"}:
+        raise COCScenarioValidationError(f"clues[{index}].difficulty must be regular, hard, or extreme")
+    _validate_optional_int_range(data, "sanity_loss", 0, 99, prefix=f"clues[{index}]")
+    if "discovered" in data and not isinstance(data["discovered"], bool):
+        raise COCScenarioValidationError(f"clues[{index}].discovered must be a boolean")
+
+
+def _require_nonempty_string(data: dict, key: str, prefix: str | None = None) -> str:
+    value = data.get(key)
+    path = f"{prefix}.{key}" if prefix else key
+    if not isinstance(value, str) or not value.strip():
+        raise COCScenarioValidationError(f"{path} must be a non-empty string")
+    return value
+
+
+def _require_object(data: dict, key: str, prefix: str | None = None) -> dict:
+    value = data.get(key)
+    path = f"{prefix}.{key}" if prefix else key
+    if not isinstance(value, dict):
+        raise COCScenarioValidationError(f"{path} must be an object")
+    return value
+
+
+def _validate_optional_int_range(data: dict, key: str, minimum: int, maximum: int, prefix: str | None = None) -> None:
+    if key not in data or data[key] is None:
+        return
+    path = f"{prefix}.{key}" if prefix else key
+    _validate_int_range(data[key], path, minimum, maximum)
+
+
+def _validate_int_range(value: object, path: str, minimum: int, maximum: int) -> None:
+    if not isinstance(value, int) or isinstance(value, bool):
+        raise COCScenarioValidationError(f"{path} must be an integer")
+    if value < minimum or value > maximum:
+        raise COCScenarioValidationError(f"{path} must be between {minimum} and {maximum}")
