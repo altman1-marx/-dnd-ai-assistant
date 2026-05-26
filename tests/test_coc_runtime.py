@@ -25,7 +25,9 @@ class COCRuntimeTests(unittest.TestCase):
 
         self.assertIn("Clue found - Scratched Portrait", output)
         self.assertIn("SAN loss 2", output)
+        self.assertIn("Evidence collected - Torn portrait canvas", output)
         self.assertEqual(scenario.investigator.current_sanity, 58)
+        self.assertEqual(scenario.inventory, ["Torn portrait canvas"])
 
     def test_skill_gated_clue_can_fail(self) -> None:
         scenario = create_sample_coc_scenario()
@@ -82,6 +84,7 @@ class COCRuntimeTests(unittest.TestCase):
         self.assertIn("SAN 60/60", output)
         self.assertIn("location Briar House Study", output)
         self.assertIn("clues 1/4", output)
+        self.assertIn("evidence 0", output)
 
     def test_go_moves_between_locations_and_reveals_local_clues(self) -> None:
         scenario = create_sample_coc_scenario()
@@ -102,6 +105,17 @@ class COCRuntimeTests(unittest.TestCase):
         output = runtime.flush()
 
         self.assertIn("no clear lead", output)
+
+    def test_inventory_lists_collected_evidence(self) -> None:
+        scenario = create_sample_coc_scenario()
+        runtime = COCRuntime(scenario)
+
+        handle_coc_action(runtime, "inspect portrait")
+        runtime.flush()
+        handle_coc_action(runtime, "inventory")
+        output = runtime.flush()
+
+        self.assertIn("Evidence: Torn portrait canvas", output)
 
 
 if __name__ == "__main__":

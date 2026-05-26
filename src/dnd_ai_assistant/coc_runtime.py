@@ -13,6 +13,7 @@ class COCClue:
     title: str
     text: str
     location_id: str | None = None
+    evidence: str | None = None
     skill: str | None = None
     difficulty: str = "regular"
     sanity_loss: int = 0
@@ -36,6 +37,7 @@ class COCScenario:
     clues: list[COCClue] = field(default_factory=list)
     locations: dict[str, COCLocation] = field(default_factory=dict)
     current_location_id: str | None = None
+    inventory: list[str] = field(default_factory=list)
     ending_text: str = ""
     completed: bool = False
     id: str = field(default_factory=lambda: f"coc_{uuid4().hex[:12]}")
@@ -97,6 +99,7 @@ def create_sample_coc_scenario() -> COCScenario:
                 title="Waterlogged Journal",
                 text="The journal names a lantern buried under the house and repeats the phrase 'do not trim the wick'.",
                 location_id="study",
+                evidence="Waterlogged journal",
                 skill="library use",
                 difficulty="regular",
             ),
@@ -105,6 +108,7 @@ def create_sample_coc_scenario() -> COCScenario:
                 title="Ashen Spiral",
                 text="The ash forms a spiral that seems to bend toward your hand. The shape is older than the house.",
                 location_id="study",
+                evidence="Ash rubbing",
                 skill="spot hidden",
                 difficulty="hard",
                 sanity_loss=1,
@@ -114,6 +118,7 @@ def create_sample_coc_scenario() -> COCScenario:
                 title="Scratched Portrait",
                 text="Behind the torn canvas is a narrow crawlspace descending into wet stone.",
                 location_id="study",
+                evidence="Torn portrait canvas",
                 skill=None,
                 sanity_loss=2,
             ),
@@ -122,6 +127,7 @@ def create_sample_coc_scenario() -> COCScenario:
                 title="Black Wick",
                 text="The lantern wick is braided from black hair and sea grass. It twitches when named.",
                 location_id="cellar",
+                evidence="Black wick sample",
                 skill=None,
                 sanity_loss=2,
             ),
@@ -156,7 +162,9 @@ def handle_coc_action(runtime: COCRuntime, action: str) -> bool:
         runtime.narrate("Keeper: The investigation pauses here.")
         return False
     if normalized in {"help", "?"}:
-        runtime.narrate("Keeper: Actions: look, status, go <exit>, inspect <target>, check <skill>, sanity, clues, quit.")
+        runtime.narrate(
+            "Keeper: Actions: look, status, go <exit>, inspect <target>, check <skill>, sanity, clues, inventory, quit."
+        )
         return True
     if normalized == "status":
         _describe_coc_status(runtime)
@@ -173,6 +181,9 @@ def handle_coc_action(runtime: COCRuntime, action: str) -> bool:
         return True
     if normalized == "clues":
         _describe_discovered_clues(runtime)
+        return True
+    if normalized in {"inventory", "evidence"}:
+        _describe_inventory(runtime)
         return True
     if normalized.startswith("go "):
         _move_coc_location(runtime, normalized[len("go ") :].strip())
@@ -230,6 +241,8 @@ def _reveal_coc_clue(runtime: COCRuntime, clue: COCClue) -> None:
     if clue.sanity_loss > 0:
         runtime.scenario.investigator.lose_sanity(clue.sanity_loss)
         runtime.narrate(f"Keeper: SAN loss {clue.sanity_loss}.")
+    if clue.evidence:
+        _add_inventory_item(runtime, clue.evidence)
     if all(clue.discovered for clue in runtime.scenario.clues):
         runtime.scenario.completed = True
         runtime.narrate(f"Keeper: {runtime.scenario.ending_text}")
@@ -255,9 +268,23 @@ def _describe_coc_status(runtime: COCRuntime) -> None:
         f"HP {investigator.current_hp}/{investigator.max_hp}, "
         f"MP {investigator.current_mp}/{investigator.max_mp}, "
         f"SAN {investigator.current_sanity}/{investigator.max_sanity}, "
-        f"Luck {investigator.luck}, clues {discovered}/{total}, "
+        f"Luck {investigator.luck}, clues {discovered}/{total}, evidence {len(runtime.scenario.inventory)}, "
         f"conditions: {', '.join(sorted(investigator.conditions)) or 'none'}."
     )
+
+
+def _describe_inventory(runtime: COCRuntime) -> None:
+    if not runtime.scenario.inventory:
+        runtime.narrate("Keeper: No evidence collected yet.")
+        return
+    runtime.narrate("Keeper: Evidence: " + ", ".join(runtime.scenario.inventory) + ".")
+
+
+def _add_inventory_item(runtime: COCRuntime, item: str) -> None:
+    if item in runtime.scenario.inventory:
+        return
+    runtime.scenario.inventory.append(item)
+    runtime.narrate(f"Keeper: Evidence collected - {item}.")
 
 
 def _move_coc_location(runtime: COCRuntime, target: str) -> None:

@@ -114,7 +114,9 @@ class APITests(unittest.TestCase):
         self.assertEqual(summary["location_id"], "study")
         self.assertEqual(summary["exits"][0]["name"], "cellar")
         self.assertEqual(summary["clue_count"], 4)
+        self.assertEqual(summary["inventory"], [])
         self.assertIn("go cellar", summary["available_actions"])
+        self.assertIn("inventory", summary["available_actions"])
         self.assertIn("inspect scratched portrait", summary["available_actions"])
 
     def test_import_coc_scenario_stores_scenario(self) -> None:
@@ -146,6 +148,7 @@ class APITests(unittest.TestCase):
         self.assertIn("Clue found - Scratched Portrait", response["transcript"])
         self.assertEqual(response["summary"]["investigator"]["current_sanity"], 58)
         self.assertEqual(response["summary"]["discovered_clue_count"], 1)
+        self.assertEqual(response["summary"]["inventory"], ["Torn portrait canvas"])
 
     def test_list_campaigns_returns_memory_campaigns(self) -> None:
         state = APIState()
@@ -179,6 +182,7 @@ class APITests(unittest.TestCase):
         self.assertEqual(response["scenarios"][0]["investigator_name"], "Eleanor Vale")
         self.assertEqual(response["scenarios"][0]["current_sanity"], 58)
         self.assertFalse(response["scenarios"][0]["completed"])
+        self.assertEqual(response["scenarios"][0]["inventory_count"], 1)
         self.assertEqual(response["scenarios"][0]["discovered_clue_count"], 1)
         self.assertEqual(response["scenarios"][0]["clue_count"], 4)
 

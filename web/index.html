@@ -832,11 +832,12 @@
         metric("Location", summary.location),
         metric("Status", summary.completed ? "Completed" : "In progress"),
         metric("Clues", summary.discovered_clue_count + "/" + summary.clue_count + " discovered"),
+        metric("Evidence", (summary.inventory || []).length),
         metric("Available Actions", (summary.available_actions || []).length)
       ].join("");
       renderQuickActions(summary.available_actions || []);
       characters.innerHTML = renderInvestigator(investigator);
-      combat.innerHTML = "<p class=\"muted\">COC investigation mode.</p>";
+      combat.innerHTML = renderCocEvidence(summary.inventory || []);
     }
 
     function renderInvestigator(investigator) {
@@ -850,6 +851,13 @@
         + " | Luck " + escapeHtml(String(investigator.luck))
         + "</p><p class=\"muted\">Conditions "
         + escapeHtml((investigator.conditions || []).join(", ") || "none") + "</p></div>";
+    }
+
+    function renderCocEvidence(items) {
+      if (!items.length) return "<p class=\"muted\">No evidence collected.</p>";
+      return items.map((item) => {
+        return "<div class=\"item\"><strong>" + escapeHtml(item) + "</strong><p class=\"muted\">Evidence</p></div>";
+      }).join("");
     }
 
     function renderCampaignList() {
@@ -879,6 +887,7 @@
           + " | " + escapeHtml(scenario.investigator_name || "Investigator")
           + " | SAN " + escapeHtml(String(scenario.current_sanity))
           + " | " + escapeHtml(scenario.completed ? "completed" : "active")
+          + " | Evidence " + escapeHtml(String(scenario.inventory_count || 0))
           + " | Clues " + escapeHtml(String(scenario.discovered_clue_count))
           + "/" + escapeHtml(String(scenario.clue_count))
           + "</p></div><button type=\"button\" class=\"secondary\" data-load-coc=\""

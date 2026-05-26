@@ -60,6 +60,7 @@ def coc_scenario_to_dict(scenario: COCScenario) -> dict:
                 "title": clue.title,
                 "text": clue.text,
                 "location_id": clue.location_id,
+                "evidence": clue.evidence,
                 "skill": clue.skill,
                 "difficulty": clue.difficulty,
                 "sanity_loss": clue.sanity_loss,
@@ -77,6 +78,7 @@ def coc_scenario_to_dict(scenario: COCScenario) -> dict:
             for location in scenario.locations.values()
         ],
         "current_location_id": scenario.current_location_id,
+        "inventory": list(scenario.inventory),
         "ending_text": scenario.ending_text,
         "completed": scenario.completed,
     }
@@ -95,6 +97,7 @@ def coc_scenario_from_dict(data: dict) -> COCScenario:
                 title=clue["title"],
                 text=clue["text"],
                 location_id=clue.get("location_id"),
+                evidence=clue.get("evidence"),
                 skill=clue.get("skill"),
                 difficulty=clue.get("difficulty", "regular"),
                 sanity_loss=clue.get("sanity_loss", 0),
@@ -112,6 +115,7 @@ def coc_scenario_from_dict(data: dict) -> COCScenario:
             for location in data.get("locations", [])
         },
         current_location_id=data.get("current_location_id"),
+        inventory=list(data.get("inventory", [])),
         ending_text=data.get("ending_text", ""),
         completed=data.get("completed", False),
         id=data.get("id", None) or f"coc_{uuid4().hex[:12]}",
@@ -138,6 +142,12 @@ def validate_coc_scenario_data(data: dict) -> None:
         raise COCScenarioValidationError("ending_text must be a string")
     if "completed" in data and not isinstance(data["completed"], bool):
         raise COCScenarioValidationError("completed must be a boolean")
+    inventory = data.get("inventory", [])
+    if not isinstance(inventory, list):
+        raise COCScenarioValidationError("inventory must be a list")
+    for item in inventory:
+        if not isinstance(item, str) or not item.strip():
+            raise COCScenarioValidationError("inventory must contain non-empty strings")
     _validate_investigator_data(_require_object(data, "investigator"))
     location_ids = _validate_locations_data(data.get("locations", []))
     current_location_id = data.get("current_location_id")
@@ -231,6 +241,8 @@ def _validate_clue_data(data: object, index: int, seen_ids: set[str], location_i
     _require_nonempty_string(data, "text", prefix=f"clues[{index}]")
     if data.get("skill") is not None:
         _require_nonempty_string(data, "skill", prefix=f"clues[{index}]")
+    if data.get("evidence") is not None:
+        _require_nonempty_string(data, "evidence", prefix=f"clues[{index}]")
     location_id = data.get("location_id")
     if location_id is not None:
         if not isinstance(location_id, str) or not location_id.strip():

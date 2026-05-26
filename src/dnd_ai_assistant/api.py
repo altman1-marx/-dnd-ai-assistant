@@ -288,6 +288,7 @@ def coc_summary(state: APIState, scenario_id: str) -> dict:
         "description": location.description,
         "exits": [{"name": name, "location_id": location_id} for name, location_id in location.exits.items()],
         "completed": scenario.completed,
+        "inventory": list(scenario.inventory),
         "investigator": {
             "name": investigator.name,
             "occupation": investigator.occupation,
@@ -523,6 +524,7 @@ def _coc_scenario_list_item(scenario: COCScenario) -> dict:
         "location": location.name,
         "location_id": scenario.current_location_id,
         "completed": scenario.completed,
+        "inventory_count": len(scenario.inventory),
         "investigator_name": scenario.investigator.name,
         "current_sanity": scenario.investigator.current_sanity,
         "max_sanity": scenario.investigator.max_sanity,
@@ -739,7 +741,7 @@ def _available_actions(campaign: Campaign, active_combat: dict | None) -> list[s
 
 
 def _coc_available_actions(scenario: COCScenario) -> list[str]:
-    actions = ["look", "status", "sanity", "clues", "quit"]
+    actions = ["look", "status", "sanity", "clues", "inventory", "quit"]
     location = scenario.current_location()
     actions.extend(f"go {exit_name}" for exit_name in sorted(location.exits))
     for clue in scenario.clues:

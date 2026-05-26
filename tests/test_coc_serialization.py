@@ -17,6 +17,7 @@ class COCSerializationTests(unittest.TestCase):
     def test_coc_scenario_round_trips_dict(self) -> None:
         scenario = create_sample_coc_scenario()
         scenario.clues[0].discovered = True
+        scenario.inventory.append("Waterlogged journal")
         scenario.investigator.lose_sanity(3)
         scenario.completed = True
 
@@ -28,6 +29,7 @@ class COCSerializationTests(unittest.TestCase):
         self.assertTrue(restored.clues[0].discovered)
         self.assertTrue(restored.completed)
         self.assertEqual(restored.current_location_id, "study")
+        self.assertEqual(restored.inventory, ["Waterlogged journal"])
         self.assertIn("cellar", restored.locations["study"].exits)
 
     def test_coc_scenario_save_and_load_file(self) -> None:
@@ -100,6 +102,13 @@ class COCSerializationTests(unittest.TestCase):
         data["locations"][0]["exits"]["attic"] = "attic"
 
         with self.assertRaisesRegex(COCScenarioValidationError, "unknown location"):
+            validate_coc_scenario_data(data)
+
+    def test_validate_coc_scenario_data_rejects_bad_inventory(self) -> None:
+        data = coc_scenario_to_dict(create_sample_coc_scenario())
+        data["inventory"] = [""]
+
+        with self.assertRaisesRegex(COCScenarioValidationError, "inventory"):
             validate_coc_scenario_data(data)
 
 
