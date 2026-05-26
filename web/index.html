@@ -831,6 +831,7 @@
         metric("System", "Call of Cthulhu 7e"),
         metric("Location", summary.location),
         metric("Status", summary.completed ? "Completed" : "In progress"),
+        metric("NPCs", (summary.npcs || []).map((npc) => npc.name).join(", ") || "None"),
         metric("Clues", summary.discovered_clue_count + "/" + summary.clue_count + " discovered"),
         metric("Evidence", (summary.inventory || []).length),
         metric("Available Actions", (summary.available_actions || []).length)

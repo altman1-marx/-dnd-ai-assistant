@@ -31,6 +31,7 @@ class COCSerializationTests(unittest.TestCase):
         self.assertEqual(restored.current_location_id, "study")
         self.assertEqual(restored.inventory, ["Waterlogged journal"])
         self.assertIn("cellar", restored.locations["study"].exits)
+        self.assertEqual(restored.npcs[0].name, "Mrs. Ember")
 
     def test_coc_scenario_save_and_load_file(self) -> None:
         scenario = create_sample_coc_scenario()
@@ -109,6 +110,20 @@ class COCSerializationTests(unittest.TestCase):
         data["inventory"] = [""]
 
         with self.assertRaisesRegex(COCScenarioValidationError, "inventory"):
+            validate_coc_scenario_data(data)
+
+    def test_validate_coc_scenario_data_rejects_unknown_npc_location(self) -> None:
+        data = coc_scenario_to_dict(create_sample_coc_scenario())
+        data["npcs"][0]["location_id"] = "attic"
+
+        with self.assertRaisesRegex(COCScenarioValidationError, "npcs.*unknown location"):
+            validate_coc_scenario_data(data)
+
+    def test_validate_coc_scenario_data_rejects_duplicate_npc_id(self) -> None:
+        data = coc_scenario_to_dict(create_sample_coc_scenario())
+        data["npcs"].append(dict(data["npcs"][0]))
+
+        with self.assertRaisesRegex(COCScenarioValidationError, "duplicate npc id"):
             validate_coc_scenario_data(data)
 
 

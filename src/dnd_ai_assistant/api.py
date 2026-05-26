@@ -287,6 +287,10 @@ def coc_summary(state: APIState, scenario_id: str) -> dict:
         "location_id": scenario.current_location_id,
         "description": location.description,
         "exits": [{"name": name, "location_id": location_id} for name, location_id in location.exits.items()],
+        "npcs": [
+            {"id": npc.id, "name": npc.name, "description": npc.description}
+            for npc in _visible_coc_npcs(scenario)
+        ],
         "completed": scenario.completed,
         "inventory": list(scenario.inventory),
         "investigator": {
@@ -525,6 +529,7 @@ def _coc_scenario_list_item(scenario: COCScenario) -> dict:
         "location_id": scenario.current_location_id,
         "completed": scenario.completed,
         "inventory_count": len(scenario.inventory),
+        "npc_count": len(scenario.npcs),
         "investigator_name": scenario.investigator.name,
         "current_sanity": scenario.investigator.current_sanity,
         "max_sanity": scenario.investigator.max_sanity,
@@ -744,6 +749,9 @@ def _coc_available_actions(scenario: COCScenario) -> list[str]:
     actions = ["look", "status", "sanity", "clues", "inventory", "quit"]
     location = scenario.current_location()
     actions.extend(f"go {exit_name}" for exit_name in sorted(location.exits))
+    for npc in _visible_coc_npcs(scenario):
+        actions.append(f"talk {npc.name.lower()}")
+        actions.append(f"talk {npc.id.replace('_', ' ')}")
     for clue in scenario.clues:
         if clue.discovered:
             continue
@@ -754,6 +762,12 @@ def _coc_available_actions(scenario: COCScenario) -> list[str]:
         if clue.skill:
             actions.append(f"check {clue.skill}")
     return list(dict.fromkeys(actions))
+
+
+def _visible_coc_npcs(scenario: COCScenario) -> list:
+    if not scenario.current_location_id:
+        return scenario.npcs
+    return [npc for npc in scenario.npcs if npc.location_id in {None, scenario.current_location_id}]
 
 
 def _death_save_actions(campaign: Campaign) -> list[str]:

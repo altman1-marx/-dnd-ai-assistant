@@ -14,6 +14,7 @@ class COCRuntimeTests(unittest.TestCase):
         self.assertIn("The Lantern Under Briar House", output)
         self.assertIn("Briar House Study", output)
         self.assertIn("Exits: cellar", output)
+        self.assertIn("Present: Mrs. Ember", output)
         self.assertIn("SAN 60/60", output)
 
     def test_inspect_reveals_obvious_clue_and_applies_sanity_loss(self) -> None:
@@ -116,6 +117,25 @@ class COCRuntimeTests(unittest.TestCase):
         output = runtime.flush()
 
         self.assertIn("Evidence: Torn portrait canvas", output)
+
+    def test_talk_to_visible_npc(self) -> None:
+        runtime = COCRuntime(create_sample_coc_scenario())
+
+        handle_coc_action(runtime, "talk ember")
+        output = runtime.flush()
+
+        self.assertIn("Mrs. Ember", output)
+        self.assertIn("forbade us from trimming", output)
+
+    def test_talk_cannot_reach_npc_in_other_location(self) -> None:
+        runtime = COCRuntime(create_sample_coc_scenario())
+
+        handle_coc_action(runtime, "go cellar")
+        runtime.flush()
+        handle_coc_action(runtime, "talk ember")
+        output = runtime.flush()
+
+        self.assertIn("No one by that name", output)
 
 
 if __name__ == "__main__":

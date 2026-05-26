@@ -113,9 +113,11 @@ class APITests(unittest.TestCase):
         self.assertEqual(summary["investigator"]["name"], "Eleanor Vale")
         self.assertEqual(summary["location_id"], "study")
         self.assertEqual(summary["exits"][0]["name"], "cellar")
+        self.assertEqual(summary["npcs"][0]["name"], "Mrs. Ember")
         self.assertEqual(summary["clue_count"], 4)
         self.assertEqual(summary["inventory"], [])
         self.assertIn("go cellar", summary["available_actions"])
+        self.assertIn("talk mrs. ember", summary["available_actions"])
         self.assertIn("inventory", summary["available_actions"])
         self.assertIn("inspect scratched portrait", summary["available_actions"])
 
@@ -183,6 +185,7 @@ class APITests(unittest.TestCase):
         self.assertEqual(response["scenarios"][0]["current_sanity"], 58)
         self.assertFalse(response["scenarios"][0]["completed"])
         self.assertEqual(response["scenarios"][0]["inventory_count"], 1)
+        self.assertEqual(response["scenarios"][0]["npc_count"], 1)
         self.assertEqual(response["scenarios"][0]["discovered_clue_count"], 1)
         self.assertEqual(response["scenarios"][0]["clue_count"], 4)
 

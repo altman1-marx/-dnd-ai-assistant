@@ -95,6 +95,8 @@ class WebUITests(unittest.TestCase):
         self.assertIn("scenario.completed", html)
         self.assertIn("summary.inventory", html)
         self.assertIn("inventory_count", html)
+        self.assertIn("summary.npcs", html)
+        self.assertIn("npc.name", html)
         self.assertIn("checkHealth();", html)
         self.assertIn("session_event_count", html)
         self.assertIn("String(value ?? \"\")", html)

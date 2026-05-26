@@ -29,12 +29,22 @@ class COCLocation:
 
 
 @dataclass
+class COCNPC:
+    id: str
+    name: str
+    description: str
+    location_id: str | None = None
+    dialogue: list[str] = field(default_factory=list)
+
+
+@dataclass
 class COCScenario:
     title: str
     location: str
     description: str
     investigator: Investigator
     clues: list[COCClue] = field(default_factory=list)
+    npcs: list[COCNPC] = field(default_factory=list)
     locations: dict[str, COCLocation] = field(default_factory=dict)
     current_location_id: str | None = None
     inventory: list[str] = field(default_factory=list)
@@ -132,6 +142,18 @@ def create_sample_coc_scenario() -> COCScenario:
                 sanity_loss=2,
             ),
         ],
+        npcs=[
+            COCNPC(
+                id="mrs_ember",
+                name="Mrs. Ember",
+                description="The housekeeper waits by the study door, twisting a ring of old keys.",
+                location_id="study",
+                dialogue=[
+                    "Mr. Briar forbade us from trimming the lantern wick.",
+                    "The cellar door swells shut when the rain is heavy, but the portrait passage still breathes.",
+                ],
+            )
+        ],
         locations=locations,
         current_location_id="study",
         ending_text="With enough clues gathered, the cellar route is clear. The lantern waits below.",
@@ -147,6 +169,9 @@ def describe_coc_scene(runtime: COCRuntime) -> None:
     runtime.narrate(f"Keeper: {location.description}")
     if location.exits:
         runtime.narrate(f"Keeper: Exits: {', '.join(sorted(location.exits))}.")
+    npcs = _visible_npcs(scenario)
+    if npcs:
+        runtime.narrate(f"Keeper: Present: {', '.join(npc.name for npc in npcs)}.")
     runtime.narrate(
         f"Keeper: Investigator: {investigator.name}, HP {investigator.current_hp}/{investigator.max_hp}, "
         f"SAN {investigator.current_sanity}/{investigator.max_sanity}, Luck {investigator.luck}."
@@ -163,7 +188,7 @@ def handle_coc_action(runtime: COCRuntime, action: str) -> bool:
         return False
     if normalized in {"help", "?"}:
         runtime.narrate(
-            "Keeper: Actions: look, status, go <exit>, inspect <target>, check <skill>, sanity, clues, inventory, quit."
+            "Keeper: Actions: look, status, go <exit>, inspect <target>, talk <npc>, check <skill>, sanity, clues, inventory, quit."
         )
         return True
     if normalized == "status":
@@ -190,6 +215,9 @@ def handle_coc_action(runtime: COCRuntime, action: str) -> bool:
         return True
     if normalized.startswith("inspect "):
         _inspect_coc_target(runtime, normalized[len("inspect ") :].strip())
+        return True
+    if normalized.startswith("talk "):
+        _talk_to_coc_npc(runtime, normalized[len("talk ") :].strip())
         return True
     if normalized.startswith("check "):
         _manual_coc_check(runtime, normalized[len("check ") :].strip())
@@ -280,6 +308,19 @@ def _describe_inventory(runtime: COCRuntime) -> None:
     runtime.narrate("Keeper: Evidence: " + ", ".join(runtime.scenario.inventory) + ".")
 
 
+def _talk_to_coc_npc(runtime: COCRuntime, target: str) -> None:
+    npc = _match_npc(_visible_npcs(runtime.scenario), target)
+    if npc is None:
+        runtime.narrate("Keeper: No one by that name is here.")
+        return
+    runtime.narrate(f"Keeper: {npc.name}: {npc.description}")
+    if not npc.dialogue:
+        runtime.narrate(f"{npc.name}: I have nothing more to add.")
+        return
+    for line in npc.dialogue:
+        runtime.narrate(f"{npc.name}: {line}")
+
+
 def _add_inventory_item(runtime: COCRuntime, item: str) -> None:
     if item in runtime.scenario.inventory:
         return
@@ -308,6 +349,9 @@ def _move_coc_location(runtime: COCRuntime, target: str) -> None:
     runtime.narrate(f"Keeper: {destination.description}")
     if destination.exits:
         runtime.narrate(f"Keeper: Exits: {', '.join(sorted(destination.exits))}.")
+    npcs = _visible_npcs(scenario)
+    if npcs:
+        runtime.narrate(f"Keeper: Present: {', '.join(npc.name for npc in npcs)}.")
 
 
 def _visible_clues(scenario: COCScenario) -> list[COCClue]:
@@ -317,12 +361,28 @@ def _visible_clues(scenario: COCScenario) -> list[COCClue]:
     return [clue for clue in scenario.clues if clue.location_id in {None, current_location_id}]
 
 
+def _visible_npcs(scenario: COCScenario) -> list[COCNPC]:
+    current_location_id = scenario.current_location_id
+    if not current_location_id:
+        return scenario.npcs
+    return [npc for npc in scenario.npcs if npc.location_id in {None, current_location_id}]
+
+
 def _match_clue(clues: list[COCClue], target: str) -> COCClue | None:
     normalized = target.strip().lower()
     for clue in clues:
         haystack = f"{clue.id} {clue.title}".lower().replace("_", " ")
         if normalized in haystack:
             return clue
+    return None
+
+
+def _match_npc(npcs: list[COCNPC], target: str) -> COCNPC | None:
+    normalized = target.strip().lower()
+    for npc in npcs:
+        haystack = f"{npc.id} {npc.name}".lower().replace("_", " ")
+        if normalized in haystack:
+            return npc
     return None
 
 

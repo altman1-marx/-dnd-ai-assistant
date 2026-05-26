@@ -4,7 +4,7 @@ import json
 from pathlib import Path
 from uuid import uuid4
 
-from .coc_runtime import COCClue, COCLocation, COCScenario
+from .coc_runtime import COCClue, COCLocation, COCNPC, COCScenario
 from .core.coc7e import COC_CHARACTERISTICS, Investigator
 
 
@@ -77,6 +77,16 @@ def coc_scenario_to_dict(scenario: COCScenario) -> dict:
             }
             for location in scenario.locations.values()
         ],
+        "npcs": [
+            {
+                "id": npc.id,
+                "name": npc.name,
+                "description": npc.description,
+                "location_id": npc.location_id,
+                "dialogue": list(npc.dialogue),
+            }
+            for npc in scenario.npcs
+        ],
         "current_location_id": scenario.current_location_id,
         "inventory": list(scenario.inventory),
         "ending_text": scenario.ending_text,
@@ -104,6 +114,16 @@ def coc_scenario_from_dict(data: dict) -> COCScenario:
                 discovered=clue.get("discovered", False),
             )
             for clue in data.get("clues", [])
+        ],
+        npcs=[
+            COCNPC(
+                id=npc["id"],
+                name=npc["name"],
+                description=npc["description"],
+                location_id=npc.get("location_id"),
+                dialogue=list(npc.get("dialogue", [])),
+            )
+            for npc in data.get("npcs", [])
         ],
         locations={
             location["id"]: COCLocation(
@@ -164,6 +184,7 @@ def validate_coc_scenario_data(data: dict) -> None:
     seen_ids: set[str] = set()
     for index, clue in enumerate(clues):
         _validate_clue_data(clue, index, seen_ids, location_ids)
+    _validate_npcs_data(data.get("npcs", []), location_ids)
 
 
 def _validate_investigator_data(data: dict) -> None:
@@ -255,6 +276,33 @@ def _validate_clue_data(data: object, index: int, seen_ids: set[str], location_i
     _validate_optional_int_range(data, "sanity_loss", 0, 99, prefix=f"clues[{index}]")
     if "discovered" in data and not isinstance(data["discovered"], bool):
         raise COCScenarioValidationError(f"clues[{index}].discovered must be a boolean")
+
+
+def _validate_npcs_data(npcs: object, location_ids: set[str]) -> None:
+    if not isinstance(npcs, list):
+        raise COCScenarioValidationError("npcs must be a list")
+    seen_ids: set[str] = set()
+    for index, npc in enumerate(npcs):
+        if not isinstance(npc, dict):
+            raise COCScenarioValidationError(f"npcs[{index}] must be an object")
+        npc_id = _require_nonempty_string(npc, "id", prefix=f"npcs[{index}]")
+        if npc_id in seen_ids:
+            raise COCScenarioValidationError(f"duplicate npc id: {npc_id}")
+        seen_ids.add(npc_id)
+        _require_nonempty_string(npc, "name", prefix=f"npcs[{index}]")
+        _require_nonempty_string(npc, "description", prefix=f"npcs[{index}]")
+        location_id = npc.get("location_id")
+        if location_id is not None:
+            if not isinstance(location_id, str) or not location_id.strip():
+                raise COCScenarioValidationError(f"npcs[{index}].location_id must be a non-empty string")
+            if location_ids and location_id not in location_ids:
+                raise COCScenarioValidationError(f"npcs[{index}].location_id references unknown location: {location_id}")
+        dialogue = npc.get("dialogue", [])
+        if not isinstance(dialogue, list):
+            raise COCScenarioValidationError(f"npcs[{index}].dialogue must be a list")
+        for line in dialogue:
+            if not isinstance(line, str) or not line.strip():
+                raise COCScenarioValidationError(f"npcs[{index}].dialogue must contain non-empty strings")
 
 
 def _require_nonempty_string(data: dict, key: str, prefix: str | None = None) -> str:
