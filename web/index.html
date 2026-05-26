@@ -324,6 +324,12 @@
         <button id="sampleButton" type="button" class="secondary" disabled>Add Sample Character</button>
       </section>
 
+      <section class="stack" aria-labelledby="coc-title">
+        <h2 id="coc-title">Call of Cthulhu</h2>
+        <button id="cocDemoButton" type="button" class="secondary">Start COC Demo</button>
+        <div id="cocList" class="campaign-list"></div>
+      </section>
+
       <section class="stack" aria-labelledby="campaign-title">
         <h2 id="campaign-title">Campaign</h2>
         <div id="status" class="status">No campaign loaded.</div>
@@ -392,9 +398,13 @@
 
   <script>
     const state = {
+      mode: "dnd",
       campaignId: "",
+      scenarioId: "",
       campaigns: [],
+      cocScenarios: [],
       summary: null,
+      cocSummary: null,
       pendingSuggestedAction: "",
       lastRulesQuery: "",
       logStatus: "",
@@ -406,6 +416,7 @@
     const statusBox = document.getElementById("status");
     const transcript = document.getElementById("transcript");
     const campaignList = document.getElementById("campaignList");
+    const cocList = document.getElementById("cocList");
     const locationLine = document.getElementById("locationLine");
     const metrics = document.getElementById("metrics");
     const characters = document.getElementById("characters");
@@ -425,6 +436,7 @@
     document.getElementById("healthButton").addEventListener("click", checkHealth);
     document.getElementById("importButton").addEventListener("click", importAdventure);
     document.getElementById("demoButton").addEventListener("click", loadDemoAdventure);
+    document.getElementById("cocDemoButton").addEventListener("click", loadCocDemo);
     document.getElementById("campaignsButton").addEventListener("click", refreshCampaigns);
     sampleButton.addEventListener("click", addSampleCharacter);
     refreshButton.addEventListener("click", refreshCampaignView);
@@ -454,6 +466,7 @@
           setStatus([
             "API is ready.",
             "Campaigns: " + String(data.campaign_count || 0),
+            "COC: " + String(data.coc_scenario_count || 0),
             "Rules: " + featureLabel(features.rules_search),
             "AI DM: " + featureLabel(features.ai_dm),
             "Persistence: " + featureLabel(features.persistent_state)
@@ -475,7 +488,9 @@
       try {
         const adventure = JSON.parse(await file.text());
         const data = await api("POST", "/campaigns/import", { adventure });
+        state.mode = "dnd";
         state.campaignId = data.campaign_id;
+        state.scenarioId = "";
         appendTranscriptMessage("System", "Imported " + data.campaign.title + ".");
         setControls(true);
         await refreshCampaigns();
@@ -488,11 +503,29 @@
     async function loadDemoAdventure() {
       try {
         const data = await api("POST", "/campaigns/demo-with-character", {});
+        state.mode = "dnd";
         state.campaignId = data.campaign_id;
+        state.scenarioId = "";
         appendTranscriptMessage("System", "Started demo adventure " + data.campaign.title + " with Leth.");
         setControls(true);
         await refreshCampaigns();
         await refreshCampaignView();
+      } catch (error) {
+        setStatus(error.message, true);
+      }
+    }
+
+    async function loadCocDemo() {
+      try {
+        const data = await api("POST", "/coc/demo", {});
+        if (state.scenarioId !== data.scenario_id || state.mode !== "coc") clearTranscriptView();
+        state.mode = "coc";
+        state.scenarioId = data.scenario_id;
+        state.campaignId = "";
+        appendTranscriptMessage("System", "Started COC scenario " + data.scenario.title + ".");
+        setControls(true);
+        await refreshCampaigns();
+        await refreshCocView();
       } catch (error) {
         setStatus(error.message, true);
       }
@@ -510,9 +543,24 @@
     }
 
     async function refreshCampaignView() {
+      if (state.mode === "coc") {
+        await refreshCocView();
+        return;
+      }
       if (!state.campaignId) return;
       await refreshCampaignLog();
       await refreshSummary();
+    }
+
+    async function refreshCocView() {
+      if (!state.scenarioId) return;
+      try {
+        state.cocSummary = await api("GET", "/coc/" + state.scenarioId + "/summary");
+        renderCocSummary();
+        setStatus(composeCocStatus());
+      } catch (error) {
+        setStatus(error.message, true);
+      }
     }
 
     async function refreshSummary() {
@@ -530,10 +578,13 @@
     async function refreshCampaigns() {
       try {
         const data = await api("GET", "/campaigns");
+        const cocData = await api("GET", "/coc");
         state.campaigns = data.campaigns || [];
+        state.cocScenarios = cocData.scenarios || data.coc_scenarios || [];
         renderCampaignList();
       } catch (error) {
         campaignList.innerHTML = "<p class=\"muted\">Campaign list unavailable.</p>";
+        cocList.innerHTML = "<p class=\"muted\">COC list unavailable.</p>";
         setStatus(error.message, true);
       }
     }
@@ -543,9 +594,23 @@
         transcript.innerHTML = "";
         state.transcriptEventIds.clear();
       }
+      state.mode = "dnd";
       state.campaignId = campaignId;
+      state.scenarioId = "";
       setControls(true);
       await refreshCampaignView();
+    }
+
+    async function loadCocScenario(scenarioId) {
+      if (state.scenarioId !== scenarioId || state.mode !== "coc") {
+        transcript.innerHTML = "";
+        state.transcriptEventIds.clear();
+      }
+      state.mode = "coc";
+      state.scenarioId = scenarioId;
+      state.campaignId = "";
+      setControls(true);
+      await refreshCocView();
     }
 
     async function refreshCampaignLog() {
@@ -613,6 +678,10 @@
     }
 
     async function runAction(action) {
+      if (state.mode === "coc") {
+        await runCocAction(action);
+        return;
+      }
       if (!state.campaignId) return;
       if (state.pendingSuggestedAction === action) {
         state.pendingSuggestedAction = "";
@@ -626,6 +695,23 @@
         appendTranscript(data.transcript);
         (data.messages || []).forEach((message) => state.transcriptEventIds.add(message.id));
         await refreshSummary();
+      } catch (error) {
+        setStatus(error.message, true);
+      }
+    }
+
+    async function runCocAction(action) {
+      if (!state.scenarioId) return;
+      try {
+        const data = await api("POST", "/coc/" + state.scenarioId + "/actions", {
+          action,
+          seed: 5
+        });
+        appendTranscript(data.transcript);
+        state.cocSummary = data.summary;
+        renderCocSummary();
+        setStatus(composeCocStatus());
+        await refreshCampaigns();
       } catch (error) {
         setStatus(error.message, true);
       }
@@ -709,35 +795,84 @@
       bindQuickActions();
     }
 
+    function renderCocSummary() {
+      const summary = state.cocSummary;
+      if (!summary) return;
+      const investigator = summary.investigator || {};
+      locationLine.textContent = summary.location + " - " + summary.description;
+      metrics.innerHTML = [
+        metric("Scenario", summary.title),
+        metric("System", "Call of Cthulhu 7e"),
+        metric("Location", summary.location),
+        metric("Clues", summary.discovered_clue_count + "/" + summary.clue_count + " discovered"),
+        metric("Available Actions", (summary.available_actions || []).length)
+      ].join("");
+      renderQuickActions(summary.available_actions || []);
+      characters.innerHTML = renderInvestigator(investigator);
+      combat.innerHTML = "<p class=\"muted\">COC investigation mode.</p>";
+    }
+
+    function renderInvestigator(investigator) {
+      return "<div class=\"item\"><strong>" + escapeHtml(investigator.name || "Investigator")
+        + "</strong><p>HP " + escapeHtml(String(investigator.current_hp))
+        + "/" + escapeHtml(String(investigator.max_hp))
+        + " | MP " + escapeHtml(String(investigator.current_magic_points))
+        + "/" + escapeHtml(String(investigator.max_magic_points))
+        + "</p><p>SAN " + escapeHtml(String(investigator.current_sanity))
+        + "/" + escapeHtml(String(investigator.max_sanity))
+        + " | Luck " + escapeHtml(String(investigator.luck))
+        + "</p><p class=\"muted\">Conditions "
+        + escapeHtml((investigator.conditions || []).join(", ") || "none") + "</p></div>";
+    }
+
     function renderCampaignList() {
       if (!state.campaigns.length) {
         campaignList.innerHTML = "<p class=\"muted\">No in-memory campaigns.</p>";
-        return;
+      } else {
+        campaignList.innerHTML = state.campaigns.map((campaign) => {
+          const active = state.mode === "dnd" && campaign.id === state.campaignId ? "Active" : "Open";
+          return "<div class=\"item campaign-row\"><div><strong>" + escapeHtml(campaign.title)
+            + "</strong><p class=\"muted\">" + escapeHtml(campaign.id)
+            + " | Level " + escapeHtml(String(campaign.party_level))
+            + " | " + escapeHtml(campaign.current_location_name || "No location")
+            + " | Characters " + escapeHtml(String(campaign.character_count))
+            + " | Combat " + escapeHtml(campaign.active_combat ? "active" : "none")
+            + " | Events " + escapeHtml(String(campaign.session_event_count || 0))
+            + "</p></div><button type=\"button\" class=\"secondary\" data-load-campaign=\"" + escapeHtml(campaign.id)
+            + "\">" + active + "</button><button type=\"button\" class=\"secondary danger\" data-delete-campaign=\""
+            + escapeHtml(campaign.id) + "\">Delete</button></div>";
+        }).join("");
       }
-      campaignList.innerHTML = state.campaigns.map((campaign) => {
-        const active = campaign.id === state.campaignId ? "Active" : "Open";
-        return "<div class=\"item campaign-row\"><div><strong>" + escapeHtml(campaign.title)
-          + "</strong><p class=\"muted\">" + escapeHtml(campaign.id)
-          + " | Level " + escapeHtml(String(campaign.party_level))
-          + " | " + escapeHtml(campaign.current_location_name || "No location")
-          + " | Characters " + escapeHtml(String(campaign.character_count))
-          + " | Combat " + escapeHtml(campaign.active_combat ? "active" : "none")
-          + " | Events " + escapeHtml(String(campaign.session_event_count || 0))
-          + "</p></div><button type=\"button\" class=\"secondary\" data-load-campaign=\"" + escapeHtml(campaign.id)
-          + "\">" + active + "</button><button type=\"button\" class=\"secondary danger\" data-delete-campaign=\""
-          + escapeHtml(campaign.id) + "\">Delete</button></div>";
-      }).join("");
+      cocList.innerHTML = state.cocScenarios.length ? state.cocScenarios.map((scenario) => {
+        const active = state.mode === "coc" && scenario.id === state.scenarioId ? "Active" : "Open";
+        return "<div class=\"item campaign-row\"><div><strong>" + escapeHtml(scenario.title)
+          + "</strong><p class=\"muted\">" + escapeHtml(scenario.id)
+          + " | " + escapeHtml(scenario.system_id || "coc7e")
+          + " | " + escapeHtml(scenario.location || "No location")
+          + " | " + escapeHtml(scenario.investigator_name || "Investigator")
+          + " | SAN " + escapeHtml(String(scenario.current_sanity))
+          + " | Clues " + escapeHtml(String(scenario.discovered_clue_count))
+          + "/" + escapeHtml(String(scenario.clue_count))
+          + "</p></div><button type=\"button\" class=\"secondary\" data-load-coc=\""
+          + escapeHtml(scenario.id) + "\">" + active + "</button></div>";
+      }).join("") : "<p class=\"muted\">No COC scenarios.</p>";
       document.querySelectorAll("[data-load-campaign]").forEach((button) => {
         button.addEventListener("click", () => loadCampaign(button.dataset.loadCampaign));
       });
       document.querySelectorAll("[data-delete-campaign]").forEach((button) => {
         button.addEventListener("click", () => deleteCampaign(button.dataset.deleteCampaign));
       });
+      document.querySelectorAll("[data-load-coc]").forEach((button) => {
+        button.addEventListener("click", () => loadCocScenario(button.dataset.loadCoc));
+      });
     }
 
     function clearCampaign() {
+      state.mode = "dnd";
       state.campaignId = "";
+      state.scenarioId = "";
       state.summary = null;
+      state.cocSummary = null;
       state.pendingSuggestedAction = "";
       state.logStatus = "";
       clearTranscriptView();
@@ -925,6 +1060,16 @@
       return lines.join("\n");
     }
 
+    function composeCocStatus() {
+      const summary = state.cocSummary || {};
+      const investigator = summary.investigator || {};
+      return "COC scenario " + state.scenarioId + " loaded.\n"
+        + "Investigator: " + (investigator.name || "unknown")
+        + " | SAN " + String(investigator.current_sanity ?? "?")
+        + " | Clues " + String(summary.discovered_clue_count ?? 0)
+        + "/" + String(summary.clue_count ?? 0) + ".";
+    }
+
     function composeLogStatus(data) {
       const returned = String(data.returned_count || 0);
       const filtered = String(data.filtered_count ?? data.event_count ?? 0);
@@ -934,13 +1079,14 @@
     }
 
     function setControls(enabled) {
-      sampleButton.disabled = !enabled;
+      const dndMode = state.mode === "dnd";
+      sampleButton.disabled = !enabled || !dndMode;
       refreshButton.disabled = !enabled;
       clearTranscriptButton.disabled = !enabled;
-      logVisibility.disabled = !enabled;
+      logVisibility.disabled = !enabled || !dndMode;
       actionInput.disabled = !enabled;
       sendButton.disabled = !enabled;
-      dmButton.disabled = !enabled;
+      dmButton.disabled = !enabled || !dndMode;
       updateSuggestedActionControl();
       document.querySelectorAll("[data-action]").forEach((button) => {
         button.disabled = !enabled;
@@ -948,7 +1094,7 @@
     }
 
     function updateSuggestedActionControl() {
-      runSuggestedButton.disabled = !state.campaignId || !state.pendingSuggestedAction;
+      runSuggestedButton.disabled = state.mode !== "dnd" || !state.campaignId || !state.pendingSuggestedAction;
     }
 
     function renderQuickActions(actions) {
@@ -959,7 +1105,7 @@
           + escapeHtml(actionLabel(action)) + "</button>";
       }).join("");
       bindQuickActions();
-      setControls(Boolean(state.campaignId));
+      setControls(Boolean(state.campaignId || state.scenarioId));
     }
 
     function bindQuickActions() {
