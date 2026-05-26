@@ -276,14 +276,17 @@ def create_coc_demo(state: APIState) -> dict:
 def coc_summary(state: APIState, scenario_id: str) -> dict:
     scenario = _coc_scenario_or_404(state, scenario_id)
     investigator = scenario.investigator
+    location = scenario.current_location()
     discovered = [clue for clue in scenario.clues if clue.discovered]
     return {
         "id": scenario.id,
         "title": scenario.title,
         "system": "Call of Cthulhu 7e",
         "system_id": "coc7e",
-        "location": scenario.location,
-        "description": scenario.description,
+        "location": location.name,
+        "location_id": scenario.current_location_id,
+        "description": location.description,
+        "exits": [{"name": name, "location_id": location_id} for name, location_id in location.exits.items()],
         "completed": scenario.completed,
         "investigator": {
             "name": investigator.name,
@@ -511,12 +514,14 @@ def _coc_scenario_or_404(state: APIState, scenario_id: str) -> COCScenario:
 
 
 def _coc_scenario_list_item(scenario: COCScenario) -> dict:
+    location = scenario.current_location()
     return {
         "id": scenario.id,
         "title": scenario.title,
         "system": "Call of Cthulhu 7e",
         "system_id": "coc7e",
-        "location": scenario.location,
+        "location": location.name,
+        "location_id": scenario.current_location_id,
         "completed": scenario.completed,
         "investigator_name": scenario.investigator.name,
         "current_sanity": scenario.investigator.current_sanity,
@@ -735,8 +740,12 @@ def _available_actions(campaign: Campaign, active_combat: dict | None) -> list[s
 
 def _coc_available_actions(scenario: COCScenario) -> list[str]:
     actions = ["look", "status", "sanity", "clues", "quit"]
+    location = scenario.current_location()
+    actions.extend(f"go {exit_name}" for exit_name in sorted(location.exits))
     for clue in scenario.clues:
         if clue.discovered:
+            continue
+        if scenario.current_location_id and clue.location_id not in {None, scenario.current_location_id}:
             continue
         actions.append(f"inspect {clue.title.lower()}")
         actions.append(f"inspect {clue.id.replace('_', ' ')}")

@@ -4,7 +4,7 @@ import json
 from pathlib import Path
 from uuid import uuid4
 
-from .coc_runtime import COCClue, COCScenario
+from .coc_runtime import COCClue, COCLocation, COCScenario
 from .core.coc7e import COC_CHARACTERISTICS, Investigator
 
 
@@ -59,6 +59,7 @@ def coc_scenario_to_dict(scenario: COCScenario) -> dict:
                 "id": clue.id,
                 "title": clue.title,
                 "text": clue.text,
+                "location_id": clue.location_id,
                 "skill": clue.skill,
                 "difficulty": clue.difficulty,
                 "sanity_loss": clue.sanity_loss,
@@ -66,6 +67,16 @@ def coc_scenario_to_dict(scenario: COCScenario) -> dict:
             }
             for clue in scenario.clues
         ],
+        "locations": [
+            {
+                "id": location.id,
+                "name": location.name,
+                "description": location.description,
+                "exits": dict(location.exits),
+            }
+            for location in scenario.locations.values()
+        ],
+        "current_location_id": scenario.current_location_id,
         "ending_text": scenario.ending_text,
         "completed": scenario.completed,
     }
@@ -83,6 +94,7 @@ def coc_scenario_from_dict(data: dict) -> COCScenario:
                 id=clue["id"],
                 title=clue["title"],
                 text=clue["text"],
+                location_id=clue.get("location_id"),
                 skill=clue.get("skill"),
                 difficulty=clue.get("difficulty", "regular"),
                 sanity_loss=clue.get("sanity_loss", 0),
@@ -90,6 +102,16 @@ def coc_scenario_from_dict(data: dict) -> COCScenario:
             )
             for clue in data.get("clues", [])
         ],
+        locations={
+            location["id"]: COCLocation(
+                id=location["id"],
+                name=location["name"],
+                description=location["description"],
+                exits=dict(location.get("exits", {})),
+            )
+            for location in data.get("locations", [])
+        },
+        current_location_id=data.get("current_location_id"),
         ending_text=data.get("ending_text", ""),
         completed=data.get("completed", False),
         id=data.get("id", None) or f"coc_{uuid4().hex[:12]}",
@@ -117,6 +139,13 @@ def validate_coc_scenario_data(data: dict) -> None:
     if "completed" in data and not isinstance(data["completed"], bool):
         raise COCScenarioValidationError("completed must be a boolean")
     _validate_investigator_data(_require_object(data, "investigator"))
+    location_ids = _validate_locations_data(data.get("locations", []))
+    current_location_id = data.get("current_location_id")
+    if current_location_id is not None:
+        if not isinstance(current_location_id, str) or not current_location_id.strip():
+            raise COCScenarioValidationError("current_location_id must be a non-empty string")
+        if current_location_id not in location_ids:
+            raise COCScenarioValidationError(f"current_location_id references unknown location: {current_location_id}")
     clues = data.get("clues", [])
     if not isinstance(clues, list):
         raise COCScenarioValidationError("clues must be a list")
@@ -124,7 +153,7 @@ def validate_coc_scenario_data(data: dict) -> None:
         raise COCScenarioValidationError("clues must contain at least one clue")
     seen_ids: set[str] = set()
     for index, clue in enumerate(clues):
-        _validate_clue_data(clue, index, seen_ids)
+        _validate_clue_data(clue, index, seen_ids, location_ids)
 
 
 def _validate_investigator_data(data: dict) -> None:
@@ -161,7 +190,37 @@ def _validate_investigator_data(data: dict) -> None:
             raise COCScenarioValidationError("investigator.conditions must contain non-empty strings")
 
 
-def _validate_clue_data(data: object, index: int, seen_ids: set[str]) -> None:
+def _validate_locations_data(locations: object) -> set[str]:
+    if not isinstance(locations, list):
+        raise COCScenarioValidationError("locations must be a list")
+    seen_ids: set[str] = set()
+    for index, location in enumerate(locations):
+        if not isinstance(location, dict):
+            raise COCScenarioValidationError(f"locations[{index}] must be an object")
+        location_id = _require_nonempty_string(location, "id", prefix=f"locations[{index}]")
+        if location_id in seen_ids:
+            raise COCScenarioValidationError(f"duplicate location id: {location_id}")
+        seen_ids.add(location_id)
+        _require_nonempty_string(location, "name", prefix=f"locations[{index}]")
+        _require_nonempty_string(location, "description", prefix=f"locations[{index}]")
+        exits = location.get("exits", {})
+        if not isinstance(exits, dict):
+            raise COCScenarioValidationError(f"locations[{index}].exits must be an object")
+        for exit_name, destination_id in exits.items():
+            if not isinstance(exit_name, str) or not exit_name.strip():
+                raise COCScenarioValidationError(f"locations[{index}].exits keys must be non-empty strings")
+            if not isinstance(destination_id, str) or not destination_id.strip():
+                raise COCScenarioValidationError(f"locations[{index}].exits.{exit_name} must be a non-empty string")
+    for index, location in enumerate(locations):
+        for exit_name, destination_id in location.get("exits", {}).items():
+            if destination_id not in seen_ids:
+                raise COCScenarioValidationError(
+                    f"locations[{index}].exits.{exit_name} references unknown location: {destination_id}"
+                )
+    return seen_ids
+
+
+def _validate_clue_data(data: object, index: int, seen_ids: set[str], location_ids: set[str]) -> None:
     if not isinstance(data, dict):
         raise COCScenarioValidationError(f"clues[{index}] must be an object")
     clue_id = _require_nonempty_string(data, "id", prefix=f"clues[{index}]")
@@ -172,6 +231,12 @@ def _validate_clue_data(data: object, index: int, seen_ids: set[str]) -> None:
     _require_nonempty_string(data, "text", prefix=f"clues[{index}]")
     if data.get("skill") is not None:
         _require_nonempty_string(data, "skill", prefix=f"clues[{index}]")
+    location_id = data.get("location_id")
+    if location_id is not None:
+        if not isinstance(location_id, str) or not location_id.strip():
+            raise COCScenarioValidationError(f"clues[{index}].location_id must be a non-empty string")
+        if location_ids and location_id not in location_ids:
+            raise COCScenarioValidationError(f"clues[{index}].location_id references unknown location: {location_id}")
     difficulty = data.get("difficulty", "regular")
     if difficulty not in {"regular", "hard", "extreme"}:
         raise COCScenarioValidationError(f"clues[{index}].difficulty must be regular, hard, or extreme")

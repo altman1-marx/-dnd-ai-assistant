@@ -12,10 +12,19 @@ class COCClue:
     id: str
     title: str
     text: str
+    location_id: str | None = None
     skill: str | None = None
     difficulty: str = "regular"
     sanity_loss: int = 0
     discovered: bool = False
+
+
+@dataclass
+class COCLocation:
+    id: str
+    name: str
+    description: str
+    exits: dict[str, str] = field(default_factory=dict)
 
 
 @dataclass
@@ -25,9 +34,16 @@ class COCScenario:
     description: str
     investigator: Investigator
     clues: list[COCClue] = field(default_factory=list)
+    locations: dict[str, COCLocation] = field(default_factory=dict)
+    current_location_id: str | None = None
     ending_text: str = ""
     completed: bool = False
     id: str = field(default_factory=lambda: f"coc_{uuid4().hex[:12]}")
+
+    def current_location(self) -> COCLocation:
+        if self.current_location_id and self.current_location_id in self.locations:
+            return self.locations[self.current_location_id]
+        return COCLocation(id="legacy", name=self.location, description=self.description)
 
 
 @dataclass
@@ -53,19 +69,34 @@ def create_sample_coc_scenario() -> COCScenario:
         skills={"library use": 55, "spot hidden": 45, "occult": 40, "psychology": 35},
         luck=50,
     )
+    locations = {
+        "study": COCLocation(
+            id="study",
+            name="Briar House Study",
+            description=(
+                "Rain presses against the study windows. A locked writing desk, a soot-stained "
+                "hearth, and a portrait with scratched-out eyes wait in the lamplight."
+            ),
+            exits={"cellar": "cellar"},
+        ),
+        "cellar": COCLocation(
+            id="cellar",
+            name="Briar House Cellar",
+            description="Wet stone steps descend to a cramped cellar where a brass lantern hangs cold and unlit.",
+            exits={"study": "study"},
+        ),
+    }
     return COCScenario(
         title="The Lantern Under Briar House",
         location="Briar House Study",
-        description=(
-            "Rain presses against the study windows. A locked writing desk, a soot-stained "
-            "hearth, and a portrait with scratched-out eyes wait in the lamplight."
-        ),
+        description=locations["study"].description,
         investigator=investigator,
         clues=[
             COCClue(
                 id="desk_journal",
                 title="Waterlogged Journal",
                 text="The journal names a lantern buried under the house and repeats the phrase 'do not trim the wick'.",
+                location_id="study",
                 skill="library use",
                 difficulty="regular",
             ),
@@ -73,6 +104,7 @@ def create_sample_coc_scenario() -> COCScenario:
                 id="hearth_symbol",
                 title="Ashen Spiral",
                 text="The ash forms a spiral that seems to bend toward your hand. The shape is older than the house.",
+                location_id="study",
                 skill="spot hidden",
                 difficulty="hard",
                 sanity_loss=1,
@@ -81,10 +113,21 @@ def create_sample_coc_scenario() -> COCScenario:
                 id="portrait_truth",
                 title="Scratched Portrait",
                 text="Behind the torn canvas is a narrow crawlspace descending into wet stone.",
+                location_id="study",
+                skill=None,
+                sanity_loss=2,
+            ),
+            COCClue(
+                id="lantern_wick",
+                title="Black Wick",
+                text="The lantern wick is braided from black hair and sea grass. It twitches when named.",
+                location_id="cellar",
                 skill=None,
                 sanity_loss=2,
             ),
         ],
+        locations=locations,
+        current_location_id="study",
         ending_text="With enough clues gathered, the cellar route is clear. The lantern waits below.",
     )
 
@@ -92,9 +135,12 @@ def create_sample_coc_scenario() -> COCScenario:
 def describe_coc_scene(runtime: COCRuntime) -> None:
     scenario = runtime.scenario
     investigator = scenario.investigator
+    location = scenario.current_location()
     runtime.narrate(f"Keeper: {scenario.title}")
-    runtime.narrate(f"Keeper: {scenario.location}")
-    runtime.narrate(f"Keeper: {scenario.description}")
+    runtime.narrate(f"Keeper: {location.name}")
+    runtime.narrate(f"Keeper: {location.description}")
+    if location.exits:
+        runtime.narrate(f"Keeper: Exits: {', '.join(sorted(location.exits))}.")
     runtime.narrate(
         f"Keeper: Investigator: {investigator.name}, HP {investigator.current_hp}/{investigator.max_hp}, "
         f"SAN {investigator.current_sanity}/{investigator.max_sanity}, Luck {investigator.luck}."
@@ -110,7 +156,7 @@ def handle_coc_action(runtime: COCRuntime, action: str) -> bool:
         runtime.narrate("Keeper: The investigation pauses here.")
         return False
     if normalized in {"help", "?"}:
-        runtime.narrate("Keeper: Actions: look, status, inspect <target>, check <skill>, sanity, clues, quit.")
+        runtime.narrate("Keeper: Actions: look, status, go <exit>, inspect <target>, check <skill>, sanity, clues, quit.")
         return True
     if normalized == "status":
         _describe_coc_status(runtime)
@@ -128,6 +174,9 @@ def handle_coc_action(runtime: COCRuntime, action: str) -> bool:
     if normalized == "clues":
         _describe_discovered_clues(runtime)
         return True
+    if normalized.startswith("go "):
+        _move_coc_location(runtime, normalized[len("go ") :].strip())
+        return True
     if normalized.startswith("inspect "):
         _inspect_coc_target(runtime, normalized[len("inspect ") :].strip())
         return True
@@ -139,7 +188,7 @@ def handle_coc_action(runtime: COCRuntime, action: str) -> bool:
 
 
 def _inspect_coc_target(runtime: COCRuntime, target: str) -> None:
-    clue = _match_clue(runtime.scenario.clues, target)
+    clue = _match_clue(_visible_clues(runtime.scenario), target)
     if clue is None:
         runtime.narrate("Keeper: You find no clear lead there.")
         return
@@ -197,16 +246,48 @@ def _describe_discovered_clues(runtime: COCRuntime) -> None:
 
 def _describe_coc_status(runtime: COCRuntime) -> None:
     investigator = runtime.scenario.investigator
+    location = runtime.scenario.current_location()
     discovered = sum(1 for clue in runtime.scenario.clues if clue.discovered)
     total = len(runtime.scenario.clues)
     runtime.narrate(
         f"Keeper: {investigator.name} ({investigator.occupation}) - "
+        f"location {location.name}, "
         f"HP {investigator.current_hp}/{investigator.max_hp}, "
         f"MP {investigator.current_mp}/{investigator.max_mp}, "
         f"SAN {investigator.current_sanity}/{investigator.max_sanity}, "
         f"Luck {investigator.luck}, clues {discovered}/{total}, "
         f"conditions: {', '.join(sorted(investigator.conditions)) or 'none'}."
     )
+
+
+def _move_coc_location(runtime: COCRuntime, target: str) -> None:
+    scenario = runtime.scenario
+    location = scenario.current_location()
+    normalized = target.strip().lower()
+    destination_id = location.exits.get(normalized)
+    if destination_id is None:
+        for exit_name, exit_destination in location.exits.items():
+            if normalized in {exit_name.lower(), exit_destination.lower()}:
+                destination_id = exit_destination
+                break
+    if destination_id is None or destination_id not in scenario.locations:
+        runtime.narrate("Keeper: You cannot reach that place from here.")
+        return
+    scenario.current_location_id = destination_id
+    destination = scenario.current_location()
+    scenario.location = destination.name
+    scenario.description = destination.description
+    runtime.narrate(f"Keeper: You move to {destination.name}.")
+    runtime.narrate(f"Keeper: {destination.description}")
+    if destination.exits:
+        runtime.narrate(f"Keeper: Exits: {', '.join(sorted(destination.exits))}.")
+
+
+def _visible_clues(scenario: COCScenario) -> list[COCClue]:
+    current_location_id = scenario.current_location_id
+    if not current_location_id:
+        return scenario.clues
+    return [clue for clue in scenario.clues if clue.location_id in {None, current_location_id}]
 
 
 def _match_clue(clues: list[COCClue], target: str) -> COCClue | None:

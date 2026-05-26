@@ -27,6 +27,8 @@ class COCSerializationTests(unittest.TestCase):
         self.assertEqual(restored.investigator.current_sanity, 57)
         self.assertTrue(restored.clues[0].discovered)
         self.assertTrue(restored.completed)
+        self.assertEqual(restored.current_location_id, "study")
+        self.assertIn("cellar", restored.locations["study"].exits)
 
     def test_coc_scenario_save_and_load_file(self) -> None:
         scenario = create_sample_coc_scenario()
@@ -84,6 +86,20 @@ class COCSerializationTests(unittest.TestCase):
         data["clues"][0]["difficulty"] = "impossible"
 
         with self.assertRaisesRegex(COCScenarioValidationError, "difficulty"):
+            validate_coc_scenario_data(data)
+
+    def test_validate_coc_scenario_data_rejects_unknown_location_references(self) -> None:
+        data = coc_scenario_to_dict(create_sample_coc_scenario())
+        data["clues"][0]["location_id"] = "attic"
+
+        with self.assertRaisesRegex(COCScenarioValidationError, "unknown location"):
+            validate_coc_scenario_data(data)
+
+    def test_validate_coc_scenario_data_rejects_bad_exit_reference(self) -> None:
+        data = coc_scenario_to_dict(create_sample_coc_scenario())
+        data["locations"][0]["exits"]["attic"] = "attic"
+
+        with self.assertRaisesRegex(COCScenarioValidationError, "unknown location"):
             validate_coc_scenario_data(data)
 
 

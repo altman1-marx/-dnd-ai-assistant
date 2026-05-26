@@ -13,6 +13,7 @@ class COCRuntimeTests(unittest.TestCase):
 
         self.assertIn("The Lantern Under Briar House", output)
         self.assertIn("Briar House Study", output)
+        self.assertIn("Exits: cellar", output)
         self.assertIn("SAN 60/60", output)
 
     def test_inspect_reveals_obvious_clue_and_applies_sanity_loss(self) -> None:
@@ -49,6 +50,10 @@ class COCRuntimeTests(unittest.TestCase):
         handle_coc_action(runtime, "inspect hearth")
         runtime.flush()
         handle_coc_action(runtime, "inspect portrait")
+        runtime.flush()
+        handle_coc_action(runtime, "go cellar")
+        runtime.flush()
+        handle_coc_action(runtime, "inspect lantern")
         output = runtime.flush()
 
         self.assertIn("The lantern waits below", output)
@@ -75,7 +80,28 @@ class COCRuntimeTests(unittest.TestCase):
         self.assertIn("HP 11/11", output)
         self.assertIn("MP 12/12", output)
         self.assertIn("SAN 60/60", output)
-        self.assertIn("clues 1/3", output)
+        self.assertIn("location Briar House Study", output)
+        self.assertIn("clues 1/4", output)
+
+    def test_go_moves_between_locations_and_reveals_local_clues(self) -> None:
+        scenario = create_sample_coc_scenario()
+        runtime = COCRuntime(scenario)
+
+        handle_coc_action(runtime, "go cellar")
+        handle_coc_action(runtime, "inspect lantern")
+        output = runtime.flush()
+
+        self.assertEqual(scenario.current_location_id, "cellar")
+        self.assertIn("You move to Briar House Cellar", output)
+        self.assertIn("Clue found - Black Wick", output)
+
+    def test_inspect_cannot_find_clue_in_other_location(self) -> None:
+        runtime = COCRuntime(create_sample_coc_scenario())
+
+        handle_coc_action(runtime, "inspect lantern")
+        output = runtime.flush()
+
+        self.assertIn("no clear lead", output)
 
 
 if __name__ == "__main__":
