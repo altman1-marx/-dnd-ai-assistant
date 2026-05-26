@@ -47,6 +47,14 @@ CLI 试玩内置场景：
 python -m dnd_ai_assistant.demo play-coc --action "look" --action "inspect portrait" --action "status"
 ```
 
+生成一个可导入、可继续改写的 COC 剧本模板：
+
+```powershell
+python -m dnd_ai_assistant.demo new-coc-scenario `
+  --output scenarios\briar_house.json `
+  --title "The Lantern Under Briar House"
+```
+
 从 JSON 读取并保存调查进度：
 
 ```powershell
