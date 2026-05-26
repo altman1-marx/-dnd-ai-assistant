@@ -55,6 +55,12 @@ python -m dnd_ai_assistant.demo new-coc-scenario `
   --title "The Lantern Under Briar House"
 ```
 
+校验 COC 剧本 JSON：
+
+```powershell
+python -m dnd_ai_assistant.demo validate-coc-scenario scenarios\briar_house.json
+```
+
 从 JSON 读取并保存调查进度：
 
 ```powershell
