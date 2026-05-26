@@ -37,6 +37,39 @@ dnd-ai-assistant --help
 python -m dnd_ai_assistant.demo quickstart
 ```
 
+## Call of Cthulhu 7e 快速试玩
+
+当前已经有一个零依赖的 COC 调查原型，重点是先让单人调查流程跑起来：调查员属性、百分骰检定、理智损失、线索发现、完成状态、JSON 存档和 Web/API 入口。
+
+CLI 试玩内置场景：
+
+```powershell
+python -m dnd_ai_assistant.demo play-coc --action "look" --action "inspect portrait" --action "status"
+```
+
+从 JSON 读取并保存调查进度：
+
+```powershell
+python -m dnd_ai_assistant.demo play-coc `
+  --scenario scenarios\briar_house.json `
+  --action "inspect hearth" `
+  --save-state output\briar_house_state.json
+```
+
+常用 COC 动作：
+
+```text
+look
+status
+inspect portrait
+inspect journal
+inspect hearth
+check library use
+sanity
+clues
+quit
+```
+
 ## 生成与导入冒险
 
 创建一个冒险模板：
@@ -261,6 +294,11 @@ POST /campaigns/{campaign_id}/sample-character
 POST /campaigns/{campaign_id}/actions
 POST /campaigns/{campaign_id}/dm-suggestion
 DELETE /campaigns/{campaign_id}
+GET  /coc
+POST /coc/import
+POST /coc/demo
+GET  /coc/{scenario_id}/summary
+POST /coc/{scenario_id}/actions
 POST /rules/search
 ```
 
@@ -318,6 +356,40 @@ GET /campaigns
 DELETE /campaigns/{campaign_id}
 ```
 
+COC 场景 API：
+
+```text
+GET  /coc
+POST /coc/import
+POST /coc/demo
+GET  /coc/{scenario_id}/summary
+POST /coc/{scenario_id}/actions
+```
+
+导入 COC 场景时提交：
+
+```json
+{
+  "scenario": {
+    "title": "The Lantern Under Briar House",
+    "location": "Briar House Study",
+    "description": "Rain presses against the study windows.",
+    "investigator": {
+      "name": "Eleanor Vale",
+      "occupation": "Antiquarian",
+      "characteristics": { "str": 45, "con": 55, "siz": 60, "dex": 50, "app": 55, "int": 70, "pow": 60, "edu": 75 },
+      "skills": { "library use": 55, "spot hidden": 45, "occult": 40 }
+    },
+    "clues": [
+      { "id": "portrait_truth", "title": "Scratched Portrait", "text": "A crawlspace descends into wet stone.", "sanity_loss": 2 }
+    ],
+    "ending_text": "The route below is clear."
+  }
+}
+```
+
+`GET /coc/{scenario_id}/summary` 会返回调查员 HP/MP/SAN/Luck、已发现线索、可用动作和 `completed` 完成状态。`POST /coc/{scenario_id}/actions` 使用和 CLI 相同的动作文本，例如 `inspect portrait`。
+
 这层 API 目前是轻量桥接层，目标是先稳定前端需要的交互契约；后续可以替换为 FastAPI 或其他 Web 框架。
 
 如果希望 API 重启后保留 campaign，可加 `--state-dir .dnd_ai\campaigns`。导入、添加示例角色、执行 runtime action 和删除 campaign 都会同步到这个本地目录。
@@ -369,8 +441,9 @@ python -m dnd_ai_assistant.demo serve-api `
 3. 点击 `Start Demo`，或选择一个 adventure JSON 文件并导入。
 4. 如果是手动导入，点击 `Add Sample Character`，然后用动作栏或输入框推进冒险。
 5. 可先点击 `DM Suggest` 生成叙述/规则建议，再点击 `Run Suggested` 执行同一条 runtime action。
+6. COC 模式可点击 `Start COC Demo`，或选择一个 COC scenario JSON 后点击 `Import COC Scenario`；随后用 `look`、`inspect portrait`、`status` 等动作推进调查。
 
-当前页面支持 API 健康检查、列出/删除内存中的 campaign、内置 demo adventure、导入冒险、添加示例角色、查看摘要、加载和按可见性过滤 session log、发送 runtime action、AI DM 建议、执行刚建议过的动作、规则搜索和结构化 transcript。它是前端骨架，不需要 Node.js 或构建步骤。
+当前页面支持 API 健康检查、列出/删除内存中的 campaign、内置 demo adventure、导入冒险、添加示例角色、查看摘要、加载和按可见性过滤 session log、发送 runtime action、AI DM 建议、执行刚建议过的动作、规则搜索、COC demo/import/list/summary/action 和结构化 transcript。它是前端骨架，不需要 Node.js 或构建步骤。
 
 ## 近期路线
 
