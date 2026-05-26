@@ -830,6 +830,7 @@
         metric("Scenario", summary.title),
         metric("System", "Call of Cthulhu 7e"),
         metric("Location", summary.location),
+        metric("Status", summary.completed ? "Completed" : "In progress"),
         metric("Clues", summary.discovered_clue_count + "/" + summary.clue_count + " discovered"),
         metric("Available Actions", (summary.available_actions || []).length)
       ].join("");
@@ -877,6 +878,7 @@
           + " | " + escapeHtml(scenario.location || "No location")
           + " | " + escapeHtml(scenario.investigator_name || "Investigator")
           + " | SAN " + escapeHtml(String(scenario.current_sanity))
+          + " | " + escapeHtml(scenario.completed ? "completed" : "active")
           + " | Clues " + escapeHtml(String(scenario.discovered_clue_count))
           + "/" + escapeHtml(String(scenario.clue_count))
           + "</p></div><button type=\"button\" class=\"secondary\" data-load-coc=\""
@@ -1092,6 +1094,7 @@
       return "COC scenario " + state.scenarioId + " loaded.\n"
         + "Investigator: " + (investigator.name || "unknown")
         + " | SAN " + String(investigator.current_sanity ?? "?")
+        + " | " + (summary.completed ? "Completed" : "In progress")
         + " | Clues " + String(summary.discovered_clue_count ?? 0)
         + "/" + String(summary.clue_count ?? 0) + ".";
     }

@@ -90,6 +90,8 @@ class WebUITests(unittest.TestCase):
         self.assertIn("cocScenarios", html)
         self.assertIn("scenarioId", html)
         self.assertIn("system_id", html)
+        self.assertIn("summary.completed", html)
+        self.assertIn("scenario.completed", html)
         self.assertIn("checkHealth();", html)
         self.assertIn("session_event_count", html)
         self.assertIn("String(value ?? \"\")", html)

@@ -26,6 +26,7 @@ class COCScenario:
     investigator: Investigator
     clues: list[COCClue] = field(default_factory=list)
     ending_text: str = ""
+    completed: bool = False
     id: str = field(default_factory=lambda: f"coc_{uuid4().hex[:12]}")
 
 
@@ -181,6 +182,7 @@ def _reveal_coc_clue(runtime: COCRuntime, clue: COCClue) -> None:
         runtime.scenario.investigator.lose_sanity(clue.sanity_loss)
         runtime.narrate(f"Keeper: SAN loss {clue.sanity_loss}.")
     if all(clue.discovered for clue in runtime.scenario.clues):
+        runtime.scenario.completed = True
         runtime.narrate(f"Keeper: {runtime.scenario.ending_text}")
 
 

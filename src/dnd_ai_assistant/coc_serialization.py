@@ -63,6 +63,7 @@ def coc_scenario_to_dict(scenario: COCScenario) -> dict:
             for clue in scenario.clues
         ],
         "ending_text": scenario.ending_text,
+        "completed": scenario.completed,
     }
 
 
@@ -85,6 +86,7 @@ def coc_scenario_from_dict(data: dict) -> COCScenario:
             for clue in data.get("clues", [])
         ],
         ending_text=data.get("ending_text", ""),
+        completed=data.get("completed", False),
         id=data.get("id", None) or f"coc_{uuid4().hex[:12]}",
     )
 

@@ -284,6 +284,7 @@ def coc_summary(state: APIState, scenario_id: str) -> dict:
         "system_id": "coc7e",
         "location": scenario.location,
         "description": scenario.description,
+        "completed": scenario.completed,
         "investigator": {
             "name": investigator.name,
             "occupation": investigator.occupation,
@@ -516,6 +517,7 @@ def _coc_scenario_list_item(scenario: COCScenario) -> dict:
         "system": "Call of Cthulhu 7e",
         "system_id": "coc7e",
         "location": scenario.location,
+        "completed": scenario.completed,
         "investigator_name": scenario.investigator.name,
         "current_sanity": scenario.investigator.current_sanity,
         "max_sanity": scenario.investigator.max_sanity,

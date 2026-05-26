@@ -52,6 +52,7 @@ class COCRuntimeTests(unittest.TestCase):
         output = runtime.flush()
 
         self.assertIn("The lantern waits below", output)
+        self.assertTrue(scenario.completed)
 
     def test_help_and_quit(self) -> None:
         runtime = COCRuntime(create_sample_coc_scenario())

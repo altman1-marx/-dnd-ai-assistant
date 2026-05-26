@@ -11,6 +11,7 @@ class COCSerializationTests(unittest.TestCase):
         scenario = create_sample_coc_scenario()
         scenario.clues[0].discovered = True
         scenario.investigator.lose_sanity(3)
+        scenario.completed = True
 
         restored = coc_scenario_from_dict(coc_scenario_to_dict(scenario))
 
@@ -18,6 +19,7 @@ class COCSerializationTests(unittest.TestCase):
         self.assertEqual(restored.investigator.name, "Eleanor Vale")
         self.assertEqual(restored.investigator.current_sanity, 57)
         self.assertTrue(restored.clues[0].discovered)
+        self.assertTrue(restored.completed)
 
     def test_coc_scenario_save_and_load_file(self) -> None:
         scenario = create_sample_coc_scenario()

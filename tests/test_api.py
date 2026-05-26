@@ -109,6 +109,7 @@ class APITests(unittest.TestCase):
 
         self.assertIn(response["scenario_id"], state.coc_scenarios)
         self.assertEqual(summary["system_id"], "coc7e")
+        self.assertFalse(summary["completed"])
         self.assertEqual(summary["investigator"]["name"], "Eleanor Vale")
         self.assertEqual(summary["clue_count"], 3)
         self.assertIn("inspect scratched portrait", summary["available_actions"])
@@ -173,6 +174,7 @@ class APITests(unittest.TestCase):
         self.assertEqual(response["scenarios"][0]["location"], "Briar House Study")
         self.assertEqual(response["scenarios"][0]["investigator_name"], "Eleanor Vale")
         self.assertEqual(response["scenarios"][0]["current_sanity"], 58)
+        self.assertFalse(response["scenarios"][0]["completed"])
         self.assertEqual(response["scenarios"][0]["discovered_clue_count"], 1)
         self.assertEqual(response["scenarios"][0]["clue_count"], 3)
 
