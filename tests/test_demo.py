@@ -7,7 +7,16 @@ from unittest.mock import patch
 from dnd_ai_assistant.adventure import AdventureDefinition, create_adventure_template
 from dnd_ai_assistant.adventure_importer import campaign_from_adventure
 from dnd_ai_assistant.core.serialization import load_campaign, save_campaign
-from dnd_ai_assistant.demo import main, run_combat_demo, run_initiative_demo, run_quickstart, run_scripted_coc, run_scripted_scene, summarize_state
+from dnd_ai_assistant.demo import (
+    main,
+    run_combat_demo,
+    run_initiative_demo,
+    run_quickstart,
+    run_scripted_coc,
+    run_scripted_scene,
+    summarize_state,
+    write_coc_scenario_template,
+)
 from dnd_ai_assistant.rules_corpus import RuleChunk, RuleCorpus
 from dnd_ai_assistant.scenario import create_scene_template
 
@@ -51,6 +60,38 @@ class DemoTests(unittest.TestCase):
         self.assertTrue(saved)
         self.assertIn("Saved COC scenario state", first)
         self.assertIn("Scratched Portrait", second)
+
+    def test_write_coc_scenario_template_creates_playable_json(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "scenarios" / "coc.json"
+            write_coc_scenario_template(path, "The Glass Lake")
+            output = run_scripted_coc(seed=1, actions=["look", "talk ember"], scenario_path=path)
+            raw = json.loads(path.read_text(encoding="utf-8"))
+
+        self.assertEqual(raw["title"], "The Glass Lake")
+        self.assertIn("locations", raw)
+        self.assertIn("npcs", raw)
+        self.assertIn("Mrs. Ember", output)
+
+    def test_new_coc_scenario_cli_writes_template(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "coc.json"
+            argv = [
+                "dnd-ai-assistant",
+                "new-coc-scenario",
+                "--output",
+                str(path),
+                "--title",
+                "The Glass Lake",
+            ]
+
+            with patch("sys.argv", argv), patch("builtins.print") as mocked_print:
+                exit_code = main()
+            raw = json.loads(path.read_text(encoding="utf-8"))
+
+        self.assertEqual(exit_code, 0)
+        self.assertEqual(raw["title"], "The Glass Lake")
+        self.assertIn("COC scenario template", mocked_print.call_args.args[0])
 
     def test_stairway_requires_clue_first(self) -> None:
         output = run_scripted_scene(seed=1, actions=["open stairway"])

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 import random
 import sys
 from pathlib import Path
@@ -15,7 +16,7 @@ from .ai_dm import generate_dm_suggestion
 from .ai_provider import build_provider
 from .api import run_server
 from .coc_runtime import COCRuntime, create_sample_coc_scenario, describe_coc_scene, handle_coc_action
-from .coc_serialization import load_coc_scenario, save_coc_scenario
+from .coc_serialization import coc_scenario_to_dict, load_coc_scenario, save_coc_scenario
 from .core.dnd5e import RollMode
 from .core.initiative import Combatant, InitiativeTracker
 from .core.serialization import load_campaign, save_campaign
@@ -99,6 +100,14 @@ def run_scripted_coc(
         save_coc_scenario(scenario, save_state_path)
         runtime.narrate(f"Keeper: Saved COC scenario state to {save_state_path}.")
     return runtime.flush()
+
+
+def write_coc_scenario_template(path: str | Path, title: str = "The Lantern Under Briar House") -> None:
+    scenario = create_sample_coc_scenario()
+    scenario.title = title
+    output_path = Path(path)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    output_path.write_text(json.dumps(coc_scenario_to_dict(scenario), ensure_ascii=False, indent=2), encoding="utf-8")
 
 
 def run_interactive_coc(
@@ -370,6 +379,10 @@ def main() -> int:
         help="Run a non-interactive action. Repeat this option to script the investigation.",
     )
 
+    new_coc = subparsers.add_parser("new-coc-scenario", help="Write a starter Call of Cthulhu scenario JSON.")
+    new_coc.add_argument("--output", required=True, help="Where to write the COC scenario JSON file.")
+    new_coc.add_argument("--title", default="The Lantern Under Briar House", help="Scenario title for the template.")
+
     validate = subparsers.add_parser("validate-scene", help="Validate a scene JSON file.")
     validate.add_argument("--scene", default=None, help="Path to a scene JSON file. Defaults to bundled old_chapel.")
 
@@ -520,6 +533,10 @@ def main() -> int:
             print(run_scripted_coc(args.seed, args.action, args.scenario, args.save_state))
             return 0
         return run_interactive_coc(args.seed, args.scenario, args.save_state)
+    if args.command == "new-coc-scenario":
+        write_coc_scenario_template(args.output, args.title)
+        print(f"Wrote COC scenario template: {args.output}")
+        return 0
     if args.command == "validate-scene":
         scene = validate_scene_file(args.scene)
         scene_path = args.scene or DEFAULT_SCENE_PATH
