@@ -93,6 +93,21 @@ class DemoTests(unittest.TestCase):
         self.assertEqual(raw["title"], "The Glass Lake")
         self.assertIn("COC scenario template", mocked_print.call_args.args[0])
 
+    def test_validate_coc_scenario_cli_prints_summary(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "coc.json"
+            write_coc_scenario_template(path, "The Glass Lake")
+            argv = ["dnd-ai-assistant", "validate-coc-scenario", str(path)]
+
+            with patch("sys.argv", argv), patch("builtins.print") as mocked_print:
+                exit_code = main()
+
+        printed = "\n".join(str(call.args[0]) if call.args else "" for call in mocked_print.call_args_list)
+        self.assertEqual(exit_code, 0)
+        self.assertIn("COC scenario is valid", printed)
+        self.assertIn("The Glass Lake", printed)
+        self.assertIn("Locations: 2", printed)
+
     def test_stairway_requires_clue_first(self) -> None:
         output = run_scripted_scene(seed=1, actions=["open stairway"])
 

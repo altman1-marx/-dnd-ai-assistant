@@ -383,6 +383,9 @@ def main() -> int:
     new_coc.add_argument("--output", required=True, help="Where to write the COC scenario JSON file.")
     new_coc.add_argument("--title", default="The Lantern Under Briar House", help="Scenario title for the template.")
 
+    validate_coc = subparsers.add_parser("validate-coc-scenario", help="Validate a Call of Cthulhu scenario JSON file.")
+    validate_coc.add_argument("path", help="Path to a COC scenario JSON file.")
+
     validate = subparsers.add_parser("validate-scene", help="Validate a scene JSON file.")
     validate.add_argument("--scene", default=None, help="Path to a scene JSON file. Defaults to bundled old_chapel.")
 
@@ -536,6 +539,14 @@ def main() -> int:
     if args.command == "new-coc-scenario":
         write_coc_scenario_template(args.output, args.title)
         print(f"Wrote COC scenario template: {args.output}")
+        return 0
+    if args.command == "validate-coc-scenario":
+        scenario = load_coc_scenario(args.path)
+        print(f"COC scenario is valid: {args.path}")
+        print(f"Title: {scenario.title}")
+        print(f"Locations: {len(scenario.locations)}")
+        print(f"NPCs: {len(scenario.npcs)}")
+        print(f"Clues: {len(scenario.clues)}")
         return 0
     if args.command == "validate-scene":
         scene = validate_scene_file(args.scene)
