@@ -30,6 +30,15 @@ class COCSerializationTests(unittest.TestCase):
         self.assertEqual(restored.title, scenario.title)
         self.assertEqual(restored.investigator.skill_value("spot hidden"), 45)
 
+    def test_coc_scenario_without_id_gets_generated_id(self) -> None:
+        data = coc_scenario_to_dict(create_sample_coc_scenario())
+        del data["id"]
+
+        restored = coc_scenario_from_dict(data)
+
+        self.assertTrue(restored.id.startswith("coc_"))
+        self.assertNotEqual(restored.id, "coc_legacy")
+
 
 if __name__ == "__main__":
     unittest.main()

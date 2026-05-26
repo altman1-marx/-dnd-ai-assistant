@@ -326,6 +326,8 @@
 
       <section class="stack" aria-labelledby="coc-title">
         <h2 id="coc-title">Call of Cthulhu</h2>
+        <input id="cocFile" type="file" accept="application/json,.json">
+        <button id="cocImportButton" type="button">Import COC Scenario</button>
         <button id="cocDemoButton" type="button" class="secondary">Start COC Demo</button>
         <div id="cocList" class="campaign-list"></div>
       </section>
@@ -413,6 +415,7 @@
 
     const apiBase = document.getElementById("apiBase");
     const adventureFile = document.getElementById("adventureFile");
+    const cocFile = document.getElementById("cocFile");
     const statusBox = document.getElementById("status");
     const transcript = document.getElementById("transcript");
     const campaignList = document.getElementById("campaignList");
@@ -436,6 +439,7 @@
     document.getElementById("healthButton").addEventListener("click", checkHealth);
     document.getElementById("importButton").addEventListener("click", importAdventure);
     document.getElementById("demoButton").addEventListener("click", loadDemoAdventure);
+    document.getElementById("cocImportButton").addEventListener("click", importCocScenario);
     document.getElementById("cocDemoButton").addEventListener("click", loadCocDemo);
     document.getElementById("campaignsButton").addEventListener("click", refreshCampaigns);
     sampleButton.addEventListener("click", addSampleCharacter);
@@ -523,6 +527,28 @@
         state.scenarioId = data.scenario_id;
         state.campaignId = "";
         appendTranscriptMessage("System", "Started COC scenario " + data.scenario.title + ".");
+        setControls(true);
+        await refreshCampaigns();
+        await refreshCocView();
+      } catch (error) {
+        setStatus(error.message, true);
+      }
+    }
+
+    async function importCocScenario() {
+      const file = cocFile.files[0];
+      if (!file) {
+        setStatus("Choose a COC scenario JSON file first.", true);
+        return;
+      }
+      try {
+        const scenario = JSON.parse(await file.text());
+        const data = await api("POST", "/coc/import", { scenario });
+        clearTranscriptView();
+        state.mode = "coc";
+        state.scenarioId = data.scenario_id;
+        state.campaignId = "";
+        appendTranscriptMessage("System", "Imported COC scenario " + data.scenario.title + ".");
         setControls(true);
         await refreshCampaigns();
         await refreshCocView();

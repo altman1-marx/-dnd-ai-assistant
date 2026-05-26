@@ -23,6 +23,7 @@ from dnd_ai_assistant.api import (
     delete_campaign,
     health_status,
     import_adventure,
+    import_coc_scenario,
     list_campaigns,
     list_coc_scenarios,
     load_campaigns_from_state_dir,
@@ -33,6 +34,8 @@ from dnd_ai_assistant.api import (
     suggest_dm_turn,
 )
 from dnd_ai_assistant.ai_provider import MockProvider
+from dnd_ai_assistant.coc_runtime import create_sample_coc_scenario
+from dnd_ai_assistant.coc_serialization import coc_scenario_to_dict
 from dnd_ai_assistant.core.campaign import SessionEvent, Visibility
 from dnd_ai_assistant.core.serialization import load_campaign
 from dnd_ai_assistant.rules_corpus import RuleChunk, RuleCorpus
@@ -109,6 +112,25 @@ class APITests(unittest.TestCase):
         self.assertEqual(summary["investigator"]["name"], "Eleanor Vale")
         self.assertEqual(summary["clue_count"], 3)
         self.assertIn("inspect scratched portrait", summary["available_actions"])
+
+    def test_import_coc_scenario_stores_scenario(self) -> None:
+        state = APIState()
+        scenario_data = coc_scenario_to_dict(create_sample_coc_scenario())
+        scenario_data["title"] = "The Glass Lake"
+        del scenario_data["id"]
+
+        response = import_coc_scenario(state, scenario_data)
+
+        self.assertIn(response["scenario_id"], state.coc_scenarios)
+        self.assertTrue(response["scenario_id"].startswith("coc_"))
+        self.assertEqual(response["scenario"]["title"], "The Glass Lake")
+
+    def test_import_coc_scenario_reports_invalid_body(self) -> None:
+        with self.assertRaises(APIError) as context:
+            import_coc_scenario(APIState(), {"title": "Incomplete"})
+
+        self.assertEqual(context.exception.status, 400)
+        self.assertEqual(context.exception.code, "invalid_coc_scenario")
 
     def test_run_coc_action_updates_scenario(self) -> None:
         state = APIState()
@@ -651,12 +673,16 @@ class APITests(unittest.TestCase):
     def test_route_request_supports_coc_demo_summary_and_action(self) -> None:
         state = APIState()
 
+        scenario_data = coc_scenario_to_dict(create_sample_coc_scenario())
+        del scenario_data["id"]
+        imported = route_request(state, "POST", "/coc/import", {"scenario": scenario_data})
         demo = route_request(state, "POST", "/coc/demo", {})
         scenarios = route_request(state, "GET", "/coc", {})
         summary = route_request(state, "GET", f"/coc/{demo['scenario_id']}/summary", {})
         action = route_request(state, "POST", f"/coc/{demo['scenario_id']}/actions", {"action": "inspect portrait"})
 
-        self.assertEqual(scenarios["scenarios"][0]["id"], demo["scenario_id"])
+        self.assertEqual(scenarios["scenarios"][0]["id"], imported["scenario_id"])
+        self.assertEqual(scenarios["scenarios"][1]["id"], demo["scenario_id"])
         self.assertEqual(summary["system_id"], "coc7e")
         self.assertIn("Scratched Portrait", action["transcript"])
 
@@ -665,6 +691,10 @@ class APITests(unittest.TestCase):
             route_request(APIState(), "POST", "/campaigns/import", {})
 
         self.assertEqual(context.exception.status, 400)
+        with self.assertRaises(APIError) as coc_context:
+            route_request(APIState(), "POST", "/coc/import", {})
+
+        self.assertEqual(coc_context.exception.status, 400)
 
     def test_route_request_reports_invalid_numeric_body_fields(self) -> None:
         state = APIState(rules_corpus=self._rules_corpus())

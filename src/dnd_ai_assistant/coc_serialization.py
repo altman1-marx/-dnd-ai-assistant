@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from uuid import uuid4
 
 from .coc_runtime import COCClue, COCScenario
 from .core.coc7e import Investigator
@@ -84,7 +85,7 @@ def coc_scenario_from_dict(data: dict) -> COCScenario:
             for clue in data.get("clues", [])
         ],
         ending_text=data.get("ending_text", ""),
-        id=data.get("id", None) or "coc_legacy",
+        id=data.get("id", None) or f"coc_{uuid4().hex[:12]}",
     )
 
 

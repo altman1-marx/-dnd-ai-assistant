@@ -14,7 +14,7 @@ from .adventure_runtime import AdventureRuntime, handle_adventure_action
 from .ai_dm import generate_dm_suggestion
 from .ai_provider import AIProvider
 from .coc_runtime import COCRuntime, COCScenario, create_sample_coc_scenario, handle_coc_action
-from .coc_serialization import coc_scenario_to_dict, load_coc_scenario, save_coc_scenario
+from .coc_serialization import coc_scenario_from_dict, coc_scenario_to_dict, load_coc_scenario, save_coc_scenario
 from .core.campaign import Campaign, Visibility
 from .core.serialization import campaign_to_dict, load_campaign, save_campaign
 from .rules_corpus import RuleCorpus
@@ -94,6 +94,19 @@ def list_campaigns(state: APIState) -> dict:
 def list_coc_scenarios(state: APIState) -> dict:
     return {
         "scenarios": [_coc_scenario_list_item(scenario) for scenario in state.coc_scenarios.values()],
+    }
+
+
+def import_coc_scenario(state: APIState, scenario_data: dict) -> dict:
+    try:
+        scenario = coc_scenario_from_dict(scenario_data)
+    except (KeyError, TypeError, ValueError) as exc:
+        raise APIError(400, f"Invalid COC scenario: {exc}", "invalid_coc_scenario") from exc
+    state.coc_scenarios[scenario.id] = scenario
+    _persist_coc_scenario(state, scenario)
+    return {
+        "scenario_id": scenario.id,
+        "scenario": coc_scenario_to_dict(scenario),
     }
 
 
@@ -396,6 +409,11 @@ def route_request(state: APIState, method: str, path: str, body: dict) -> dict:
         return list_campaigns(state)
     if method == "GET" and parts == ["coc"]:
         return list_coc_scenarios(state)
+    if method == "POST" and parts == ["coc", "import"]:
+        scenario = body.get("scenario")
+        if not isinstance(scenario, dict):
+            raise APIError(400, "Missing COC scenario object.", "missing_coc_scenario")
+        return import_coc_scenario(state, scenario)
     if method == "POST" and parts == ["campaigns", "import"]:
         adventure = body.get("adventure")
         if not isinstance(adventure, dict):
