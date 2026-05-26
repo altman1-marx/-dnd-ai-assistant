@@ -24,6 +24,7 @@ from dnd_ai_assistant.api import (
     health_status,
     import_adventure,
     list_campaigns,
+    list_coc_scenarios,
     load_campaigns_from_state_dir,
     route_request,
     run_campaign_action,
@@ -124,6 +125,7 @@ class APITests(unittest.TestCase):
         state = APIState()
         first_id = create_demo_campaign(state)["campaign_id"]
         second_id = create_playable_demo_campaign(state)["campaign_id"]
+        coc_id = create_coc_demo(state)["scenario_id"]
 
         response = list_campaigns(state)
 
@@ -133,6 +135,24 @@ class APITests(unittest.TestCase):
         self.assertEqual(response["campaigns"][1]["character_count"], 1)
         self.assertEqual(response["campaigns"][0]["current_location_name"], "Village Square")
         self.assertIn("session_event_count", response["campaigns"][0])
+        self.assertEqual(response["coc_scenarios"][0]["id"], coc_id)
+        self.assertEqual(response["coc_scenarios"][0]["system_id"], "coc7e")
+
+    def test_list_coc_scenarios_returns_memory_scenarios(self) -> None:
+        state = APIState()
+        scenario_id = create_coc_demo(state)["scenario_id"]
+        run_coc_action(state, scenario_id, "inspect portrait", seed=1)
+
+        response = list_coc_scenarios(state)
+
+        self.assertEqual(response["scenarios"][0]["id"], scenario_id)
+        self.assertEqual(response["scenarios"][0]["title"], "The Lantern Under Briar House")
+        self.assertEqual(response["scenarios"][0]["system_id"], "coc7e")
+        self.assertEqual(response["scenarios"][0]["location"], "Briar House Study")
+        self.assertEqual(response["scenarios"][0]["investigator_name"], "Eleanor Vale")
+        self.assertEqual(response["scenarios"][0]["current_sanity"], 58)
+        self.assertEqual(response["scenarios"][0]["discovered_clue_count"], 1)
+        self.assertEqual(response["scenarios"][0]["clue_count"], 3)
 
     def test_delete_campaign_removes_campaign(self) -> None:
         state = APIState()
@@ -632,9 +652,11 @@ class APITests(unittest.TestCase):
         state = APIState()
 
         demo = route_request(state, "POST", "/coc/demo", {})
+        scenarios = route_request(state, "GET", "/coc", {})
         summary = route_request(state, "GET", f"/coc/{demo['scenario_id']}/summary", {})
         action = route_request(state, "POST", f"/coc/{demo['scenario_id']}/actions", {"action": "inspect portrait"})
 
+        self.assertEqual(scenarios["scenarios"][0]["id"], demo["scenario_id"])
         self.assertEqual(summary["system_id"], "coc7e")
         self.assertIn("Scratched Portrait", action["transcript"])
 

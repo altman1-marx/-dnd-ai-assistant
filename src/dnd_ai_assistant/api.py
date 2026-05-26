@@ -86,7 +86,14 @@ def list_campaigns(state: APIState) -> dict:
                 "active_combat": campaign.active_combat is not None,
             }
             for campaign in state.campaigns.values()
-        ]
+        ],
+        "coc_scenarios": [_coc_scenario_list_item(scenario) for scenario in state.coc_scenarios.values()],
+    }
+
+
+def list_coc_scenarios(state: APIState) -> dict:
+    return {
+        "scenarios": [_coc_scenario_list_item(scenario) for scenario in state.coc_scenarios.values()],
     }
 
 
@@ -387,6 +394,8 @@ def route_request(state: APIState, method: str, path: str, body: dict) -> dict:
         return health_status(state)
     if method == "GET" and parts == ["campaigns"]:
         return list_campaigns(state)
+    if method == "GET" and parts == ["coc"]:
+        return list_coc_scenarios(state)
     if method == "POST" and parts == ["campaigns", "import"]:
         adventure = body.get("adventure")
         if not isinstance(adventure, dict):
@@ -480,6 +489,21 @@ def _coc_scenario_or_404(state: APIState, scenario_id: str) -> COCScenario:
     if scenario is None:
         raise APIError(404, "COC scenario not found.", "coc_scenario_not_found")
     return scenario
+
+
+def _coc_scenario_list_item(scenario: COCScenario) -> dict:
+    return {
+        "id": scenario.id,
+        "title": scenario.title,
+        "system": "Call of Cthulhu 7e",
+        "system_id": "coc7e",
+        "location": scenario.location,
+        "investigator_name": scenario.investigator.name,
+        "current_sanity": scenario.investigator.current_sanity,
+        "max_sanity": scenario.investigator.max_sanity,
+        "discovered_clue_count": sum(1 for clue in scenario.clues if clue.discovered),
+        "clue_count": len(scenario.clues),
+    }
 
 
 def _campaign_location_name(campaign: Campaign) -> str | None:
