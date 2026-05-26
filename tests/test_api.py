@@ -31,6 +31,7 @@ from dnd_ai_assistant.api import (
     run_campaign_action,
     run_coc_action,
     search_rules,
+    suggest_coc_keeper_turn,
     suggest_dm_turn,
 )
 from dnd_ai_assistant.ai_provider import MockProvider
@@ -641,6 +642,37 @@ class APITests(unittest.TestCase):
         self.assertEqual(context.exception.status, 502)
         self.assertEqual(context.exception.code, "ai_provider_error")
 
+    def test_suggest_coc_keeper_turn_uses_provider_without_mutating_scenario(self) -> None:
+        state = APIState(ai_provider=MockProvider("- The wallpaper seems damp."))
+        scenario_id = create_coc_demo(state)["scenario_id"]
+        before_inventory = list(state.coc_scenarios[scenario_id].inventory)
+
+        response = suggest_coc_keeper_turn(state, scenario_id, "inspect portrait", include_prompt=True)
+
+        self.assertEqual(response["scenario_id"], scenario_id)
+        self.assertIn("wallpaper seems damp", response["suggestion"]["text"])
+        self.assertIn("prompt", response["suggestion"])
+        self.assertEqual(state.coc_scenarios[scenario_id].inventory, before_inventory)
+
+    def test_suggest_coc_keeper_turn_reports_missing_provider(self) -> None:
+        state = APIState()
+        scenario_id = create_coc_demo(state)["scenario_id"]
+
+        with self.assertRaises(APIError) as context:
+            suggest_coc_keeper_turn(state, scenario_id, "look")
+
+        self.assertEqual(context.exception.status, 503)
+
+    def test_suggest_coc_keeper_turn_reports_provider_failure(self) -> None:
+        state = APIState(ai_provider=FailingProvider())
+        scenario_id = create_coc_demo(state)["scenario_id"]
+
+        with self.assertRaises(APIError) as context:
+            suggest_coc_keeper_turn(state, scenario_id, "look")
+
+        self.assertEqual(context.exception.status, 502)
+        self.assertEqual(context.exception.code, "ai_provider_error")
+
     def test_route_request_supports_health_import_state_and_action(self) -> None:
         state = APIState()
 
@@ -693,11 +725,18 @@ class APITests(unittest.TestCase):
         scenarios = route_request(state, "GET", "/coc", {})
         summary = route_request(state, "GET", f"/coc/{demo['scenario_id']}/summary", {})
         action = route_request(state, "POST", f"/coc/{demo['scenario_id']}/actions", {"action": "inspect portrait"})
+        keeper = route_request(
+            APIState(ai_provider=MockProvider("- Keep the room tense."), coc_scenarios=state.coc_scenarios),
+            "POST",
+            f"/coc/{demo['scenario_id']}/keeper-suggestion",
+            {"action": "look"},
+        )
 
         self.assertEqual(scenarios["scenarios"][0]["id"], imported["scenario_id"])
         self.assertEqual(scenarios["scenarios"][1]["id"], demo["scenario_id"])
         self.assertEqual(summary["system_id"], "coc7e")
         self.assertIn("Scratched Portrait", action["transcript"])
+        self.assertIn("room tense", keeper["suggestion"]["text"])
 
     def test_route_request_reports_bad_import_body(self) -> None:
         with self.assertRaises(APIError) as context:

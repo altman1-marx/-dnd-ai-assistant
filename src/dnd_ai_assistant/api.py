@@ -12,6 +12,7 @@ from .adventure import AdventureDefinition, validate_adventure
 from .adventure_importer import campaign_from_adventure
 from .adventure_runtime import AdventureRuntime, handle_adventure_action
 from .ai_dm import generate_dm_suggestion
+from .ai_keeper import generate_keeper_suggestion
 from .ai_provider import AIProvider
 from .coc_runtime import COCRuntime, COCScenario, create_sample_coc_scenario, handle_coc_action
 from .coc_serialization import coc_scenario_from_dict, coc_scenario_to_dict, load_coc_scenario, save_coc_scenario
@@ -359,6 +360,26 @@ def suggest_dm_turn(state: APIState, campaign_id: str, action: str, include_prom
     }
 
 
+def suggest_coc_keeper_turn(state: APIState, scenario_id: str, action: str, include_prompt: bool = False) -> dict:
+    if state.ai_provider is None:
+        raise APIError(503, "AI provider is not configured.", "ai_provider_not_configured")
+    scenario = _coc_scenario_or_404(state, scenario_id)
+    try:
+        suggestion = generate_keeper_suggestion(scenario, action, state.ai_provider, include_prompt=include_prompt)
+    except RuntimeError as exc:
+        raise APIError(502, str(exc), "ai_provider_error") from exc
+    except ValueError as exc:
+        raise APIError(400, str(exc), "invalid_keeper_suggestion_request") from exc
+    return {
+        "scenario_id": scenario.id,
+        "suggestion": suggestion.to_dict(include_prompt=include_prompt),
+        "metadata": {
+            "action": action,
+            "included_prompt": include_prompt,
+        },
+    }
+
+
 def create_handler(state: APIState) -> type[BaseHTTPRequestHandler]:
     class DNDAPIHandler(BaseHTTPRequestHandler):
         def do_GET(self) -> None:
@@ -440,6 +461,10 @@ def route_request(state: APIState, method: str, path: str, body: dict) -> dict:
         action = str(body.get("action", ""))
         seed = _int_body(body, "seed", 1)
         return run_coc_action(state, parts[1], action, seed=seed)
+    if method == "POST" and len(parts) == 3 and parts[0] == "coc" and parts[2] == "keeper-suggestion":
+        action = str(body.get("action", ""))
+        include_prompt = bool(body.get("include_prompt", False))
+        return suggest_coc_keeper_turn(state, parts[1], action, include_prompt=include_prompt)
     if method == "POST" and parts == ["rules", "search"]:
         query = str(body.get("query", ""))
         limit = _int_body(body, "limit", 5)

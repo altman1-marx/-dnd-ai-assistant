@@ -677,7 +677,11 @@
 
     async function suggestTypedAction() {
       const action = actionInput.value.trim() || state.lastRulesQuery;
-      if (!action || !state.campaignId) return;
+      if (!action || (!state.campaignId && !state.scenarioId)) return;
+      if (state.mode === "coc") {
+        await suggestCocAction(action);
+        return;
+      }
       try {
         const data = await api("POST", "/campaigns/" + state.campaignId + "/dm-suggestion", { action });
         state.pendingSuggestedAction = action;
@@ -689,6 +693,20 @@
           appendTranscriptMessage("Rules", ruleSourceSummary(data.suggestion.rules));
         }
         setStatus("AI DM suggestion ready. " + dmSuggestionMetadata(data.metadata));
+      } catch (error) {
+        appendTranscriptMessage("System", setupHint(error));
+        setStatus(error.message, true);
+      }
+    }
+
+    async function suggestCocAction(action) {
+      try {
+        const data = await api("POST", "/coc/" + state.scenarioId + "/keeper-suggestion", { action });
+        state.pendingSuggestedAction = action;
+        actionInput.value = action;
+        updateSuggestedActionControl();
+        appendTranscriptMessage("AI Keeper", data.suggestion.text);
+        setStatus("AI Keeper suggestion ready. Action: " + action + ".");
       } catch (error) {
         appendTranscriptMessage("System", setupHint(error));
         setStatus(error.message, true);
@@ -1125,7 +1143,7 @@
       logVisibility.disabled = !enabled || !dndMode;
       actionInput.disabled = !enabled;
       sendButton.disabled = !enabled;
-      dmButton.disabled = !enabled || !dndMode;
+      dmButton.disabled = !enabled;
       updateSuggestedActionControl();
       document.querySelectorAll("[data-action]").forEach((button) => {
         button.disabled = !enabled;
@@ -1133,7 +1151,7 @@
     }
 
     function updateSuggestedActionControl() {
-      runSuggestedButton.disabled = state.mode !== "dnd" || !state.campaignId || !state.pendingSuggestedAction;
+      runSuggestedButton.disabled = !state.pendingSuggestedAction || (state.mode === "dnd" ? !state.campaignId : !state.scenarioId);
     }
 
     function renderQuickActions(actions) {
