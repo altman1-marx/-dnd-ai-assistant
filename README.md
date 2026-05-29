@@ -61,6 +61,25 @@ python -m dnd_ai_assistant.demo new-coc-scenario `
 python -m dnd_ai_assistant.demo validate-coc-scenario scenarios\briar_house.json
 ```
 
+打印 COC 剧本生成 prompt：
+
+```powershell
+python -m dnd_ai_assistant.demo coc-scenario-prompt `
+  --premise "A lake reflects the wrong moon." `
+  --investigator-occupation "Journalist"
+```
+
+使用 OpenAI-compatible provider 生成 COC 剧本：
+
+```powershell
+python -m dnd_ai_assistant.demo generate-coc-scenario `
+  --provider openai-compatible `
+  --premise "A lake reflects the wrong moon." `
+  --output scenarios\generated_coc.json `
+  --max-attempts 2 `
+  --json-response-format
+```
+
 从 JSON 读取并保存调查进度：
 
 ```powershell
@@ -313,6 +332,7 @@ POST /campaigns/{campaign_id}/dm-suggestion
 DELETE /campaigns/{campaign_id}
 GET  /coc
 POST /coc/import
+POST /coc/generate
 POST /coc/demo
 GET  /coc/{scenario_id}/summary
 POST /coc/{scenario_id}/actions
@@ -379,6 +399,7 @@ COC 场景 API：
 ```text
 GET  /coc
 POST /coc/import
+POST /coc/generate
 POST /coc/demo
 GET  /coc/{scenario_id}/summary
 POST /coc/{scenario_id}/actions
@@ -417,6 +438,21 @@ POST /coc/{scenario_id}/keeper-suggestion
 ```
 
 `GET /coc/{scenario_id}/summary` 会返回调查员 HP/MP/SAN/Luck、当前地点、出口、NPC、证据 inventory、已发现线索、可用动作和 `completed` 完成状态。`POST /coc/{scenario_id}/actions` 使用和 CLI 相同的动作文本，例如 `inspect portrait`、`go cellar`、`talk ember` 或 `inventory`。`POST /coc/{scenario_id}/keeper-suggestion` 会调用已配置的 AI provider 生成 Keeper 建议，但不会修改 scenario state。
+
+`POST /coc/generate` 使用 API 启动时配置的 AI provider 生成并导入 COC scenario：
+
+```json
+{
+  "premise": "A lake reflects the wrong moon.",
+  "investigator_occupation": "Journalist",
+  "duration_hours": 2,
+  "tone": "slow-burn cosmic horror",
+  "location_count": 2,
+  "clue_count": 4,
+  "npc_count": 1,
+  "max_attempts": 2
+}
+```
 
 这层 API 目前是轻量桥接层，目标是先稳定前端需要的交互契约；后续可以替换为 FastAPI 或其他 Web 框架。
 
@@ -469,9 +505,9 @@ python -m dnd_ai_assistant.demo serve-api `
 3. 点击 `Start Demo`，或选择一个 adventure JSON 文件并导入。
 4. 如果是手动导入，点击 `Add Sample Character`，然后用动作栏或输入框推进冒险。
 5. 可先点击 `DM Suggest` 生成叙述/规则建议，再点击 `Run Suggested` 执行同一条 runtime action。
-6. COC 模式可点击 `Start COC Demo`，或选择一个 COC scenario JSON 后点击 `Import COC Scenario`；随后用 `look`、`go cellar`、`talk ember`、`inspect portrait`、`inventory` 等动作推进调查。配置 AI provider 后，`DM Suggest` 在 COC 模式下会生成 AI Keeper 建议。
+6. COC 模式可点击 `Start COC Demo`，或选择一个 COC scenario JSON 后点击 `Import COC Scenario`；配置 AI provider 后，也可以输入 premise 并点击 `Generate COC Scenario`。随后用 `look`、`go cellar`、`talk ember`、`inspect portrait`、`inventory` 等动作推进调查。配置 AI provider 后，`DM Suggest` 在 COC 模式下会生成 AI Keeper 建议。
 
-当前页面支持 API 健康检查、列出/删除内存中的 campaign、内置 demo adventure、导入冒险、添加示例角色、查看摘要、加载和按可见性过滤 session log、发送 runtime action、AI DM 建议、执行刚建议过的动作、规则搜索、COC demo/import/list/summary/action、AI Keeper 建议和结构化 transcript。它是前端骨架，不需要 Node.js 或构建步骤。
+当前页面支持 API 健康检查、列出/删除内存中的 campaign、内置 demo adventure、导入冒险、添加示例角色、查看摘要、加载和按可见性过滤 session log、发送 runtime action、AI DM 建议、执行刚建议过的动作、规则搜索、COC demo/import/generate/list/summary/action、AI Keeper 建议和结构化 transcript。它是前端骨架，不需要 Node.js 或构建步骤。
 
 ## 近期路线
 
