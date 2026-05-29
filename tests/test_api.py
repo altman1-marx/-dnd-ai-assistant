@@ -15,6 +15,7 @@ from dnd_ai_assistant.api import (
     campaign_log,
     campaign_state,
     campaign_summary,
+    coc_review,
     coc_summary,
     create_coc_demo,
     create_handler,
@@ -122,6 +123,16 @@ class APITests(unittest.TestCase):
         self.assertIn("talk mrs. ember", summary["available_actions"])
         self.assertIn("inventory", summary["available_actions"])
         self.assertIn("inspect scratched portrait", summary["available_actions"])
+
+    def test_coc_review_returns_quality_report(self) -> None:
+        state = APIState()
+        scenario_id = create_coc_demo(state)["scenario_id"]
+
+        response = coc_review(state, scenario_id)
+
+        self.assertEqual(response["title"], "The Lantern Under Briar House")
+        self.assertTrue(response["ok"])
+        self.assertEqual(response["counts"]["locations"], 2)
 
     def test_import_coc_scenario_stores_scenario(self) -> None:
         state = APIState()
@@ -749,6 +760,7 @@ class APITests(unittest.TestCase):
         demo = route_request(state, "POST", "/coc/demo", {})
         scenarios = route_request(state, "GET", "/coc", {})
         summary = route_request(state, "GET", f"/coc/{demo['scenario_id']}/summary", {})
+        review = route_request(state, "GET", f"/coc/{demo['scenario_id']}/review", {})
         action = route_request(state, "POST", f"/coc/{demo['scenario_id']}/actions", {"action": "inspect portrait"})
         keeper = route_request(
             APIState(ai_provider=MockProvider("- Keep the room tense."), coc_scenarios=state.coc_scenarios),
@@ -769,6 +781,7 @@ class APITests(unittest.TestCase):
         self.assertEqual(scenarios["scenarios"][0]["id"], imported["scenario_id"])
         self.assertEqual(scenarios["scenarios"][1]["id"], demo["scenario_id"])
         self.assertEqual(summary["system_id"], "coc7e")
+        self.assertTrue(review["ok"])
         self.assertIn("Scratched Portrait", action["transcript"])
         self.assertIn("room tense", keeper["suggestion"]["text"])
         self.assertIn(generated["scenario_id"], generated_state.coc_scenarios)

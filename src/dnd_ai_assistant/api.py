@@ -17,6 +17,7 @@ from .ai_keeper import generate_keeper_suggestion
 from .ai_provider import AIProvider
 from .coc_runtime import COCRuntime, COCScenario, create_sample_coc_scenario, handle_coc_action
 from .coc_generator import COCScenarioRequest, generate_coc_scenario_text
+from .coc_review import coc_review_to_dict
 from .coc_serialization import coc_scenario_from_dict, coc_scenario_to_dict, load_coc_scenario, save_coc_scenario
 from .core.campaign import Campaign, Visibility
 from .core.serialization import campaign_to_dict, load_campaign, save_campaign
@@ -361,6 +362,10 @@ def run_coc_action(state: APIState, scenario_id: str, action: str, seed: int = 1
     }
 
 
+def coc_review(state: APIState, scenario_id: str) -> dict:
+    return coc_review_to_dict(_coc_scenario_or_404(state, scenario_id))
+
+
 def suggest_dm_turn(state: APIState, campaign_id: str, action: str, include_prompt: bool = False) -> dict:
     if state.ai_provider is None:
         raise APIError(503, "AI provider is not configured.", "ai_provider_not_configured")
@@ -488,6 +493,8 @@ def route_request(state: APIState, method: str, path: str, body: dict) -> dict:
         return create_coc_demo(state)
     if method == "GET" and len(parts) == 3 and parts[0] == "coc" and parts[2] == "summary":
         return coc_summary(state, parts[1])
+    if method == "GET" and len(parts) == 3 and parts[0] == "coc" and parts[2] == "review":
+        return coc_review(state, parts[1])
     if method == "POST" and len(parts) == 3 and parts[0] == "coc" and parts[2] == "actions":
         action = str(body.get("action", ""))
         seed = _int_body(body, "seed", 1)

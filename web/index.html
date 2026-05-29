@@ -409,6 +409,7 @@
       cocScenarios: [],
       summary: null,
       cocSummary: null,
+      cocReview: null,
       pendingSuggestedAction: "",
       lastRulesQuery: "",
       logStatus: "",
@@ -611,6 +612,7 @@
       if (!state.scenarioId) return;
       try {
         state.cocSummary = await api("GET", "/coc/" + state.scenarioId + "/summary");
+        state.cocReview = await api("GET", "/coc/" + state.scenarioId + "/review");
         renderCocSummary();
         setStatus(composeCocStatus());
       } catch (error) {
@@ -872,12 +874,15 @@
       const summary = state.cocSummary;
       if (!summary) return;
       const investigator = summary.investigator || {};
+      const review = state.cocReview || {};
       locationLine.textContent = summary.location + " - " + summary.description;
       metrics.innerHTML = [
         metric("Scenario", summary.title),
         metric("System", "Call of Cthulhu 7e"),
         metric("Location", summary.location),
         metric("Status", summary.completed ? "Completed" : "In progress"),
+        metric("Review", review.ok ? "OK" : "Needs attention"),
+        metric("Review Findings", (review.findings || []).length),
         metric("NPCs", (summary.npcs || []).map((npc) => npc.name).join(", ") || "None"),
         metric("Clues", summary.discovered_clue_count + "/" + summary.clue_count + " discovered"),
         metric("Evidence", (summary.inventory || []).length),
@@ -886,6 +891,9 @@
       renderQuickActions(summary.available_actions || []);
       characters.innerHTML = renderInvestigator(investigator);
       combat.innerHTML = renderCocEvidence(summary.inventory || []);
+      if (review.findings && review.findings.length) {
+        combat.innerHTML += renderCocReviewFindings(review.findings);
+      }
     }
 
     function renderInvestigator(investigator) {
@@ -905,6 +913,14 @@
       if (!items.length) return "<p class=\"muted\">No evidence collected.</p>";
       return items.map((item) => {
         return "<div class=\"item\"><strong>" + escapeHtml(item) + "</strong><p class=\"muted\">Evidence</p></div>";
+      }).join("");
+    }
+
+    function renderCocReviewFindings(findings) {
+      return findings.map((finding) => {
+        return "<div class=\"item\"><strong>" + escapeHtml(finding.code)
+          + "</strong><p>" + escapeHtml(finding.message)
+          + "</p><p class=\"muted\">" + escapeHtml(finding.severity) + "</p></div>";
       }).join("");
     }
 
