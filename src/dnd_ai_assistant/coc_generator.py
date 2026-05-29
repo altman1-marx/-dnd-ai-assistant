@@ -7,6 +7,7 @@ from pathlib import Path
 from .adventure_generator import build_repair_prompt, extract_json_object
 from .ai_provider import AIProvider
 from .coc_runtime import COCScenario
+from .coc_review import review_coc_scenario
 from .coc_serialization import coc_scenario_from_dict, coc_scenario_to_dict
 
 
@@ -80,6 +81,7 @@ def generate_coc_scenario_text(
     request: COCScenarioRequest,
     provider: AIProvider,
     max_attempts: int = 1,
+    require_review_ok: bool = False,
 ) -> str:
     if max_attempts < 1:
         raise ValueError("max_attempts must be at least 1.")
@@ -88,7 +90,11 @@ def generate_coc_scenario_text(
     for attempt in range(max_attempts):
         model_text = provider.generate_text(prompt)
         try:
-            coc_scenario_from_model_text(model_text)
+            scenario = coc_scenario_from_model_text(model_text)
+            if require_review_ok:
+                review = review_coc_scenario(scenario)
+                if not review.ok:
+                    raise ValueError(_review_error_message(review.warnings))
             return model_text
         except (json.JSONDecodeError, ValueError) as exc:
             last_error = exc
@@ -103,9 +109,21 @@ def generate_coc_scenario_file(
     provider: AIProvider,
     output_path: str | Path,
     max_attempts: int = 1,
+    require_review_ok: bool = False,
 ) -> COCScenario:
-    model_text = generate_coc_scenario_text(request, provider, max_attempts=max_attempts)
+    model_text = generate_coc_scenario_text(
+        request,
+        provider,
+        max_attempts=max_attempts,
+        require_review_ok=require_review_ok,
+    )
     return write_coc_scenario_from_model_text(model_text, output_path)
+
+
+def _review_error_message(warnings: list[str]) -> str:
+    if not warnings:
+        return "COC scenario review did not pass."
+    return "COC scenario review did not pass: " + " | ".join(warnings)
 
 
 def _schema_instructions() -> str:

@@ -52,6 +52,7 @@ class WebUITests(unittest.TestCase):
         self.assertIn("renderCampaignList", html)
         self.assertIn("importCocScenario", html)
         self.assertIn("generateCocScenario", html)
+        self.assertIn("require_review_ok", html)
         self.assertIn("loadCocDemo", html)
         self.assertIn("loadCocScenario", html)
         self.assertIn("refreshCocView", html)

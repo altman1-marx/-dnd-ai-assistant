@@ -173,6 +173,7 @@ class DemoTests(unittest.TestCase):
                 "A glass lake reflects the wrong moon.",
                 "--output",
                 str(output_path),
+                "--require-review-ok",
             ]
 
             with patch("sys.argv", argv), patch("builtins.print") as mocked_print:

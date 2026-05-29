@@ -427,6 +427,7 @@ def main() -> int:
     generate_coc.add_argument("--clue-count", type=int, default=4, help="Desired number of clues.")
     generate_coc.add_argument("--npc-count", type=int, default=1, help="Desired number of NPCs.")
     generate_coc.add_argument("--max-attempts", type=int, default=1, help="Retry with repair prompts on invalid model output.")
+    generate_coc.add_argument("--require-review-ok", action="store_true", help="Retry if generated scenario review needs attention.")
     generate_coc.add_argument(
         "--json-response-format",
         action="store_true",
@@ -621,6 +622,7 @@ def main() -> int:
             provider,
             args.output,
             max_attempts=args.max_attempts,
+            require_review_ok=args.require_review_ok,
         )
         print(f"COC scenario OK: {args.output}")
         print(f"Title: {scenario.title}")

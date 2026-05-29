@@ -76,6 +76,23 @@ class COCGeneratorTests(unittest.TestCase):
         self.assertEqual(len(provider.prompts), 2)
         self.assertIn("Validation error:", provider.prompts[1])
 
+    def test_generate_coc_scenario_text_can_require_review_ok(self) -> None:
+        thin = coc_scenario_to_dict(create_sample_coc_scenario())
+        thin["clues"] = thin["clues"][:1]
+        rich = coc_scenario_to_dict(create_sample_coc_scenario())
+        provider = SequenceProvider([json.dumps(thin), json.dumps(rich)])
+
+        text = generate_coc_scenario_text(
+            COCScenarioRequest(premise="A damp house."),
+            provider,
+            max_attempts=2,
+            require_review_ok=True,
+        )
+
+        self.assertEqual(json.loads(text)["title"], "The Lantern Under Briar House")
+        self.assertEqual(len(provider.prompts), 2)
+        self.assertIn("COC scenario review did not pass", provider.prompts[1])
+
     def test_generate_coc_scenario_text_fails_after_max_attempts(self) -> None:
         provider = SequenceProvider(['{"title": "Broken"}'])
 

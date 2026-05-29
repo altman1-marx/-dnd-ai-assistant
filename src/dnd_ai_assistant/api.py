@@ -128,7 +128,13 @@ def generate_coc_scenario(state: APIState, request_data: dict) -> dict:
             npc_count=_int_body(request_data, "npc_count", 1),
         )
         max_attempts = _int_body(request_data, "max_attempts", 1)
-        model_text = generate_coc_scenario_text(request, state.ai_provider, max_attempts=max_attempts)
+        require_review_ok = bool(request_data.get("require_review_ok", False))
+        model_text = generate_coc_scenario_text(
+            request,
+            state.ai_provider,
+            max_attempts=max_attempts,
+            require_review_ok=require_review_ok,
+        )
         response = import_coc_scenario(state, json.loads(extract_json_object(model_text)))
     except RuntimeError as exc:
         raise APIError(502, str(exc), "ai_provider_error") from exc
@@ -137,6 +143,7 @@ def generate_coc_scenario(state: APIState, request_data: dict) -> dict:
     response["metadata"] = {
         "premise": request.premise,
         "model_text_length": len(model_text),
+        "require_review_ok": require_review_ok,
     }
     response["review"] = coc_review_to_dict(state.coc_scenarios[response["scenario_id"]])
     return response

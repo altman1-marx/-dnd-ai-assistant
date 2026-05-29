@@ -571,7 +571,8 @@
       try {
         const data = await api("POST", "/coc/generate", {
           premise,
-          max_attempts: 2
+          max_attempts: 2,
+          require_review_ok: true
         });
         clearTranscriptView();
         state.mode = "coc";

@@ -162,6 +162,7 @@ class APITests(unittest.TestCase):
         self.assertIn(response["scenario_id"], state.coc_scenarios)
         self.assertEqual(response["scenario"]["title"], "The Lantern Under Briar House")
         self.assertEqual(response["metadata"]["premise"], "A house hums in the rain.")
+        self.assertFalse(response["metadata"]["require_review_ok"])
         self.assertTrue(response["review"]["ok"])
 
     def test_generate_coc_scenario_reports_missing_provider(self) -> None:
