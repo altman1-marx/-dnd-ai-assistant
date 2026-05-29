@@ -11,10 +11,12 @@ from urllib.parse import parse_qsl, urlparse
 from .adventure import AdventureDefinition, validate_adventure
 from .adventure_importer import campaign_from_adventure
 from .adventure_runtime import AdventureRuntime, handle_adventure_action
+from .adventure_generator import extract_json_object
 from .ai_dm import generate_dm_suggestion
 from .ai_keeper import generate_keeper_suggestion
 from .ai_provider import AIProvider
 from .coc_runtime import COCRuntime, COCScenario, create_sample_coc_scenario, handle_coc_action
+from .coc_generator import COCScenarioRequest, generate_coc_scenario_text
 from .coc_serialization import coc_scenario_from_dict, coc_scenario_to_dict, load_coc_scenario, save_coc_scenario
 from .core.campaign import Campaign, Visibility
 from .core.serialization import campaign_to_dict, load_campaign, save_campaign
@@ -109,6 +111,33 @@ def import_coc_scenario(state: APIState, scenario_data: dict) -> dict:
         "scenario_id": scenario.id,
         "scenario": coc_scenario_to_dict(scenario),
     }
+
+
+def generate_coc_scenario(state: APIState, request_data: dict) -> dict:
+    if state.ai_provider is None:
+        raise APIError(503, "AI provider is not configured.", "ai_provider_not_configured")
+    try:
+        request = COCScenarioRequest(
+            premise=str(request_data.get("premise", "")),
+            investigator_occupation=str(request_data.get("investigator_occupation", "Antiquarian")),
+            duration_hours=_int_body(request_data, "duration_hours", 2),
+            tone=str(request_data.get("tone", "slow-burn cosmic horror")),
+            location_count=_int_body(request_data, "location_count", 2),
+            clue_count=_int_body(request_data, "clue_count", 4),
+            npc_count=_int_body(request_data, "npc_count", 1),
+        )
+        max_attempts = _int_body(request_data, "max_attempts", 1)
+        model_text = generate_coc_scenario_text(request, state.ai_provider, max_attempts=max_attempts)
+        response = import_coc_scenario(state, json.loads(extract_json_object(model_text)))
+    except RuntimeError as exc:
+        raise APIError(502, str(exc), "ai_provider_error") from exc
+    except (ValueError, json.JSONDecodeError) as exc:
+        raise APIError(400, str(exc), "invalid_coc_generation_request") from exc
+    response["metadata"] = {
+        "premise": request.premise,
+        "model_text_length": len(model_text),
+    }
+    return response
 
 
 def delete_campaign(state: APIState, campaign_id: str) -> dict:
@@ -444,6 +473,8 @@ def route_request(state: APIState, method: str, path: str, body: dict) -> dict:
         if not isinstance(scenario, dict):
             raise APIError(400, "Missing COC scenario object.", "missing_coc_scenario")
         return import_coc_scenario(state, scenario)
+    if method == "POST" and parts == ["coc", "generate"]:
+        return generate_coc_scenario(state, body)
     if method == "POST" and parts == ["campaigns", "import"]:
         adventure = body.get("adventure")
         if not isinstance(adventure, dict):

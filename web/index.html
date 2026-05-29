@@ -328,6 +328,8 @@
         <h2 id="coc-title">Call of Cthulhu</h2>
         <input id="cocFile" type="file" accept="application/json,.json">
         <button id="cocImportButton" type="button">Import COC Scenario</button>
+        <textarea id="cocPremise" placeholder="COC premise, e.g. A lake reflects the wrong moon."></textarea>
+        <button id="cocGenerateButton" type="button" class="secondary">Generate COC Scenario</button>
         <button id="cocDemoButton" type="button" class="secondary">Start COC Demo</button>
         <div id="cocList" class="campaign-list"></div>
       </section>
@@ -416,6 +418,7 @@
     const apiBase = document.getElementById("apiBase");
     const adventureFile = document.getElementById("adventureFile");
     const cocFile = document.getElementById("cocFile");
+    const cocPremise = document.getElementById("cocPremise");
     const statusBox = document.getElementById("status");
     const transcript = document.getElementById("transcript");
     const campaignList = document.getElementById("campaignList");
@@ -440,6 +443,7 @@
     document.getElementById("importButton").addEventListener("click", importAdventure);
     document.getElementById("demoButton").addEventListener("click", loadDemoAdventure);
     document.getElementById("cocImportButton").addEventListener("click", importCocScenario);
+    document.getElementById("cocGenerateButton").addEventListener("click", generateCocScenario);
     document.getElementById("cocDemoButton").addEventListener("click", loadCocDemo);
     document.getElementById("campaignsButton").addEventListener("click", refreshCampaigns);
     sampleButton.addEventListener("click", addSampleCharacter);
@@ -553,6 +557,31 @@
         await refreshCampaigns();
         await refreshCocView();
       } catch (error) {
+        setStatus(error.message, true);
+      }
+    }
+
+    async function generateCocScenario() {
+      const premise = cocPremise.value.trim();
+      if (!premise) {
+        setStatus("Enter a COC premise first.", true);
+        return;
+      }
+      try {
+        const data = await api("POST", "/coc/generate", {
+          premise,
+          max_attempts: 2
+        });
+        clearTranscriptView();
+        state.mode = "coc";
+        state.scenarioId = data.scenario_id;
+        state.campaignId = "";
+        appendTranscriptMessage("System", "Generated COC scenario " + data.scenario.title + ".");
+        setControls(true);
+        await refreshCampaigns();
+        await refreshCocView();
+      } catch (error) {
+        appendTranscriptMessage("System", setupHint(error));
         setStatus(error.message, true);
       }
     }

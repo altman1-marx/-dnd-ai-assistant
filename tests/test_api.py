@@ -22,6 +22,7 @@ from dnd_ai_assistant.api import (
     create_playable_demo_campaign,
     delete_campaign,
     health_status,
+    generate_coc_scenario,
     import_adventure,
     import_coc_scenario,
     list_campaigns,
@@ -140,6 +141,30 @@ class APITests(unittest.TestCase):
 
         self.assertEqual(context.exception.status, 400)
         self.assertEqual(context.exception.code, "invalid_coc_scenario")
+
+    def test_generate_coc_scenario_uses_provider_and_imports_result(self) -> None:
+        scenario_text = json.dumps(coc_scenario_to_dict(create_sample_coc_scenario()))
+        state = APIState(ai_provider=MockProvider("```json\n" + scenario_text + "\n```"))
+
+        response = generate_coc_scenario(state, {"premise": "A house hums in the rain.", "max_attempts": 1})
+
+        self.assertIn(response["scenario_id"], state.coc_scenarios)
+        self.assertEqual(response["scenario"]["title"], "The Lantern Under Briar House")
+        self.assertEqual(response["metadata"]["premise"], "A house hums in the rain.")
+
+    def test_generate_coc_scenario_reports_missing_provider(self) -> None:
+        with self.assertRaises(APIError) as context:
+            generate_coc_scenario(APIState(), {"premise": "A house hums in the rain."})
+
+        self.assertEqual(context.exception.status, 503)
+
+    def test_generate_coc_scenario_reports_invalid_request(self) -> None:
+        state = APIState(ai_provider=MockProvider("{}"))
+
+        with self.assertRaises(APIError) as context:
+            generate_coc_scenario(state, {"premise": " "})
+
+        self.assertEqual(context.exception.status, 400)
 
     def test_run_coc_action_updates_scenario(self) -> None:
         state = APIState()
@@ -731,12 +756,22 @@ class APITests(unittest.TestCase):
             f"/coc/{demo['scenario_id']}/keeper-suggestion",
             {"action": "look"},
         )
+        generated_state = APIState(
+            ai_provider=MockProvider(json.dumps(coc_scenario_to_dict(create_sample_coc_scenario())))
+        )
+        generated = route_request(
+            generated_state,
+            "POST",
+            "/coc/generate",
+            {"premise": "A house hums in the rain."},
+        )
 
         self.assertEqual(scenarios["scenarios"][0]["id"], imported["scenario_id"])
         self.assertEqual(scenarios["scenarios"][1]["id"], demo["scenario_id"])
         self.assertEqual(summary["system_id"], "coc7e")
         self.assertIn("Scratched Portrait", action["transcript"])
         self.assertIn("room tense", keeper["suggestion"]["text"])
+        self.assertIn(generated["scenario_id"], generated_state.coc_scenarios)
 
     def test_route_request_reports_bad_import_body(self) -> None:
         with self.assertRaises(APIError) as context:
