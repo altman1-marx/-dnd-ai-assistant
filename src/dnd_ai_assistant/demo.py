@@ -18,7 +18,7 @@ from .api import run_server
 from .coc_runtime import COCRuntime, create_sample_coc_scenario, describe_coc_scene, handle_coc_action
 from .coc_serialization import coc_scenario_to_dict, load_coc_scenario, save_coc_scenario
 from .coc_generator import COCScenarioRequest, build_coc_scenario_prompt, generate_coc_scenario_file
-from .coc_review import render_coc_review, render_coc_review_json
+from .coc_review import review_coc_scenario, render_coc_review, render_coc_review_json
 from .core.dnd5e import RollMode
 from .core.initiative import Combatant, InitiativeTracker
 from .core.serialization import load_campaign, save_campaign
@@ -594,6 +594,8 @@ def main() -> int:
         print(f"Locations: {len(scenario.locations)}")
         print(f"NPCs: {len(scenario.npcs)}")
         print(f"Clues: {len(scenario.clues)}")
+        review = review_coc_scenario(scenario)
+        print(f"Review: {'OK' if review.ok else 'Needs attention'}")
         return 0
     if args.command == "review-coc-scenario":
         scenario = load_coc_scenario(args.path)
@@ -625,6 +627,8 @@ def main() -> int:
         print(f"Locations: {len(scenario.locations)}")
         print(f"NPCs: {len(scenario.npcs)}")
         print(f"Clues: {len(scenario.clues)}")
+        review = review_coc_scenario(scenario)
+        print(f"Review: {'OK' if review.ok else 'Needs attention'}")
         return 0
     if args.command == "validate-scene":
         scene = validate_scene_file(args.scene)

@@ -183,6 +183,7 @@ class DemoTests(unittest.TestCase):
         self.assertEqual(exit_code, 0)
         self.assertEqual(raw["title"], "The Glass Lake")
         self.assertIn("COC scenario OK", printed)
+        self.assertIn("Review: OK", printed)
 
     def test_stairway_requires_clue_first(self) -> None:
         output = run_scripted_scene(seed=1, actions=["open stairway"])

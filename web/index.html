@@ -577,6 +577,7 @@
         state.mode = "coc";
         state.scenarioId = data.scenario_id;
         state.campaignId = "";
+        state.cocReview = data.review || null;
         appendTranscriptMessage("System", "Generated COC scenario " + data.scenario.title + ".");
         setControls(true);
         await refreshCampaigns();

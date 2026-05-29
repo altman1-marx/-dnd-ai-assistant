@@ -138,6 +138,7 @@ def generate_coc_scenario(state: APIState, request_data: dict) -> dict:
         "premise": request.premise,
         "model_text_length": len(model_text),
     }
+    response["review"] = coc_review_to_dict(state.coc_scenarios[response["scenario_id"]])
     return response
 
 
