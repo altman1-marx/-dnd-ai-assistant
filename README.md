@@ -84,6 +84,7 @@ python -m dnd_ai_assistant.demo generate-coc-scenario `
   --premise "A lake reflects the wrong moon." `
   --output scenarios\generated_coc.json `
   --max-attempts 2 `
+  --require-review-ok `
   --json-response-format
 ```
 
@@ -461,7 +462,8 @@ POST /coc/{scenario_id}/keeper-suggestion
   "location_count": 2,
   "clue_count": 4,
   "npc_count": 1,
-  "max_attempts": 2
+  "max_attempts": 2,
+  "require_review_ok": true
 }
 ```
 
