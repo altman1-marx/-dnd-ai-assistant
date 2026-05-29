@@ -17,6 +17,7 @@ from .ai_provider import build_provider
 from .api import run_server
 from .coc_runtime import COCRuntime, create_sample_coc_scenario, describe_coc_scene, handle_coc_action
 from .coc_serialization import coc_scenario_to_dict, load_coc_scenario, save_coc_scenario
+from .coc_generator import COCScenarioRequest, build_coc_scenario_prompt, generate_coc_scenario_file
 from .core.dnd5e import RollMode
 from .core.initiative import Combatant, InitiativeTracker
 from .core.serialization import load_campaign, save_campaign
@@ -108,6 +109,18 @@ def write_coc_scenario_template(path: str | Path, title: str = "The Lantern Unde
     output_path = Path(path)
     output_path.parent.mkdir(parents=True, exist_ok=True)
     output_path.write_text(json.dumps(coc_scenario_to_dict(scenario), ensure_ascii=False, indent=2), encoding="utf-8")
+
+
+def coc_request_from_args(args) -> COCScenarioRequest:
+    return COCScenarioRequest(
+        premise=args.premise,
+        investigator_occupation=args.investigator_occupation,
+        duration_hours=args.duration_hours,
+        tone=args.tone,
+        location_count=args.location_count,
+        clue_count=args.clue_count,
+        npc_count=args.npc_count,
+    )
 
 
 def run_interactive_coc(
@@ -386,6 +399,35 @@ def main() -> int:
     validate_coc = subparsers.add_parser("validate-coc-scenario", help="Validate a Call of Cthulhu scenario JSON file.")
     validate_coc.add_argument("path", help="Path to a COC scenario JSON file.")
 
+    coc_prompt = subparsers.add_parser("coc-scenario-prompt", help="Print a prompt for a COC scenario-writing AI.")
+    coc_prompt.add_argument("--premise", required=True, help="Scenario premise or inspiration.")
+    coc_prompt.add_argument("--investigator-occupation", default="Antiquarian", help="Investigator occupation.")
+    coc_prompt.add_argument("--duration-hours", type=int, default=2, help="Target play time in hours.")
+    coc_prompt.add_argument("--tone", default="slow-burn cosmic horror", help="Scenario tone.")
+    coc_prompt.add_argument("--location-count", type=int, default=2, help="Desired number of locations.")
+    coc_prompt.add_argument("--clue-count", type=int, default=4, help="Desired number of clues.")
+    coc_prompt.add_argument("--npc-count", type=int, default=1, help="Desired number of NPCs.")
+
+    generate_coc = subparsers.add_parser("generate-coc-scenario", help="Generate a COC scenario JSON through an AI provider.")
+    generate_coc.add_argument("--premise", required=True, help="Scenario premise or inspiration.")
+    generate_coc.add_argument("--output", required=True, help="Where to write clean COC scenario JSON.")
+    generate_coc.add_argument("--provider", choices=("mock", "openai-compatible"), default="openai-compatible")
+    generate_coc.add_argument("--mock-response", default=None, help="Path to mock model output text.")
+    generate_coc.add_argument("--base-url", default=None, help="Override DND_AI_BASE_URL.")
+    generate_coc.add_argument("--model", default=None, help="Override DND_AI_MODEL.")
+    generate_coc.add_argument("--investigator-occupation", default="Antiquarian", help="Investigator occupation.")
+    generate_coc.add_argument("--duration-hours", type=int, default=2, help="Target play time in hours.")
+    generate_coc.add_argument("--tone", default="slow-burn cosmic horror", help="Scenario tone.")
+    generate_coc.add_argument("--location-count", type=int, default=2, help="Desired number of locations.")
+    generate_coc.add_argument("--clue-count", type=int, default=4, help="Desired number of clues.")
+    generate_coc.add_argument("--npc-count", type=int, default=1, help="Desired number of NPCs.")
+    generate_coc.add_argument("--max-attempts", type=int, default=1, help="Retry with repair prompts on invalid model output.")
+    generate_coc.add_argument(
+        "--json-response-format",
+        action="store_true",
+        help="Request OpenAI-compatible JSON object response_format when supported.",
+    )
+
     validate = subparsers.add_parser("validate-scene", help="Validate a scene JSON file.")
     validate.add_argument("--scene", default=None, help="Path to a scene JSON file. Defaults to bundled old_chapel.")
 
@@ -543,6 +585,30 @@ def main() -> int:
     if args.command == "validate-coc-scenario":
         scenario = load_coc_scenario(args.path)
         print(f"COC scenario is valid: {args.path}")
+        print(f"Title: {scenario.title}")
+        print(f"Locations: {len(scenario.locations)}")
+        print(f"NPCs: {len(scenario.npcs)}")
+        print(f"Clues: {len(scenario.clues)}")
+        return 0
+    if args.command == "coc-scenario-prompt":
+        print(build_coc_scenario_prompt(coc_request_from_args(args)))
+        return 0
+    if args.command == "generate-coc-scenario":
+        mock_response_text = Path(args.mock_response).read_text(encoding="utf-8") if args.mock_response else None
+        provider = build_provider(
+            args.provider,
+            mock_response_text=mock_response_text,
+            base_url=args.base_url,
+            model=args.model,
+            response_format="json_object" if args.json_response_format else None,
+        )
+        scenario = generate_coc_scenario_file(
+            coc_request_from_args(args),
+            provider,
+            args.output,
+            max_attempts=args.max_attempts,
+        )
+        print(f"COC scenario OK: {args.output}")
         print(f"Title: {scenario.title}")
         print(f"Locations: {len(scenario.locations)}")
         print(f"NPCs: {len(scenario.npcs)}")

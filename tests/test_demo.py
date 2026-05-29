@@ -108,6 +108,54 @@ class DemoTests(unittest.TestCase):
         self.assertIn("The Glass Lake", printed)
         self.assertIn("Locations: 2", printed)
 
+    def test_coc_scenario_prompt_cli_prints_prompt(self) -> None:
+        argv = [
+            "dnd-ai-assistant",
+            "coc-scenario-prompt",
+            "--premise",
+            "A lighthouse bell rings under a black tide.",
+            "--investigator-occupation",
+            "Journalist",
+        ]
+
+        with patch("sys.argv", argv), patch("builtins.print") as mocked_print:
+            exit_code = main()
+
+        printed = mocked_print.call_args.args[0]
+        self.assertEqual(exit_code, 0)
+        self.assertIn("Call of Cthulhu 7e", printed)
+        self.assertIn("lighthouse bell", printed)
+        self.assertIn("Journalist", printed)
+
+    def test_generate_coc_scenario_cli_uses_mock_provider(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            output_path = Path(tmp) / "generated.json"
+            response_path = Path(tmp) / "response.txt"
+            template_path = Path(tmp) / "template.json"
+            write_coc_scenario_template(template_path, "The Glass Lake")
+            response_path.write_text(template_path.read_text(encoding="utf-8"), encoding="utf-8")
+            argv = [
+                "dnd-ai-assistant",
+                "generate-coc-scenario",
+                "--provider",
+                "mock",
+                "--mock-response",
+                str(response_path),
+                "--premise",
+                "A glass lake reflects the wrong moon.",
+                "--output",
+                str(output_path),
+            ]
+
+            with patch("sys.argv", argv), patch("builtins.print") as mocked_print:
+                exit_code = main()
+            raw = json.loads(output_path.read_text(encoding="utf-8"))
+
+        printed = "\n".join(str(call.args[0]) if call.args else "" for call in mocked_print.call_args_list)
+        self.assertEqual(exit_code, 0)
+        self.assertEqual(raw["title"], "The Glass Lake")
+        self.assertIn("COC scenario OK", printed)
+
     def test_stairway_requires_clue_first(self) -> None:
         output = run_scripted_scene(seed=1, actions=["open stairway"])
 
