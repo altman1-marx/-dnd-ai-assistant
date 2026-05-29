@@ -1,0 +1,231 @@
+from __future__ import annotations
+
+import json
+from dataclasses import dataclass
+
+from .coc_runtime import COCScenario
+
+
+@dataclass(frozen=True)
+class COCReviewFinding:
+    code: str
+    severity: str
+    message: str
+
+
+@dataclass(frozen=True)
+class COCScenarioReview:
+    findings: list[COCReviewFinding]
+    strengths: list[str]
+
+    @property
+    def ok(self) -> bool:
+        return not any(finding.severity in {"warning", "error"} for finding in self.findings)
+
+    @property
+    def warnings(self) -> list[str]:
+        return [finding.message for finding in self.findings]
+
+
+def review_coc_scenario(scenario: COCScenario) -> COCScenarioReview:
+    findings: list[COCReviewFinding] = []
+    strengths: list[str] = []
+
+    if 2 <= len(scenario.locations) <= 5:
+        strengths.append("Location count fits a short COC investigation.")
+    else:
+        findings.append(
+            COCReviewFinding(
+                code="location_count",
+                severity="warning",
+                message="Use 2 to 5 locations for a focused COC one-shot investigation.",
+            )
+        )
+
+    if len(scenario.clues) >= 3:
+        strengths.append("Scenario has enough clues for fallback investigation paths.")
+    else:
+        findings.append(
+            COCReviewFinding(
+                code="clue_count",
+                severity="warning",
+                message="Add at least three clues so the investigation can survive a failed roll.",
+            )
+        )
+
+    _review_reachability(scenario, findings, strengths)
+    _review_clue_distribution(scenario, findings, strengths)
+    _review_npcs(scenario, findings, strengths)
+    _review_sanity_loss(scenario, findings, strengths)
+    _review_evidence(scenario, findings, strengths)
+
+    if scenario.ending_text.strip():
+        strengths.append("Scenario includes an ending text.")
+    else:
+        findings.append(
+            COCReviewFinding(
+                code="ending_text",
+                severity="warning",
+                message="Add ending_text so the Keeper can close the investigation cleanly.",
+            )
+        )
+
+    return COCScenarioReview(findings=findings, strengths=strengths)
+
+
+def coc_review_to_dict(scenario: COCScenario) -> dict:
+    review = review_coc_scenario(scenario)
+    return {
+        "title": scenario.title,
+        "ok": review.ok,
+        "findings": [
+            {"code": finding.code, "severity": finding.severity, "message": finding.message}
+            for finding in review.findings
+        ],
+        "warnings": list(review.warnings),
+        "strengths": list(review.strengths),
+        "counts": {
+            "locations": len(scenario.locations),
+            "npcs": len(scenario.npcs),
+            "clues": len(scenario.clues),
+            "evidence": len([clue for clue in scenario.clues if clue.evidence]),
+            "total_sanity_loss": sum(max(0, clue.sanity_loss) for clue in scenario.clues),
+        },
+    }
+
+
+def render_coc_review(scenario: COCScenario) -> str:
+    review = review_coc_scenario(scenario)
+    lines = [f"COC scenario review: {scenario.title}"]
+    lines.append(f"Status: {'OK' if review.ok else 'Needs attention'}")
+    if review.warnings:
+        lines.append("")
+        lines.append("Warnings:")
+        lines.extend(f"- [{finding.severity}] {finding.message}" for finding in review.findings)
+    if review.strengths:
+        lines.append("")
+        lines.append("Strengths:")
+        lines.extend(f"- {strength}" for strength in review.strengths)
+    return "\n".join(lines)
+
+
+def render_coc_review_json(scenario: COCScenario) -> str:
+    return json.dumps(coc_review_to_dict(scenario), ensure_ascii=False, indent=2)
+
+
+def _review_reachability(
+    scenario: COCScenario,
+    findings: list[COCReviewFinding],
+    strengths: list[str],
+) -> None:
+    if not scenario.locations:
+        return
+    start_id = scenario.current_location_id or next(iter(scenario.locations))
+    reachable = _reachable_location_ids(scenario, start_id)
+    if len(reachable) == len(scenario.locations):
+        strengths.append("All locations are reachable from the starting location.")
+    else:
+        missing = sorted(set(scenario.locations) - reachable)
+        findings.append(
+            COCReviewFinding(
+                code="unreachable_locations",
+                severity="warning",
+                message=f"Some locations are unreachable from the start: {', '.join(missing)}.",
+            )
+        )
+
+
+def _review_clue_distribution(
+    scenario: COCScenario,
+    findings: list[COCReviewFinding],
+    strengths: list[str],
+) -> None:
+    clue_locations = {clue.location_id for clue in scenario.clues if clue.location_id}
+    if len(clue_locations) >= min(2, len(scenario.locations)):
+        strengths.append("Clues are distributed across multiple locations.")
+    elif len(scenario.locations) > 1:
+        findings.append(
+            COCReviewFinding(
+                code="clue_distribution",
+                severity="info",
+                message="Distribute clues across more than one location to reward exploration.",
+            )
+        )
+
+
+def _review_npcs(
+    scenario: COCScenario,
+    findings: list[COCReviewFinding],
+    strengths: list[str],
+) -> None:
+    if not scenario.npcs:
+        findings.append(
+            COCReviewFinding(
+                code="npc_count",
+                severity="info",
+                message="Add at least one NPC witness or suspect for social investigation.",
+            )
+        )
+        return
+    if all(npc.dialogue for npc in scenario.npcs):
+        strengths.append("NPCs include dialogue prompts.")
+    else:
+        findings.append(
+            COCReviewFinding(
+                code="npc_dialogue",
+                severity="info",
+                message="Give each NPC at least one dialogue line or testimony hook.",
+            )
+        )
+
+
+def _review_sanity_loss(
+    scenario: COCScenario,
+    findings: list[COCReviewFinding],
+    strengths: list[str],
+) -> None:
+    total = sum(max(0, clue.sanity_loss) for clue in scenario.clues)
+    if total <= 8:
+        strengths.append("Total automatic SAN loss is modest for a starter scenario.")
+    else:
+        findings.append(
+            COCReviewFinding(
+                code="sanity_loss_budget",
+                severity="warning",
+                message="Total clue SAN loss is high for a starter scenario; consider lowering it or gating the worst revelations.",
+            )
+        )
+
+
+def _review_evidence(
+    scenario: COCScenario,
+    findings: list[COCReviewFinding],
+    strengths: list[str],
+) -> None:
+    evidence_count = len([clue for clue in scenario.clues if clue.evidence])
+    if evidence_count >= max(1, len(scenario.clues) // 2):
+        strengths.append("Many clues produce concrete evidence for the player inventory.")
+    else:
+        findings.append(
+            COCReviewFinding(
+                code="evidence_count",
+                severity="info",
+                message="Add evidence names to more clues so the investigation leaves visible artifacts.",
+            )
+        )
+
+
+def _reachable_location_ids(scenario: COCScenario, start_id: str) -> set[str]:
+    if start_id not in scenario.locations:
+        return set()
+    visited: set[str] = set()
+    queue = [start_id]
+    while queue:
+        location_id = queue.pop(0)
+        if location_id in visited:
+            continue
+        visited.add(location_id)
+        for destination_id in scenario.locations[location_id].exits.values():
+            if destination_id in scenario.locations and destination_id not in visited:
+                queue.append(destination_id)
+    return visited

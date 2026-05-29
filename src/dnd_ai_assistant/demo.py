@@ -18,6 +18,7 @@ from .api import run_server
 from .coc_runtime import COCRuntime, create_sample_coc_scenario, describe_coc_scene, handle_coc_action
 from .coc_serialization import coc_scenario_to_dict, load_coc_scenario, save_coc_scenario
 from .coc_generator import COCScenarioRequest, build_coc_scenario_prompt, generate_coc_scenario_file
+from .coc_review import render_coc_review, render_coc_review_json
 from .core.dnd5e import RollMode
 from .core.initiative import Combatant, InitiativeTracker
 from .core.serialization import load_campaign, save_campaign
@@ -399,6 +400,10 @@ def main() -> int:
     validate_coc = subparsers.add_parser("validate-coc-scenario", help="Validate a Call of Cthulhu scenario JSON file.")
     validate_coc.add_argument("path", help="Path to a COC scenario JSON file.")
 
+    review_coc = subparsers.add_parser("review-coc-scenario", help="Review COC scenario quality and playability.")
+    review_coc.add_argument("path", help="Path to a COC scenario JSON file.")
+    review_coc.add_argument("--format", choices=("text", "json"), default="text", help="Review output format.")
+
     coc_prompt = subparsers.add_parser("coc-scenario-prompt", help="Print a prompt for a COC scenario-writing AI.")
     coc_prompt.add_argument("--premise", required=True, help="Scenario premise or inspiration.")
     coc_prompt.add_argument("--investigator-occupation", default="Antiquarian", help="Investigator occupation.")
@@ -589,6 +594,13 @@ def main() -> int:
         print(f"Locations: {len(scenario.locations)}")
         print(f"NPCs: {len(scenario.npcs)}")
         print(f"Clues: {len(scenario.clues)}")
+        return 0
+    if args.command == "review-coc-scenario":
+        scenario = load_coc_scenario(args.path)
+        if args.format == "json":
+            print(render_coc_review_json(scenario))
+        else:
+            print(render_coc_review(scenario))
         return 0
     if args.command == "coc-scenario-prompt":
         print(build_coc_scenario_prompt(coc_request_from_args(args)))

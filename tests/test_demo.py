@@ -108,6 +108,34 @@ class DemoTests(unittest.TestCase):
         self.assertIn("The Glass Lake", printed)
         self.assertIn("Locations: 2", printed)
 
+    def test_review_coc_scenario_cli_prints_review(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "coc.json"
+            write_coc_scenario_template(path, "The Glass Lake")
+            argv = ["dnd-ai-assistant", "review-coc-scenario", str(path)]
+
+            with patch("sys.argv", argv), patch("builtins.print") as mocked_print:
+                exit_code = main()
+
+        printed = mocked_print.call_args.args[0]
+        self.assertEqual(exit_code, 0)
+        self.assertIn("COC scenario review", printed)
+        self.assertIn("The Glass Lake", printed)
+
+    def test_review_coc_scenario_cli_prints_json(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "coc.json"
+            write_coc_scenario_template(path, "The Glass Lake")
+            argv = ["dnd-ai-assistant", "review-coc-scenario", str(path), "--format", "json"]
+
+            with patch("sys.argv", argv), patch("builtins.print") as mocked_print:
+                exit_code = main()
+            data = json.loads(mocked_print.call_args.args[0])
+
+        self.assertEqual(exit_code, 0)
+        self.assertEqual(data["title"], "The Glass Lake")
+        self.assertIn("counts", data)
+
     def test_coc_scenario_prompt_cli_prints_prompt(self) -> None:
         argv = [
             "dnd-ai-assistant",
