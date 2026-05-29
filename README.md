@@ -61,6 +61,13 @@ python -m dnd_ai_assistant.demo new-coc-scenario `
 python -m dnd_ai_assistant.demo validate-coc-scenario scenarios\briar_house.json
 ```
 
+审查 COC 剧本质量：
+
+```powershell
+python -m dnd_ai_assistant.demo review-coc-scenario scenarios\briar_house.json
+python -m dnd_ai_assistant.demo review-coc-scenario scenarios\briar_house.json --format json
+```
+
 打印 COC 剧本生成 prompt：
 
 ```powershell
@@ -335,6 +342,7 @@ POST /coc/import
 POST /coc/generate
 POST /coc/demo
 GET  /coc/{scenario_id}/summary
+GET  /coc/{scenario_id}/review
 POST /coc/{scenario_id}/actions
 POST /coc/{scenario_id}/keeper-suggestion
 POST /rules/search
@@ -402,6 +410,7 @@ POST /coc/import
 POST /coc/generate
 POST /coc/demo
 GET  /coc/{scenario_id}/summary
+GET  /coc/{scenario_id}/review
 POST /coc/{scenario_id}/actions
 POST /coc/{scenario_id}/keeper-suggestion
 ```
@@ -438,6 +447,8 @@ POST /coc/{scenario_id}/keeper-suggestion
 ```
 
 `GET /coc/{scenario_id}/summary` 会返回调查员 HP/MP/SAN/Luck、当前地点、出口、NPC、证据 inventory、已发现线索、可用动作和 `completed` 完成状态。`POST /coc/{scenario_id}/actions` 使用和 CLI 相同的动作文本，例如 `inspect portrait`、`go cellar`、`talk ember` 或 `inventory`。`POST /coc/{scenario_id}/keeper-suggestion` 会调用已配置的 AI provider 生成 Keeper 建议，但不会修改 scenario state。
+
+`GET /coc/{scenario_id}/review` 会返回 COC 剧本质量审查，包括地点可达性、线索数量与分布、NPC 台词、证据 inventory 覆盖、结局文本和总 SAN loss 预算。
 
 `POST /coc/generate` 使用 API 启动时配置的 AI provider 生成并导入 COC scenario：
 
@@ -507,7 +518,7 @@ python -m dnd_ai_assistant.demo serve-api `
 5. 可先点击 `DM Suggest` 生成叙述/规则建议，再点击 `Run Suggested` 执行同一条 runtime action。
 6. COC 模式可点击 `Start COC Demo`，或选择一个 COC scenario JSON 后点击 `Import COC Scenario`；配置 AI provider 后，也可以输入 premise 并点击 `Generate COC Scenario`。随后用 `look`、`go cellar`、`talk ember`、`inspect portrait`、`inventory` 等动作推进调查。配置 AI provider 后，`DM Suggest` 在 COC 模式下会生成 AI Keeper 建议。
 
-当前页面支持 API 健康检查、列出/删除内存中的 campaign、内置 demo adventure、导入冒险、添加示例角色、查看摘要、加载和按可见性过滤 session log、发送 runtime action、AI DM 建议、执行刚建议过的动作、规则搜索、COC demo/import/generate/list/summary/action、AI Keeper 建议和结构化 transcript。它是前端骨架，不需要 Node.js 或构建步骤。
+当前页面支持 API 健康检查、列出/删除内存中的 campaign、内置 demo adventure、导入冒险、添加示例角色、查看摘要、加载和按可见性过滤 session log、发送 runtime action、AI DM 建议、执行刚建议过的动作、规则搜索、COC demo/import/generate/list/summary/review/action、AI Keeper 建议和结构化 transcript。它是前端骨架，不需要 Node.js 或构建步骤。
 
 ## 近期路线
 
