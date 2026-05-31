@@ -19,6 +19,7 @@ class COCReviewTests(unittest.TestCase):
         self.assertTrue(review.ok)
         self.assertTrue(any("reachable" in strength for strength in review.strengths))
         self.assertTrue(any("SAN loss" in strength for strength in review.strengths))
+        self.assertTrue(any("Exit requirements" in strength for strength in review.strengths))
 
     def test_review_warns_about_thin_scenario(self) -> None:
         scenario = create_sample_coc_scenario()
@@ -56,6 +57,20 @@ class COCReviewTests(unittest.TestCase):
 
         self.assertFalse(review.ok)
         self.assertTrue(any(finding.code == "sanity_loss_budget" for finding in review.findings))
+
+    def test_review_warns_about_bad_exit_requirement_references(self) -> None:
+        scenario = create_sample_coc_scenario()
+        scenario.locations["study"].exit_requirements["cellar"] = {
+            "required_clue_ids": ["missing_clue"],
+            "required_evidence": ["Missing evidence"],
+            "message": "The way is still hidden.",
+        }
+
+        review = review_coc_scenario(scenario)
+
+        self.assertFalse(review.ok)
+        self.assertTrue(any(finding.code == "exit_requirement_clue" for finding in review.findings))
+        self.assertTrue(any(finding.code == "exit_requirement_evidence" for finding in review.findings))
 
     def test_render_coc_review_outputs_sections(self) -> None:
         scenario = create_sample_coc_scenario()

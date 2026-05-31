@@ -74,6 +74,7 @@ def coc_scenario_to_dict(scenario: COCScenario) -> dict:
                 "name": location.name,
                 "description": location.description,
                 "exits": dict(location.exits),
+                "exit_requirements": dict(location.exit_requirements),
             }
             for location in scenario.locations.values()
         ],
@@ -131,6 +132,7 @@ def coc_scenario_from_dict(data: dict) -> COCScenario:
                 name=location["name"],
                 description=location["description"],
                 exits=dict(location.get("exits", {})),
+                exit_requirements=dict(location.get("exit_requirements", {})),
             )
             for location in data.get("locations", [])
         },
@@ -242,6 +244,15 @@ def _validate_locations_data(locations: object) -> set[str]:
                 raise COCScenarioValidationError(f"locations[{index}].exits keys must be non-empty strings")
             if not isinstance(destination_id, str) or not destination_id.strip():
                 raise COCScenarioValidationError(f"locations[{index}].exits.{exit_name} must be a non-empty string")
+        requirements = location.get("exit_requirements", {})
+        if not isinstance(requirements, dict):
+            raise COCScenarioValidationError(f"locations[{index}].exit_requirements must be an object")
+        for exit_name, requirement in requirements.items():
+            if exit_name not in exits:
+                raise COCScenarioValidationError(
+                    f"locations[{index}].exit_requirements.{exit_name} must reference an existing exit"
+                )
+            _validate_exit_requirement(requirement, f"locations[{index}].exit_requirements.{exit_name}")
     for index, location in enumerate(locations):
         for exit_name, destination_id in location.get("exits", {}).items():
             if destination_id not in seen_ids:
@@ -249,6 +260,20 @@ def _validate_locations_data(locations: object) -> set[str]:
                     f"locations[{index}].exits.{exit_name} references unknown location: {destination_id}"
                 )
     return seen_ids
+
+
+def _validate_exit_requirement(requirement: object, path: str) -> None:
+    if not isinstance(requirement, dict):
+        raise COCScenarioValidationError(f"{path} must be an object")
+    for key in ("required_clue_ids", "required_evidence"):
+        values = requirement.get(key, [])
+        if not isinstance(values, list):
+            raise COCScenarioValidationError(f"{path}.{key} must be a list")
+        for value in values:
+            if not isinstance(value, str) or not value.strip():
+                raise COCScenarioValidationError(f"{path}.{key} must contain non-empty strings")
+    if "message" in requirement and not isinstance(requirement["message"], str):
+        raise COCScenarioValidationError(f"{path}.message must be a string")
 
 
 def _validate_clue_data(data: object, index: int, seen_ids: set[str], location_ids: set[str]) -> None:

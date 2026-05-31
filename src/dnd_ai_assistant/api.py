@@ -325,7 +325,15 @@ def coc_summary(state: APIState, scenario_id: str) -> dict:
         "location": location.name,
         "location_id": scenario.current_location_id,
         "description": location.description,
-        "exits": [{"name": name, "location_id": location_id} for name, location_id in location.exits.items()],
+        "exits": [
+            {
+                "name": name,
+                "location_id": location_id,
+                "available": _coc_exit_available(scenario, name),
+                "requirements": dict(location.exit_requirements.get(name, {})),
+            }
+            for name, location_id in location.exits.items()
+        ],
         "npcs": [
             {"id": npc.id, "name": npc.name, "description": npc.description}
             for npc in _visible_coc_npcs(scenario)
@@ -833,6 +841,23 @@ def _coc_available_actions(scenario: COCScenario) -> list[str]:
         if clue.skill:
             actions.append(f"check {clue.skill}")
     return list(dict.fromkeys(actions))
+
+
+def _coc_exit_available(scenario: COCScenario, exit_name: str) -> bool:
+    requirement = scenario.current_location().exit_requirements.get(exit_name, {})
+    return _coc_requirement_met(scenario, requirement)
+
+
+def _coc_requirement_met(scenario: COCScenario, requirement: dict) -> bool:
+    required_clue_ids = set(requirement.get("required_clue_ids", []))
+    if required_clue_ids:
+        discovered_ids = {clue.id for clue in scenario.clues if clue.discovered}
+        if not required_clue_ids.issubset(discovered_ids):
+            return False
+    required_evidence = set(requirement.get("required_evidence", []))
+    if required_evidence and not required_evidence.issubset(set(scenario.inventory)):
+        return False
+    return True
 
 
 def _visible_coc_npcs(scenario: COCScenario) -> list:

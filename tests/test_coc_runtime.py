@@ -91,6 +91,8 @@ class COCRuntimeTests(unittest.TestCase):
         scenario = create_sample_coc_scenario()
         runtime = COCRuntime(scenario)
 
+        handle_coc_action(runtime, "inspect portrait")
+        runtime.flush()
         handle_coc_action(runtime, "go cellar")
         handle_coc_action(runtime, "inspect lantern")
         output = runtime.flush()
@@ -98,6 +100,16 @@ class COCRuntimeTests(unittest.TestCase):
         self.assertEqual(scenario.current_location_id, "cellar")
         self.assertIn("You move to Briar House Cellar", output)
         self.assertIn("Clue found - Black Wick", output)
+
+    def test_go_can_be_blocked_by_exit_requirements(self) -> None:
+        scenario = create_sample_coc_scenario()
+        runtime = COCRuntime(scenario)
+
+        handle_coc_action(runtime, "go cellar")
+        output = runtime.flush()
+
+        self.assertEqual(scenario.current_location_id, "study")
+        self.assertIn("portrait passage is still hidden", output)
 
     def test_inspect_cannot_find_clue_in_other_location(self) -> None:
         runtime = COCRuntime(create_sample_coc_scenario())
@@ -130,6 +142,8 @@ class COCRuntimeTests(unittest.TestCase):
     def test_talk_cannot_reach_npc_in_other_location(self) -> None:
         runtime = COCRuntime(create_sample_coc_scenario())
 
+        handle_coc_action(runtime, "inspect portrait")
+        runtime.flush()
         handle_coc_action(runtime, "go cellar")
         runtime.flush()
         handle_coc_action(runtime, "talk ember")

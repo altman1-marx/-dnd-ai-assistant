@@ -56,6 +56,7 @@ def build_coc_scenario_prompt(request: COCScenarioRequest) -> str:
             "Quality requirements:",
             "- Write for investigation, dread, evidence, and player choice rather than combat.",
             "- Include connected locations with exits that reference existing location ids.",
+            "- Use optional exit_requirements for puzzle or evidence-gated paths; requirements must reference existing exits, clue ids, and evidence names.",
             "- Put at least one clue in each important location.",
             "- Give clues stable ids, optional skill gates, optional evidence names, and modest SAN loss.",
             "- Keep investigator characteristics between 1 and 99 and skills between 0 and 100.",
@@ -140,7 +141,19 @@ def _schema_instructions() -> str:
                 "luck": 50,
             },
             "locations": [
-                {"id": "study", "name": "Briar House Study", "description": "string", "exits": {"cellar": "cellar"}}
+                {
+                    "id": "study",
+                    "name": "Briar House Study",
+                    "description": "string",
+                    "exits": {"cellar": "cellar"},
+                    "exit_requirements": {
+                        "cellar": {
+                            "required_clue_ids": ["portrait_truth"],
+                            "required_evidence": ["Torn portrait canvas"],
+                            "message": "The hidden stair is not visible yet.",
+                        }
+                    },
+                }
             ],
             "current_location_id": "study",
             "npcs": [

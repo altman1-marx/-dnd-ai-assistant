@@ -877,11 +877,14 @@
       if (!summary) return;
       const investigator = summary.investigator || {};
       const review = state.cocReview || {};
+      const blockedExits = (summary.exits || []).filter((exit) => exit.available === false);
       locationLine.textContent = summary.location + " - " + summary.description;
       metrics.innerHTML = [
         metric("Scenario", summary.title),
         metric("System", "Call of Cthulhu 7e"),
         metric("Location", summary.location),
+        metric("Exits", (summary.exits || []).map((exit) => exit.name).join(", ") || "None"),
+        metric("Blocked Exits", blockedExits.map((exit) => exit.name).join(", ") || "None"),
         metric("Status", summary.completed ? "Completed" : "In progress"),
         metric("Review", review.ok ? "OK" : "Needs attention"),
         metric("Review Findings", (review.findings || []).length),

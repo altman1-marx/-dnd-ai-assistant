@@ -45,6 +45,8 @@ class COCGeneratorTests(unittest.TestCase):
         self.assertIn('"locations"', prompt)
         self.assertIn('"current_location_id"', prompt)
         self.assertIn('"evidence"', prompt)
+        self.assertIn('"exit_requirements"', prompt)
+        self.assertIn('"required_clue_ids"', prompt)
 
     def test_coc_scenario_from_model_text_accepts_fenced_json(self) -> None:
         raw = coc_scenario_to_dict(create_sample_coc_scenario())

@@ -26,6 +26,7 @@ class COCLocation:
     name: str
     description: str
     exits: dict[str, str] = field(default_factory=dict)
+    exit_requirements: dict[str, dict] = field(default_factory=dict)
 
 
 @dataclass
@@ -90,6 +91,13 @@ def create_sample_coc_scenario() -> COCScenario:
                 "hearth, and a portrait with scratched-out eyes wait in the lamplight."
             ),
             exits={"cellar": "cellar"},
+            exit_requirements={
+                "cellar": {
+                    "required_clue_ids": ["portrait_truth"],
+                    "required_evidence": ["Torn portrait canvas"],
+                    "message": "The portrait passage is still hidden; the cellar route is not clear yet.",
+                }
+            },
         ),
         "cellar": COCLocation(
             id="cellar",
@@ -333,13 +341,19 @@ def _move_coc_location(runtime: COCRuntime, target: str) -> None:
     location = scenario.current_location()
     normalized = target.strip().lower()
     destination_id = location.exits.get(normalized)
+    exit_name = normalized if destination_id is not None else None
     if destination_id is None:
         for exit_name, exit_destination in location.exits.items():
             if normalized in {exit_name.lower(), exit_destination.lower()}:
                 destination_id = exit_destination
+                exit_name = exit_name
                 break
     if destination_id is None or destination_id not in scenario.locations:
         runtime.narrate("Keeper: You cannot reach that place from here.")
+        return
+    requirement = location.exit_requirements.get(exit_name or "")
+    if requirement and not _exit_requirement_met(scenario, requirement):
+        runtime.narrate(f"Keeper: {requirement.get('message') or 'Something still blocks the way.'}")
         return
     scenario.current_location_id = destination_id
     destination = scenario.current_location()
@@ -352,6 +366,18 @@ def _move_coc_location(runtime: COCRuntime, target: str) -> None:
     npcs = _visible_npcs(scenario)
     if npcs:
         runtime.narrate(f"Keeper: Present: {', '.join(npc.name for npc in npcs)}.")
+
+
+def _exit_requirement_met(scenario: COCScenario, requirement: dict) -> bool:
+    required_clue_ids = set(requirement.get("required_clue_ids", []))
+    if required_clue_ids:
+        discovered_ids = {clue.id for clue in scenario.clues if clue.discovered}
+        if not required_clue_ids.issubset(discovered_ids):
+            return False
+    required_evidence = set(requirement.get("required_evidence", []))
+    if required_evidence and not required_evidence.issubset(set(scenario.inventory)):
+        return False
+    return True
 
 
 def _visible_clues(scenario: COCScenario) -> list[COCClue]:

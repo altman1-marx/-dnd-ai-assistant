@@ -31,6 +31,7 @@ class COCSerializationTests(unittest.TestCase):
         self.assertEqual(restored.current_location_id, "study")
         self.assertEqual(restored.inventory, ["Waterlogged journal"])
         self.assertIn("cellar", restored.locations["study"].exits)
+        self.assertIn("cellar", restored.locations["study"].exit_requirements)
         self.assertEqual(restored.npcs[0].name, "Mrs. Ember")
 
     def test_coc_scenario_save_and_load_file(self) -> None:
@@ -103,6 +104,20 @@ class COCSerializationTests(unittest.TestCase):
         data["locations"][0]["exits"]["attic"] = "attic"
 
         with self.assertRaisesRegex(COCScenarioValidationError, "unknown location"):
+            validate_coc_scenario_data(data)
+
+    def test_validate_coc_scenario_data_rejects_bad_exit_requirement_reference(self) -> None:
+        data = coc_scenario_to_dict(create_sample_coc_scenario())
+        data["locations"][0]["exit_requirements"]["attic"] = {"required_clue_ids": ["portrait_truth"]}
+
+        with self.assertRaisesRegex(COCScenarioValidationError, "existing exit"):
+            validate_coc_scenario_data(data)
+
+    def test_validate_coc_scenario_data_rejects_bad_exit_requirement_shape(self) -> None:
+        data = coc_scenario_to_dict(create_sample_coc_scenario())
+        data["locations"][0]["exit_requirements"]["cellar"]["required_clue_ids"] = "portrait_truth"
+
+        with self.assertRaisesRegex(COCScenarioValidationError, "required_clue_ids must be a list"):
             validate_coc_scenario_data(data)
 
     def test_validate_coc_scenario_data_rejects_bad_inventory(self) -> None:

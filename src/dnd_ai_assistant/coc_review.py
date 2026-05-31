@@ -58,6 +58,7 @@ def review_coc_scenario(scenario: COCScenario) -> COCScenarioReview:
     _review_npcs(scenario, findings, strengths)
     _review_sanity_loss(scenario, findings, strengths)
     _review_evidence(scenario, findings, strengths)
+    _review_exit_requirements(scenario, findings, strengths)
 
     if scenario.ending_text.strip():
         strengths.append("Scenario includes an ending text.")
@@ -213,6 +214,57 @@ def _review_evidence(
                 message="Add evidence names to more clues so the investigation leaves visible artifacts.",
             )
         )
+
+
+def _review_exit_requirements(
+    scenario: COCScenario,
+    findings: list[COCReviewFinding],
+    strengths: list[str],
+) -> None:
+    clue_ids = {clue.id for clue in scenario.clues}
+    evidence_names = {clue.evidence for clue in scenario.clues if clue.evidence}
+    gated_exits = 0
+    for location in scenario.locations.values():
+        for exit_name, requirement in location.exit_requirements.items():
+            gated_exits += 1
+            unknown_clues = sorted(set(requirement.get("required_clue_ids", [])) - clue_ids)
+            if unknown_clues:
+                findings.append(
+                    COCReviewFinding(
+                        code="exit_requirement_clue",
+                        severity="warning",
+                        message=(
+                            f"Exit '{exit_name}' in '{location.id}' requires unknown clue ids: "
+                            + ", ".join(unknown_clues)
+                            + "."
+                        ),
+                    )
+                )
+            unknown_evidence = sorted(set(requirement.get("required_evidence", [])) - evidence_names)
+            if unknown_evidence:
+                findings.append(
+                    COCReviewFinding(
+                        code="exit_requirement_evidence",
+                        severity="warning",
+                        message=(
+                            f"Exit '{exit_name}' in '{location.id}' requires evidence no clue can produce: "
+                            + ", ".join(unknown_evidence)
+                            + "."
+                        ),
+                    )
+                )
+            if not requirement.get("message"):
+                findings.append(
+                    COCReviewFinding(
+                        code="exit_requirement_message",
+                        severity="info",
+                        message=f"Give gated exit '{exit_name}' in '{location.id}' a Keeper-facing blocked message.",
+                    )
+                )
+    if gated_exits and not any(
+        finding.code in {"exit_requirement_clue", "exit_requirement_evidence"} for finding in findings
+    ):
+        strengths.append("Exit requirements create investigation gates with valid clue and evidence references.")
 
 
 def _reachable_location_ids(scenario: COCScenario, start_id: str) -> set[str]:
