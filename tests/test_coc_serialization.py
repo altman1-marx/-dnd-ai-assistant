@@ -33,6 +33,8 @@ class COCSerializationTests(unittest.TestCase):
         self.assertIn("cellar", restored.locations["study"].exits)
         self.assertIn("cellar", restored.locations["study"].exit_requirements)
         self.assertEqual(restored.npcs[0].name, "Mrs. Ember")
+        self.assertEqual(restored.completion_requirements["required_clue_ids"], ["portrait_truth", "lantern_wick"])
+        self.assertEqual(restored.talked_npc_ids, set())
 
     def test_coc_scenario_save_and_load_file(self) -> None:
         scenario = create_sample_coc_scenario()
@@ -119,6 +121,21 @@ class COCSerializationTests(unittest.TestCase):
 
         with self.assertRaisesRegex(COCScenarioValidationError, "required_clue_ids must be a list"):
             validate_coc_scenario_data(data)
+
+    def test_validate_coc_scenario_data_rejects_bad_completion_requirement_shape(self) -> None:
+        data = coc_scenario_to_dict(create_sample_coc_scenario())
+        data["completion_requirements"]["required_clue_ids"] = "portrait_truth"
+
+        with self.assertRaisesRegex(COCScenarioValidationError, "completion_requirements.required_clue_ids must be a list"):
+            validate_coc_scenario_data(data)
+
+    def test_validate_coc_scenario_data_rejects_bad_completion_requirement_reference(self) -> None:
+        data = coc_scenario_to_dict(create_sample_coc_scenario())
+        data["completion_requirements"]["required_location_ids"] = ["attic"]
+
+        with self.assertRaisesRegex(COCScenarioValidationError, "unknown value: attic"):
+            validate_coc_scenario_data(data)
+
 
     def test_validate_coc_scenario_data_rejects_bad_inventory(self) -> None:
         data = coc_scenario_to_dict(create_sample_coc_scenario())

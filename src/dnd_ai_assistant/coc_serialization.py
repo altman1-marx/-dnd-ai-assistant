@@ -90,6 +90,8 @@ def coc_scenario_to_dict(scenario: COCScenario) -> dict:
         ],
         "current_location_id": scenario.current_location_id,
         "inventory": list(scenario.inventory),
+        "completion_requirements": {key: list(value) for key, value in scenario.completion_requirements.items()},
+        "talked_npc_ids": sorted(scenario.talked_npc_ids),
         "ending_text": scenario.ending_text,
         "completed": scenario.completed,
     }
@@ -138,6 +140,8 @@ def coc_scenario_from_dict(data: dict) -> COCScenario:
         },
         current_location_id=data.get("current_location_id"),
         inventory=list(data.get("inventory", [])),
+        completion_requirements={key: list(value) for key, value in data.get("completion_requirements", {}).items()},
+        talked_npc_ids=set(data.get("talked_npc_ids", [])),
         ending_text=data.get("ending_text", ""),
         completed=data.get("completed", False),
         id=data.get("id", None) or f"coc_{uuid4().hex[:12]}",
@@ -164,6 +168,12 @@ def validate_coc_scenario_data(data: dict) -> None:
         raise COCScenarioValidationError("ending_text must be a string")
     if "completed" in data and not isinstance(data["completed"], bool):
         raise COCScenarioValidationError("completed must be a boolean")
+    talked_npc_ids = data.get("talked_npc_ids", [])
+    if not isinstance(talked_npc_ids, list):
+        raise COCScenarioValidationError("talked_npc_ids must be a list")
+    for npc_id in talked_npc_ids:
+        if not isinstance(npc_id, str) or not npc_id.strip():
+            raise COCScenarioValidationError("talked_npc_ids must contain non-empty strings")
     inventory = data.get("inventory", [])
     if not isinstance(inventory, list):
         raise COCScenarioValidationError("inventory must be a list")
@@ -186,7 +196,44 @@ def validate_coc_scenario_data(data: dict) -> None:
     seen_ids: set[str] = set()
     for index, clue in enumerate(clues):
         _validate_clue_data(clue, index, seen_ids, location_ids)
-    _validate_npcs_data(data.get("npcs", []), location_ids)
+    npc_ids = _validate_npcs_data(data.get("npcs", []), location_ids)
+    evidence_names = {clue.get("evidence") for clue in clues if isinstance(clue, dict) and clue.get("evidence")}
+    _validate_completion_requirements(
+        data.get("completion_requirements", {}),
+        clue_ids=seen_ids,
+        evidence_names=evidence_names,
+        location_ids=location_ids,
+        npc_ids=npc_ids,
+    )
+
+
+
+def _validate_completion_requirements(
+    requirements: object,
+    clue_ids: set[str],
+    evidence_names: set[str],
+    location_ids: set[str],
+    npc_ids: set[str],
+) -> None:
+    if not isinstance(requirements, dict):
+        raise COCScenarioValidationError("completion_requirements must be an object")
+    known_keys = {
+        "required_clue_ids": clue_ids,
+        "required_evidence": evidence_names,
+        "required_location_ids": location_ids,
+        "required_npc_ids": npc_ids,
+    }
+    for key, known_values in known_keys.items():
+        values = requirements.get(key, [])
+        if not isinstance(values, list):
+            raise COCScenarioValidationError(f"completion_requirements.{key} must be a list")
+        for value in values:
+            if not isinstance(value, str) or not value.strip():
+                raise COCScenarioValidationError(f"completion_requirements.{key} must contain non-empty strings")
+            if value not in known_values:
+                raise COCScenarioValidationError(
+                    f"completion_requirements.{key} references unknown value: {value}"
+                )
 
 
 def _validate_investigator_data(data: dict) -> None:
@@ -303,7 +350,7 @@ def _validate_clue_data(data: object, index: int, seen_ids: set[str], location_i
         raise COCScenarioValidationError(f"clues[{index}].discovered must be a boolean")
 
 
-def _validate_npcs_data(npcs: object, location_ids: set[str]) -> None:
+def _validate_npcs_data(npcs: object, location_ids: set[str]) -> set[str]:
     if not isinstance(npcs, list):
         raise COCScenarioValidationError("npcs must be a list")
     seen_ids: set[str] = set()
@@ -328,6 +375,7 @@ def _validate_npcs_data(npcs: object, location_ids: set[str]) -> None:
         for line in dialogue:
             if not isinstance(line, str) or not line.strip():
                 raise COCScenarioValidationError(f"npcs[{index}].dialogue must contain non-empty strings")
+    return seen_ids
 
 
 def _require_nonempty_string(data: dict, key: str, prefix: str | None = None) -> str:

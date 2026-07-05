@@ -49,6 +49,8 @@ class COCScenario:
     locations: dict[str, COCLocation] = field(default_factory=dict)
     current_location_id: str | None = None
     inventory: list[str] = field(default_factory=list)
+    completion_requirements: dict[str, list[str]] = field(default_factory=dict)
+    talked_npc_ids: set[str] = field(default_factory=set)
     ending_text: str = ""
     completed: bool = False
     id: str = field(default_factory=lambda: f"coc_{uuid4().hex[:12]}")
@@ -164,6 +166,11 @@ def create_sample_coc_scenario() -> COCScenario:
         ],
         locations=locations,
         current_location_id="study",
+        completion_requirements={
+            "required_clue_ids": ["portrait_truth", "lantern_wick"],
+            "required_evidence": ["Black wick sample"],
+            "required_location_ids": ["cellar"],
+        },
         ending_text="With enough clues gathered, the cellar route is clear. The lantern waits below.",
     )
 
@@ -279,9 +286,7 @@ def _reveal_coc_clue(runtime: COCRuntime, clue: COCClue) -> None:
         runtime.narrate(f"Keeper: SAN loss {clue.sanity_loss}.")
     if clue.evidence:
         _add_inventory_item(runtime, clue.evidence)
-    if all(clue.discovered for clue in runtime.scenario.clues):
-        runtime.scenario.completed = True
-        runtime.narrate(f"Keeper: {runtime.scenario.ending_text}")
+    _maybe_complete_scenario(runtime)
 
 
 def _describe_discovered_clues(runtime: COCRuntime) -> None:
@@ -324,9 +329,13 @@ def _talk_to_coc_npc(runtime: COCRuntime, target: str) -> None:
     runtime.narrate(f"Keeper: {npc.name}: {npc.description}")
     if not npc.dialogue:
         runtime.narrate(f"{npc.name}: I have nothing more to add.")
+        runtime.scenario.talked_npc_ids.add(npc.id)
+        _maybe_complete_scenario(runtime)
         return
     for line in npc.dialogue:
         runtime.narrate(f"{npc.name}: {line}")
+    runtime.scenario.talked_npc_ids.add(npc.id)
+    _maybe_complete_scenario(runtime)
 
 
 def _add_inventory_item(runtime: COCRuntime, item: str) -> None:
@@ -366,7 +375,7 @@ def _move_coc_location(runtime: COCRuntime, target: str) -> None:
     npcs = _visible_npcs(scenario)
     if npcs:
         runtime.narrate(f"Keeper: Present: {', '.join(npc.name for npc in npcs)}.")
-
+    _maybe_complete_scenario(runtime)
 
 def _exit_requirement_met(scenario: COCScenario, requirement: dict) -> bool:
     required_clue_ids = set(requirement.get("required_clue_ids", []))
@@ -376,6 +385,38 @@ def _exit_requirement_met(scenario: COCScenario, requirement: dict) -> bool:
             return False
     required_evidence = set(requirement.get("required_evidence", []))
     if required_evidence and not required_evidence.issubset(set(scenario.inventory)):
+        return False
+    return True
+
+
+
+def _maybe_complete_scenario(runtime: COCRuntime) -> None:
+    scenario = runtime.scenario
+    if scenario.completed:
+        return
+    if not _completion_requirements_met(scenario):
+        return
+    scenario.completed = True
+    if scenario.ending_text:
+        runtime.narrate(f"Keeper: {scenario.ending_text}")
+
+
+def _completion_requirements_met(scenario: COCScenario) -> bool:
+    requirements = scenario.completion_requirements
+    if not requirements:
+        return bool(scenario.clues) and all(clue.discovered for clue in scenario.clues)
+    discovered_ids = {clue.id for clue in scenario.clues if clue.discovered}
+    required_clue_ids = set(requirements.get("required_clue_ids", []))
+    if required_clue_ids and not required_clue_ids.issubset(discovered_ids):
+        return False
+    required_evidence = set(requirements.get("required_evidence", []))
+    if required_evidence and not required_evidence.issubset(set(scenario.inventory)):
+        return False
+    required_location_ids = set(requirements.get("required_location_ids", []))
+    if required_location_ids and scenario.current_location_id not in required_location_ids:
+        return False
+    required_npc_ids = set(requirements.get("required_npc_ids", []))
+    if required_npc_ids and not required_npc_ids.issubset(scenario.talked_npc_ids):
         return False
     return True
 

@@ -59,6 +59,7 @@ def review_coc_scenario(scenario: COCScenario) -> COCScenarioReview:
     _review_sanity_loss(scenario, findings, strengths)
     _review_evidence(scenario, findings, strengths)
     _review_exit_requirements(scenario, findings, strengths)
+    _review_completion_requirements(scenario, findings, strengths)
 
     if scenario.ending_text.strip():
         strengths.append("Scenario includes an ending text.")
@@ -215,6 +216,46 @@ def _review_evidence(
             )
         )
 
+
+def _review_completion_requirements(
+    scenario: COCScenario,
+    findings: list[COCReviewFinding],
+    strengths: list[str],
+) -> None:
+    requirements = scenario.completion_requirements
+    if not requirements:
+        findings.append(
+            COCReviewFinding(
+                code="completion_requirements",
+                severity="info",
+                message="Add completion_requirements so the intended ending is explicit and data driven.",
+            )
+        )
+        return
+    clue_ids = {clue.id for clue in scenario.clues}
+    evidence_names = {clue.evidence for clue in scenario.clues if clue.evidence}
+    location_ids = set(scenario.locations)
+    npc_ids = {npc.id for npc in scenario.npcs}
+    references = {
+        "completion_requirement_clue": ("required_clue_ids", clue_ids, "unknown clue ids"),
+        "completion_requirement_evidence": ("required_evidence", evidence_names, "evidence no clue can produce"),
+        "completion_requirement_location": ("required_location_ids", location_ids, "unknown location ids"),
+        "completion_requirement_npc": ("required_npc_ids", npc_ids, "unknown NPC ids"),
+    }
+    missing_any = False
+    for code, (key, known_values, label) in references.items():
+        missing = sorted(set(requirements.get(key, [])) - known_values)
+        if missing:
+            missing_any = True
+            findings.append(
+                COCReviewFinding(
+                    code=code,
+                    severity="warning",
+                    message=f"completion_requirements.{key} references {label}: {', '.join(missing)}.",
+                )
+            )
+    if not missing_any:
+        strengths.append("Completion requirements define a clear investigation ending.")
 
 def _review_exit_requirements(
     scenario: COCScenario,

@@ -885,6 +885,7 @@
         metric("Location", summary.location),
         metric("Exits", (summary.exits || []).map((exit) => exit.name).join(", ") || "None"),
         metric("Blocked Exits", blockedExits.map((exit) => exit.name).join(", ") || "None"),
+        metric("Ending", completionProgressLabel(summary.completion_progress || {})),
         metric("Status", summary.completed ? "Completed" : "In progress"),
         metric("Review", review.ok ? "OK" : "Needs attention"),
         metric("Review Findings", (review.findings || []).length),
@@ -899,6 +900,16 @@
       if (review.findings && review.findings.length) {
         combat.innerHTML += renderCocReviewFindings(review.findings);
       }
+    }
+
+
+    function completionProgressLabel(progress) {
+      const groups = Object.values(progress);
+      if (!groups.length) return "Legacy clue ending";
+      const required = groups.reduce((total, group) => total + ((group.required || []).length), 0);
+      const remaining = groups.reduce((total, group) => total + ((group.remaining || []).length), 0);
+      if (!required) return "No explicit gates";
+      return String(required - remaining) + "/" + String(required) + " met";
     }
 
     function renderInvestigator(investigator) {

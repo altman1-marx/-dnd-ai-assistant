@@ -459,7 +459,7 @@ POST /coc/{scenario_id}/keeper-suggestion
 }
 ```
 
-`GET /coc/{scenario_id}/summary` 会返回调查员 HP/MP/SAN/Luck、当前地点、出口、NPC、证据 inventory、已发现线索、可用动作和 `completed` 完成状态。出口会包含 `available` 和 `requirements`，因此前端可以显示哪些路径仍被线索或证据锁住。`POST /coc/{scenario_id}/actions` 使用和 CLI 相同的动作文本，例如 `inspect portrait`、`go cellar`、`talk ember` 或 `inventory`；如果出口被 `exit_requirements` 阻挡，Keeper 会给出对应 `message`，不会移动地点。`POST /coc/{scenario_id}/keeper-suggestion` 会调用已配置的 AI provider 生成 Keeper 建议，但不会修改 scenario state。
+`GET /coc/{scenario_id}/summary` 会返回调查员 HP/MP/SAN/Luck、当前地点、出口、NPC、证据 inventory、已发现线索、可用动作和 `completed` 完成状态。出口会包含 `available` 和 `requirements`，因此前端可以显示哪些路径仍被线索或证据锁住。`POST /coc/{scenario_id}/actions` 使用和 CLI 相同的动作文本，例如 `inspect portrait`、`go cellar`、`talk ember` 或 `inventory`；如果出口被 `exit_requirements` 阻挡，Keeper 会给出对应 `message`，不会移动地点。`completion_requirements` 用来声明触发结局所需的关键线索、证据、地点或 NPC 对话；API summary 会返回 `completion_progress`，便于前端显示调查进度。`POST /coc/{scenario_id}/keeper-suggestion` 会调用已配置的 AI provider 生成 Keeper 建议，但不会修改 scenario state。
 
 `GET /coc/{scenario_id}/review` 会返回 COC 剧本质量审查，包括地点可达性、线索数量与分布、NPC 台词、证据 inventory 覆盖、结局文本和总 SAN loss 预算。
 

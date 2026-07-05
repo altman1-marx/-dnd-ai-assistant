@@ -339,6 +339,8 @@ def coc_summary(state: APIState, scenario_id: str) -> dict:
             for npc in _visible_coc_npcs(scenario)
         ],
         "completed": scenario.completed,
+        "completion_requirements": {key: list(value) for key, value in scenario.completion_requirements.items()},
+        "completion_progress": _coc_completion_progress(scenario),
         "inventory": list(scenario.inventory),
         "investigator": {
             "name": investigator.name,
@@ -822,6 +824,31 @@ def _available_actions(campaign: Campaign, active_combat: dict | None) -> list[s
                     if spell in {"cure wounds", "healing word"}:
                         actions.append(f"cast {spell} {name.lower()}")
     return list(dict.fromkeys(actions))
+
+
+def _coc_completion_progress(scenario: COCScenario) -> dict:
+    requirements = scenario.completion_requirements
+    discovered_ids = {clue.id for clue in scenario.clues if clue.discovered}
+    inventory = set(scenario.inventory)
+    talked_npc_ids = set(scenario.talked_npc_ids)
+    return {
+        "required_clue_ids": _requirement_progress(requirements.get("required_clue_ids", []), discovered_ids),
+        "required_evidence": _requirement_progress(requirements.get("required_evidence", []), inventory),
+        "required_location_ids": _requirement_progress(
+            requirements.get("required_location_ids", []),
+            {scenario.current_location_id} if scenario.current_location_id else set(),
+        ),
+        "required_npc_ids": _requirement_progress(requirements.get("required_npc_ids", []), talked_npc_ids),
+    }
+
+
+def _requirement_progress(required: list[str], current: set[str]) -> dict:
+    remaining = [value for value in required if value not in current]
+    return {
+        "required": list(required),
+        "remaining": remaining,
+        "complete": not remaining,
+    }
 
 
 def _coc_available_actions(scenario: COCScenario) -> list[str]:

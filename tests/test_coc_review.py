@@ -20,6 +20,7 @@ class COCReviewTests(unittest.TestCase):
         self.assertTrue(any("reachable" in strength for strength in review.strengths))
         self.assertTrue(any("SAN loss" in strength for strength in review.strengths))
         self.assertTrue(any("Exit requirements" in strength for strength in review.strengths))
+        self.assertTrue(any("Completion requirements" in strength for strength in review.strengths))
 
     def test_review_warns_about_thin_scenario(self) -> None:
         scenario = create_sample_coc_scenario()
@@ -71,6 +72,24 @@ class COCReviewTests(unittest.TestCase):
         self.assertFalse(review.ok)
         self.assertTrue(any(finding.code == "exit_requirement_clue" for finding in review.findings))
         self.assertTrue(any(finding.code == "exit_requirement_evidence" for finding in review.findings))
+
+    def test_review_warns_about_bad_completion_requirement_references(self) -> None:
+        scenario = create_sample_coc_scenario()
+        scenario.completion_requirements = {
+            "required_clue_ids": ["missing_clue"],
+            "required_evidence": ["Missing evidence"],
+            "required_location_ids": ["attic"],
+            "required_npc_ids": ["missing_npc"],
+        }
+
+        review = review_coc_scenario(scenario)
+
+        self.assertFalse(review.ok)
+        self.assertTrue(any(finding.code == "completion_requirement_clue" for finding in review.findings))
+        self.assertTrue(any(finding.code == "completion_requirement_evidence" for finding in review.findings))
+        self.assertTrue(any(finding.code == "completion_requirement_location" for finding in review.findings))
+        self.assertTrue(any(finding.code == "completion_requirement_npc" for finding in review.findings))
+
 
     def test_render_coc_review_outputs_sections(self) -> None:
         scenario = create_sample_coc_scenario()

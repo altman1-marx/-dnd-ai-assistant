@@ -62,6 +62,33 @@ class COCRuntimeTests(unittest.TestCase):
         self.assertIn("The lantern waits below", output)
         self.assertTrue(scenario.completed)
 
+    def test_completion_requirements_trigger_ending_without_all_clues(self) -> None:
+        scenario = create_sample_coc_scenario()
+        runtime = COCRuntime(scenario)
+
+        handle_coc_action(runtime, "inspect portrait")
+        runtime.flush()
+        handle_coc_action(runtime, "go cellar")
+        runtime.flush()
+        handle_coc_action(runtime, "inspect lantern")
+        output = runtime.flush()
+
+        self.assertTrue(scenario.completed)
+        self.assertFalse(scenario.clues[0].discovered)
+        self.assertIn("The lantern waits below", output)
+
+    def test_completion_requirements_can_require_npc_conversation(self) -> None:
+        scenario = create_sample_coc_scenario()
+        scenario.completion_requirements = {"required_npc_ids": ["mrs_ember"]}
+        runtime = COCRuntime(scenario)
+
+        handle_coc_action(runtime, "talk ember")
+        output = runtime.flush()
+
+        self.assertTrue(scenario.completed)
+        self.assertIn("The lantern waits below", output)
+
+
     def test_help_and_quit(self) -> None:
         runtime = COCRuntime(create_sample_coc_scenario())
 

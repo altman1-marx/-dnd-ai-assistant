@@ -47,6 +47,7 @@ class COCGeneratorTests(unittest.TestCase):
         self.assertIn('"evidence"', prompt)
         self.assertIn('"exit_requirements"', prompt)
         self.assertIn('"required_clue_ids"', prompt)
+        self.assertIn('"completion_requirements"', prompt)
 
     def test_coc_scenario_from_model_text_accepts_fenced_json(self) -> None:
         raw = coc_scenario_to_dict(create_sample_coc_scenario())
@@ -81,6 +82,8 @@ class COCGeneratorTests(unittest.TestCase):
     def test_generate_coc_scenario_text_can_require_review_ok(self) -> None:
         thin = coc_scenario_to_dict(create_sample_coc_scenario())
         thin["clues"] = thin["clues"][:1]
+        thin["completion_requirements"] = {}
+        thin["locations"][0]["exit_requirements"] = {}
         rich = coc_scenario_to_dict(create_sample_coc_scenario())
         provider = SequenceProvider([json.dumps(thin), json.dumps(rich)])
 

@@ -61,6 +61,7 @@ def build_coc_scenario_prompt(request: COCScenarioRequest) -> str:
             "- Give clues stable ids, optional skill gates, optional evidence names, and modest SAN loss.",
             "- Keep investigator characteristics between 1 and 99 and skills between 0 and 100.",
             "- Set current_location_id to the first playable location.",
+            "- Add completion_requirements for the intended ending; references must point to existing clues, evidence, locations, or NPCs.",
             "- Keep all location_id references valid.",
         ]
     )
@@ -178,6 +179,13 @@ def _schema_instructions() -> str:
                 }
             ],
             "inventory": [],
+            "completion_requirements": {
+                "required_clue_ids": ["portrait_truth"],
+                "required_evidence": ["Torn portrait canvas"],
+                "required_location_ids": ["cellar"],
+                "required_npc_ids": [],
+            },
+            "talked_npc_ids": [],
             "ending_text": "string",
         },
         ensure_ascii=False,
