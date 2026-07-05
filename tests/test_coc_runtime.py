@@ -99,6 +99,19 @@ class COCRuntimeTests(unittest.TestCase):
         self.assertIn("Actions:", output)
         self.assertIn("investigation pauses", output)
 
+    def test_progress_reports_completion_requirements(self) -> None:
+        scenario = create_sample_coc_scenario()
+        runtime = COCRuntime(scenario)
+
+        handle_coc_action(runtime, "progress")
+        output = runtime.flush()
+
+        self.assertIn("Ending progress", output)
+        self.assertIn("clues 0/2", output)
+        self.assertIn("evidence 0/1", output)
+        self.assertIn("locations 0/1", output)
+
+
     def test_status_reports_resources_and_clue_progress(self) -> None:
         scenario = create_sample_coc_scenario()
         scenario.clues[0].discovered = True

@@ -203,8 +203,11 @@ def handle_coc_action(runtime: COCRuntime, action: str) -> bool:
         return False
     if normalized in {"help", "?"}:
         runtime.narrate(
-            "Keeper: Actions: look, status, go <exit>, inspect <target>, talk <npc>, check <skill>, sanity, clues, inventory, quit."
+            "Keeper: Actions: look, status, progress, go <exit>, inspect <target>, talk <npc>, check <skill>, sanity, clues, inventory, quit."
         )
+        return True
+    if normalized in {"progress", "ending"}:
+        _describe_completion_progress(runtime)
         return True
     if normalized == "status":
         _describe_coc_status(runtime)
@@ -313,6 +316,32 @@ def _describe_coc_status(runtime: COCRuntime) -> None:
         f"conditions: {', '.join(sorted(investigator.conditions)) or 'none'}."
     )
 
+
+
+def _describe_completion_progress(runtime: COCRuntime) -> None:
+    scenario = runtime.scenario
+    requirements = scenario.completion_requirements
+    if not requirements:
+        discovered = sum(1 for clue in scenario.clues if clue.discovered)
+        runtime.narrate(f"Keeper: Ending progress: clues {discovered}/{len(scenario.clues)} discovered.")
+        return
+    discovered_ids = {clue.id for clue in scenario.clues if clue.discovered}
+    inventory = set(scenario.inventory)
+    current_locations = {scenario.current_location_id} if scenario.current_location_id else set()
+    pieces = [
+        _progress_piece("clues", requirements.get("required_clue_ids", []), discovered_ids),
+        _progress_piece("evidence", requirements.get("required_evidence", []), inventory),
+        _progress_piece("locations", requirements.get("required_location_ids", []), current_locations),
+        _progress_piece("NPCs", requirements.get("required_npc_ids", []), scenario.talked_npc_ids),
+    ]
+    runtime.narrate("Keeper: Ending progress: " + ", ".join(piece for piece in pieces if piece) + ".")
+
+
+def _progress_piece(label: str, required: list[str], current: set[str]) -> str:
+    if not required:
+        return ""
+    met = len([value for value in required if value in current])
+    return f"{label} {met}/{len(required)}"
 
 def _describe_inventory(runtime: COCRuntime) -> None:
     if not runtime.scenario.inventory:

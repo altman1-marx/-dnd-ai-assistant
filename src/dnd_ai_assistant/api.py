@@ -852,7 +852,7 @@ def _requirement_progress(required: list[str], current: set[str]) -> dict:
 
 
 def _coc_available_actions(scenario: COCScenario) -> list[str]:
-    actions = ["look", "status", "sanity", "clues", "inventory", "quit"]
+    actions = ["look", "status", "progress", "sanity", "clues", "inventory", "quit"]
     location = scenario.current_location()
     actions.extend(f"go {exit_name}" for exit_name in sorted(location.exits))
     for npc in _visible_coc_npcs(scenario):
