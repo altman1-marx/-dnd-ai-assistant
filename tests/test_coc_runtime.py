@@ -29,6 +29,21 @@ class COCRuntimeTests(unittest.TestCase):
         self.assertIn("Evidence collected - Torn portrait canvas", output)
         self.assertEqual(scenario.investigator.current_sanity, 58)
         self.assertEqual(scenario.inventory, ["Torn portrait canvas"])
+    def test_inspection_aliases_search_read_and_listen(self) -> None:
+        scenario = create_sample_coc_scenario()
+        scenario.investigator.skills["psychology"] = 100
+        runtime = COCRuntime(scenario, rng=random.Random(1))
+
+        handle_coc_action(runtime, "read journal")
+        handle_coc_action(runtime, "search portrait")
+        handle_coc_action(runtime, "go garden")
+        handle_coc_action(runtime, "listen to well")
+        output = runtime.flush()
+
+        self.assertIn("Waterlogged Journal", output)
+        self.assertIn("Scratched Portrait", output)
+        self.assertIn("Voices in the Well", output)
+        self.assertIn("Recorded well whisper", scenario.inventory)
 
     def test_skill_gated_clue_failure_can_reveal_partial_lead(self) -> None:
         scenario = create_sample_coc_scenario()

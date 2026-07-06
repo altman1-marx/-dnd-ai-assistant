@@ -121,11 +121,24 @@ class APITests(unittest.TestCase):
         self.assertEqual(summary["partial_clue_count"], 0)
         self.assertEqual(summary["inventory"], [])
         self.assertIn("go cellar", summary["available_actions"])
+        self.assertIn("go garden", summary["available_actions"])
         self.assertIn("talk mrs. ember", summary["available_actions"])
         self.assertIn("inventory", summary["available_actions"])
         self.assertIn("conclude", summary["available_actions"])
         self.assertNotIn("first aid", summary["available_actions"])
         self.assertIn("inspect scratched portrait", summary["available_actions"])
+        self.assertIn("search scratched portrait", summary["available_actions"])
+        self.assertIn("read waterlogged journal", summary["available_actions"])
+    def test_coc_summary_suggests_listen_actions_for_auditory_clues(self) -> None:
+        state = APIState()
+        response = create_coc_demo(state)
+        scenario = state.coc_scenarios[response["scenario_id"]]
+        scenario.current_location_id = "garden"
+
+        summary = coc_summary(state, response["scenario_id"])
+
+        self.assertIn("listen voices in the well", summary["available_actions"])
+        self.assertIn("listen well whispers", summary["available_actions"])
 
     def test_coc_summary_suggests_first_aid_when_injured(self) -> None:
         state = APIState()

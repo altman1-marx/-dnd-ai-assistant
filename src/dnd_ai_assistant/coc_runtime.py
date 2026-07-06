@@ -259,7 +259,7 @@ def handle_coc_action(runtime: COCRuntime, action: str) -> bool:
         return False
     if normalized in {"help", "?"}:
         runtime.narrate(
-            "Keeper: Actions: look, status, recap, progress, hint, go <exit>, inspect <target>, talk <npc>, check <skill>, push <target>, spend luck <target>, first aid, conclude, sanity, clues, inventory, quit."
+            "Keeper: Actions: look, status, recap, progress, hint, go <exit>, inspect/search/read/listen/examine <target>, talk <npc>, check <skill>, push <target>, spend luck <target>, first aid, conclude, sanity, clues, inventory, quit."
         )
         return True
     if normalized in {"recap", "summary"}:
@@ -299,8 +299,9 @@ def handle_coc_action(runtime: COCRuntime, action: str) -> bool:
     if normalized.startswith("go "):
         _move_coc_location(runtime, normalized[len("go ") :].strip())
         return True
-    if normalized.startswith("inspect "):
-        _inspect_coc_target(runtime, normalized[len("inspect ") :].strip())
+    inspect_target = _inspection_alias_target(normalized)
+    if inspect_target is not None:
+        _inspect_coc_target(runtime, inspect_target)
         return True
     if normalized.startswith("push "):
         _push_coc_target(runtime, normalized[len("push ") :].strip())
@@ -335,6 +336,14 @@ def _use_first_aid(runtime: COCRuntime) -> None:
     investigator.heal(1)
     healed = investigator.current_hp - before
     runtime.narrate(f"Keeper: First aid restores {healed} HP; HP {investigator.current_hp}/{investigator.max_hp}.")
+
+def _inspection_alias_target(normalized_action: str) -> str | None:
+    for verb in ("listen to", "inspect", "search", "read", "listen", "examine"):
+        prefix = f"{verb} "
+        if normalized_action.startswith(prefix):
+            return normalized_action[len(prefix) :].strip()
+    return None
+
 
 def _inspect_coc_target(runtime: COCRuntime, target: str) -> None:
     clue = _match_clue(_visible_clues(runtime.scenario), target)

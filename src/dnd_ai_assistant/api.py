@@ -893,8 +893,19 @@ def _coc_available_actions(scenario: COCScenario) -> list[str]:
             continue
         if scenario.current_location_id and clue.location_id not in {None, scenario.current_location_id}:
             continue
-        actions.append(f"inspect {clue.title.lower()}")
-        actions.append(f"inspect {clue.id.replace('_', ' ')}")
+        clue_title = clue.title.lower()
+        clue_id = clue.id.replace("_", " ")
+        actions.append(f"inspect {clue_title}")
+        actions.append(f"inspect {clue_id}")
+        actions.append(f"search {clue_title}")
+        actions.append(f"search {clue_id}")
+        clue_words = f"{clue_id} {clue_title}"
+        if any(word in clue_words for word in ("journal", "diary", "letter", "book", "note")):
+            actions.append(f"read {clue_title}")
+            actions.append(f"read {clue_id}")
+        if any(word in clue_words for word in ("voice", "voices", "whisper", "well", "sound")):
+            actions.append(f"listen {clue_title}")
+            actions.append(f"listen {clue_id}")
         if clue.skill:
             actions.append(f"check {clue.skill}")
         if clue.partial_discovered and not clue.push_attempted:
