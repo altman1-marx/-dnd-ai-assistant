@@ -15,7 +15,7 @@ from .adventure_generator import extract_json_object
 from .ai_dm import generate_dm_suggestion
 from .ai_keeper import generate_keeper_suggestion
 from .ai_provider import AIProvider
-from .coc_runtime import COCRuntime, COCScenario, create_sample_coc_scenario, handle_coc_action
+from .coc_runtime import COCRuntime, COCScenario, coc_keeper_hint, create_sample_coc_scenario, handle_coc_action
 from .coc_generator import COCScenarioRequest, generate_coc_scenario_text
 from .coc_review import coc_review_to_dict
 from .coc_serialization import coc_scenario_from_dict, coc_scenario_to_dict, load_coc_scenario, save_coc_scenario
@@ -341,6 +341,7 @@ def coc_summary(state: APIState, scenario_id: str) -> dict:
         "completed": scenario.completed,
         "completion_requirements": {key: list(value) for key, value in scenario.completion_requirements.items()},
         "completion_progress": _coc_completion_progress(scenario),
+        "keeper_hint": coc_keeper_hint(scenario),
         "inventory": list(scenario.inventory),
         "investigator": {
             "name": investigator.name,
@@ -852,7 +853,7 @@ def _requirement_progress(required: list[str], current: set[str]) -> dict:
 
 
 def _coc_available_actions(scenario: COCScenario) -> list[str]:
-    actions = ["look", "status", "progress", "sanity", "clues", "inventory", "quit"]
+    actions = ["look", "status", "progress", "hint", "sanity", "clues", "inventory", "quit"]
     location = scenario.current_location()
     actions.extend(f"go {exit_name}" for exit_name in sorted(location.exits))
     for npc in _visible_coc_npcs(scenario):

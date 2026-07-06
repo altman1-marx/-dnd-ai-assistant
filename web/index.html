@@ -886,6 +886,7 @@
         metric("Exits", (summary.exits || []).map((exit) => exit.name).join(", ") || "None"),
         metric("Blocked Exits", blockedExits.map((exit) => exit.name).join(", ") || "None"),
         metric("Ending", completionProgressLabel(summary.completion_progress || {})),
+        metric("Keeper Hint", summary.keeper_hint || "None"),
         metric("Status", summary.completed ? "Completed" : "In progress"),
         metric("Review", review.ok ? "OK" : "Needs attention"),
         metric("Review Findings", (review.findings || []).length),

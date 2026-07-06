@@ -110,6 +110,8 @@ class WebUITests(unittest.TestCase):
         self.assertIn("completion_progress", html)
         self.assertIn("completionProgressLabel", html)
         self.assertIn("Ending", html)
+        self.assertIn("keeper_hint", html)
+        self.assertIn("Keeper Hint", html)
         self.assertIn("inventory_count", html)
         self.assertIn("summary.npcs", html)
         self.assertIn("npc.name", html)

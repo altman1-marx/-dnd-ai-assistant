@@ -99,6 +99,28 @@ class COCRuntimeTests(unittest.TestCase):
         self.assertIn("Actions:", output)
         self.assertIn("investigation pauses", output)
 
+    def test_hint_points_to_next_completion_step(self) -> None:
+        scenario = create_sample_coc_scenario()
+        runtime = COCRuntime(scenario)
+
+        handle_coc_action(runtime, "hint")
+        output = runtime.flush()
+
+        self.assertIn("Hint", output)
+        self.assertIn("inspect scratched portrait", output)
+
+    def test_hint_moves_to_next_location_after_gate_clue(self) -> None:
+        scenario = create_sample_coc_scenario()
+        runtime = COCRuntime(scenario)
+
+        handle_coc_action(runtime, "inspect portrait")
+        runtime.flush()
+        handle_coc_action(runtime, "hint")
+        output = runtime.flush()
+
+        self.assertIn("Briar House Cellar", output)
+
+
     def test_progress_reports_completion_requirements(self) -> None:
         scenario = create_sample_coc_scenario()
         runtime = COCRuntime(scenario)

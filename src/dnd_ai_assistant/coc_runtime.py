@@ -203,8 +203,11 @@ def handle_coc_action(runtime: COCRuntime, action: str) -> bool:
         return False
     if normalized in {"help", "?"}:
         runtime.narrate(
-            "Keeper: Actions: look, status, progress, go <exit>, inspect <target>, talk <npc>, check <skill>, sanity, clues, inventory, quit."
+            "Keeper: Actions: look, status, progress, hint, go <exit>, inspect <target>, talk <npc>, check <skill>, sanity, clues, inventory, quit."
         )
+        return True
+    if normalized in {"hint", "nudge"}:
+        _describe_keeper_hint(runtime)
         return True
     if normalized in {"progress", "ending"}:
         _describe_completion_progress(runtime)
@@ -342,6 +345,123 @@ def _progress_piece(label: str, required: list[str], current: set[str]) -> str:
         return ""
     met = len([value for value in required if value in current])
     return f"{label} {met}/{len(required)}"
+
+
+def _describe_keeper_hint(runtime: COCRuntime) -> None:
+    runtime.narrate(f"Keeper: Hint: {coc_keeper_hint(runtime.scenario)}")
+
+
+def coc_keeper_hint(scenario: COCScenario) -> str:
+    if scenario.completed:
+        return "The core investigation is complete; review your evidence or close the scene."
+    requirements = scenario.completion_requirements
+    if not requirements:
+        undiscovered = _visible_undiscovered_clues(scenario)
+        if undiscovered:
+            return f"Something nearby deserves attention: inspect {undiscovered[0].title.lower()}."
+        return "Review the clues you have and look for any place or witness you have not revisited."
+    hint = _hint_for_required_clues(scenario, requirements.get("required_clue_ids", []))
+    if hint:
+        return hint
+    hint = _hint_for_required_evidence(scenario, requirements.get("required_evidence", []))
+    if hint:
+        return hint
+    hint = _hint_for_required_locations(scenario, requirements.get("required_location_ids", []))
+    if hint:
+        return hint
+    hint = _hint_for_required_npcs(scenario, requirements.get("required_npc_ids", []))
+    if hint:
+        return hint
+    return "You have met the listed goals; take one more look around or check progress."
+
+
+def _hint_for_required_clues(scenario: COCScenario, required_clue_ids: list[str]) -> str:
+    discovered_ids = {clue.id for clue in scenario.clues if clue.discovered}
+    for clue_id in required_clue_ids:
+        if clue_id in discovered_ids:
+            continue
+        clue = _clue_by_id(scenario, clue_id)
+        if clue is None:
+            continue
+        return _hint_for_clue(scenario, clue)
+    return ""
+
+
+def _hint_for_required_evidence(scenario: COCScenario, required_evidence: list[str]) -> str:
+    inventory = set(scenario.inventory)
+    for evidence in required_evidence:
+        if evidence in inventory:
+            continue
+        clue = next((candidate for candidate in scenario.clues if candidate.evidence == evidence), None)
+        if clue is not None:
+            return _hint_for_clue(scenario, clue)
+    return ""
+
+
+def _hint_for_required_locations(scenario: COCScenario, required_location_ids: list[str]) -> str:
+    for location_id in required_location_ids:
+        if scenario.current_location_id == location_id:
+            continue
+        location = scenario.current_location()
+        exit_name = next((name for name, destination in location.exits.items() if destination == location_id), "")
+        if exit_name and _exit_requirement_met(scenario, location.exit_requirements.get(exit_name, {})):
+            return f"The way is open now: go {exit_name}."
+        if exit_name:
+            return _hint_for_blocked_exit(scenario, exit_name)
+        destination = scenario.locations.get(location_id)
+        if destination is not None:
+            return f"Your goal points toward {destination.name}; look for a route or clue leading there."
+    return ""
+
+
+def _hint_for_required_npcs(scenario: COCScenario, required_npc_ids: list[str]) -> str:
+    for npc_id in required_npc_ids:
+        if npc_id in scenario.talked_npc_ids:
+            continue
+        npc = next((candidate for candidate in scenario.npcs if candidate.id == npc_id), None)
+        if npc is None:
+            continue
+        if npc.location_id in {None, scenario.current_location_id}:
+            return f"A witness may still help: talk {npc.name.lower()}."
+        location = scenario.locations.get(npc.location_id or "")
+        if location is not None:
+            return f"{npc.name} may know more; find a way to {location.name}."
+    return ""
+
+
+def _hint_for_clue(scenario: COCScenario, clue: COCClue) -> str:
+    if clue.location_id in {None, scenario.current_location_id}:
+        if clue.skill:
+            return f"Something here may yield to {clue.skill}: inspect {clue.title.lower()}."
+        return f"Something here deserves attention: inspect {clue.title.lower()}."
+    location = scenario.locations.get(clue.location_id or "")
+    if location is not None:
+        return f"A missing lead is likely in {location.name}; find a route there."
+    return "A required clue is still hidden; review unexplored leads."
+
+
+def _hint_for_blocked_exit(scenario: COCScenario, exit_name: str) -> str:
+    requirement = scenario.current_location().exit_requirements.get(exit_name, {})
+    for clue_id in requirement.get("required_clue_ids", []):
+        clue = _clue_by_id(scenario, clue_id)
+        if clue is not None and not clue.discovered:
+            return _hint_for_clue(scenario, clue)
+    for evidence in requirement.get("required_evidence", []):
+        if evidence in scenario.inventory:
+            continue
+        clue = next((candidate for candidate in scenario.clues if candidate.evidence == evidence), None)
+        if clue is not None:
+            return _hint_for_clue(scenario, clue)
+    return f"The {exit_name} route is still blocked; inspect the current location more closely."
+
+
+def _visible_undiscovered_clues(scenario: COCScenario) -> list[COCClue]:
+    return [clue for clue in _visible_clues(scenario) if not clue.discovered]
+
+
+def _clue_by_id(scenario: COCScenario, clue_id: str) -> COCClue | None:
+    return next((clue for clue in scenario.clues if clue.id == clue_id), None)
+
 
 def _describe_inventory(runtime: COCRuntime) -> None:
     if not runtime.scenario.inventory:
