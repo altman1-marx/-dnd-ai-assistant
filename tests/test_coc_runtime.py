@@ -198,6 +198,33 @@ class COCRuntimeTests(unittest.TestCase):
         self.assertTrue(scenario.completed)
         self.assertIn("The lantern waits below", output)
 
+    def test_conclude_requires_completion_goals(self) -> None:
+        scenario = create_sample_coc_scenario()
+        runtime = COCRuntime(scenario)
+
+        handle_coc_action(runtime, "conclude")
+        output = runtime.flush()
+
+        self.assertFalse(scenario.completed)
+        self.assertIn("cannot be concluded", output)
+        self.assertIn("Ending progress", output)
+
+    def test_conclude_can_close_case_when_requirements_are_met(self) -> None:
+        scenario = create_sample_coc_scenario()
+        scenario.completed = False
+        scenario.clues[2].discovered = True
+        scenario.clues[3].discovered = True
+        scenario.inventory.append("Black wick sample")
+        scenario.current_location_id = "cellar"
+        runtime = COCRuntime(scenario)
+
+        handle_coc_action(runtime, "solve case")
+        output = runtime.flush()
+
+        self.assertTrue(scenario.completed)
+        self.assertIn("close the case", output)
+        self.assertIn("The lantern waits below", output)
+
 
     def test_help_and_quit(self) -> None:
         runtime = COCRuntime(create_sample_coc_scenario())

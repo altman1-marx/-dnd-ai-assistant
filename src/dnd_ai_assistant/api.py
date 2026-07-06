@@ -880,7 +880,7 @@ def _requirement_progress(required: list[str], current: set[str]) -> dict:
 
 
 def _coc_available_actions(scenario: COCScenario) -> list[str]:
-    actions = ["look", "status", "recap", "progress", "hint", "sanity", "clues", "inventory", "quit"]
+    actions = ["look", "status", "recap", "progress", "hint", "sanity", "clues", "inventory", "conclude", "quit"]
     if scenario.investigator.current_hp < scenario.investigator.max_hp:
         actions.append("first aid")
     location = scenario.current_location()

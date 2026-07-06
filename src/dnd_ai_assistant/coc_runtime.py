@@ -215,7 +215,7 @@ def handle_coc_action(runtime: COCRuntime, action: str) -> bool:
         return False
     if normalized in {"help", "?"}:
         runtime.narrate(
-            "Keeper: Actions: look, status, recap, progress, hint, go <exit>, inspect <target>, talk <npc>, check <skill>, push <target>, spend luck <target>, first aid, sanity, clues, inventory, quit."
+            "Keeper: Actions: look, status, recap, progress, hint, go <exit>, inspect <target>, talk <npc>, check <skill>, push <target>, spend luck <target>, first aid, conclude, sanity, clues, inventory, quit."
         )
         return True
     if normalized in {"recap", "summary"}:
@@ -226,6 +226,9 @@ def handle_coc_action(runtime: COCRuntime, action: str) -> bool:
         return True
     if normalized in {"progress", "ending"}:
         _describe_completion_progress(runtime)
+        return True
+    if normalized in {"conclude", "solve", "solve case", "close case"}:
+        _conclude_coc_scenario(runtime)
         return True
     if normalized == "status":
         _describe_coc_status(runtime)
@@ -471,6 +474,22 @@ def _describe_completion_progress(runtime: COCRuntime) -> None:
     ]
     runtime.narrate("Keeper: Ending progress: " + ", ".join(piece for piece in pieces if piece) + ".")
 
+
+def _conclude_coc_scenario(runtime: COCRuntime) -> None:
+    scenario = runtime.scenario
+    if scenario.completed:
+        runtime.narrate("Keeper: The case is already concluded.")
+        if scenario.ending_text:
+            runtime.narrate(f"Keeper: {scenario.ending_text}")
+        return
+    if not _completion_requirements_met(scenario):
+        runtime.narrate("Keeper: The case cannot be concluded yet; key evidence is still missing.")
+        _describe_completion_progress(runtime)
+        return
+    scenario.completed = True
+    runtime.narrate("Keeper: You put the evidence together and close the case.")
+    if scenario.ending_text:
+        runtime.narrate(f"Keeper: {scenario.ending_text}")
 
 def _progress_piece(label: str, required: list[str], current: set[str]) -> str:
     if not required:
