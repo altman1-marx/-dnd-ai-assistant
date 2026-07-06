@@ -387,7 +387,7 @@
       </section>
 
       <section>
-        <h2>Combat</h2>
+        <h2 id="activityTitle">Combat</h2>
         <div id="combat" class="list"></div>
       </section>
 
@@ -439,6 +439,7 @@
     const clearTranscriptButton = document.getElementById("clearTranscriptButton");
     const logVisibility = document.getElementById("logVisibility");
     const quickActions = document.querySelector(".quick-actions");
+    const activityTitle = document.getElementById("activityTitle");
 
     document.getElementById("healthButton").addEventListener("click", checkHealth);
     document.getElementById("importButton").addEventListener("click", importAdventure);
@@ -866,6 +867,7 @@
         ? summary.characters.map(renderCharacter).join("")
         : "<p class=\"muted\">No characters yet.</p>";
 
+      activityTitle.textContent = "Combat";
       combat.innerHTML = summary.active_combat
         ? renderCombat(summary.active_combat, summary.available_actions || [])
         : "<p class=\"muted\">No active combat.</p>";
@@ -898,10 +900,8 @@
       ].join("");
       renderQuickActions(summary.available_actions || []);
       characters.innerHTML = renderInvestigator(investigator);
-      combat.innerHTML = renderCocEvidence(summary.inventory || []) + renderCocPartialClues(summary.partial_clues || []);
-      if (review.findings && review.findings.length) {
-        combat.innerHTML += renderCocReviewFindings(review.findings);
-      }
+      activityTitle.textContent = "Investigation";
+      combat.innerHTML = renderCocInvestigationPanel(summary, review);
     }
 
 
@@ -927,6 +927,69 @@
         + escapeHtml((investigator.conditions || []).join(", ") || "none") + "</p></div>";
     }
 
+    function renderCocInvestigationPanel(summary, review) {
+      const sections = [
+        renderCocProgress(summary.completion_progress || {}),
+        renderCocExits(summary.exits || []),
+        renderCocNpcs(summary.npcs || []),
+        renderCocDiscoveredClues(summary.discovered_clues || []),
+        renderCocEvidence(summary.inventory || []),
+        renderCocPartialClues(summary.partial_clues || [])
+      ];
+      if (review.findings && review.findings.length) {
+        sections.push(renderCocReviewFindings(review.findings));
+      }
+      return sections.filter(Boolean).join("");
+    }
+
+    function renderCocProgress(progress) {
+      const groups = Object.entries(progress);
+      if (!groups.length) return "";
+      return "<div class=\"item\"><strong>Ending Progress</strong>" + groups.map(([key, group]) => {
+        return "<p>" + escapeHtml(cocProgressLabel(key)) + ": "
+          + escapeHtml(String((group.met || []).length)) + "/" + escapeHtml(String((group.required || []).length))
+          + " met</p>" + renderCocRemaining(group.remaining || []);
+      }).join("") + "</div>";
+    }
+
+    function renderCocRemaining(remaining) {
+      if (!remaining.length) return "";
+      return "<p class=\"muted\">Remaining " + escapeHtml(remaining.join(", ")) + "</p>";
+    }
+
+    function cocProgressLabel(key) {
+      return ({
+        required_clue_ids: "Required clues",
+        required_evidence: "Required evidence",
+        required_location_ids: "Required locations",
+        required_npc_ids: "Required NPCs"
+      })[key] || key.replaceAll("_", " ");
+    }
+
+    function renderCocExits(exits) {
+      if (!exits.length) return "<div class=\"item\"><strong>Exits</strong><p class=\"muted\">No visible exits.</p></div>";
+      return "<div class=\"item\"><strong>Exits</strong>" + exits.map((exit) => {
+        const state = exit.available === false ? "blocked" : "open";
+        return "<p>" + escapeHtml(exit.name) + " <span class=\"muted\">" + escapeHtml(state) + "</span></p>";
+      }).join("") + "</div>";
+    }
+
+    function renderCocNpcs(npcs) {
+      if (!npcs.length) return "<div class=\"item\"><strong>NPCs</strong><p class=\"muted\">No visible NPCs.</p></div>";
+      return npcs.map((npc) => {
+        return "<div class=\"item\"><strong>" + escapeHtml(npc.name)
+          + "</strong><p>" + escapeHtml(npc.description || "")
+          + "</p><p class=\"muted\">NPC</p></div>";
+      }).join("");
+    }
+
+    function renderCocDiscoveredClues(clues) {
+      if (!clues.length) return "<div class=\"item\"><strong>Discovered Clues</strong><p class=\"muted\">No confirmed clues yet.</p></div>";
+      return clues.map((clue) => {
+        return "<div class=\"item\"><strong>Clue: " + escapeHtml(clue.title)
+          + "</strong><p>" + escapeHtml(clue.text || "") + "</p></div>";
+      }).join("");
+    }
     function renderCocEvidence(items) {
       if (!items.length) return "<p class=\"muted\">No evidence collected.</p>";
       return items.map((item) => {
@@ -1021,6 +1084,7 @@ function clearCampaign() {
       locationLine.textContent = "Import an adventure to begin.";
       metrics.innerHTML = "";
       characters.innerHTML = "";
+      activityTitle.textContent = "Combat";
       combat.innerHTML = "";
       setControls(false);
     }
