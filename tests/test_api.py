@@ -118,6 +118,7 @@ class APITests(unittest.TestCase):
         self.assertEqual(summary["exits"][0]["name"], "cellar")
         self.assertEqual(summary["npcs"][0]["name"], "Mrs. Ember")
         self.assertEqual(summary["clue_count"], 4)
+        self.assertEqual(summary["partial_clue_count"], 0)
         self.assertEqual(summary["inventory"], [])
         self.assertIn("go cellar", summary["available_actions"])
         self.assertIn("talk mrs. ember", summary["available_actions"])
@@ -191,6 +192,21 @@ class APITests(unittest.TestCase):
         self.assertEqual(response["summary"]["discovered_clue_count"], 1)
         self.assertEqual(response["summary"]["inventory"], ["Torn portrait canvas"])
 
+    def test_coc_summary_exposes_partial_clues_after_soft_failure(self) -> None:
+        state = APIState()
+        scenario_id = create_coc_demo(state)["scenario_id"]
+        state.coc_scenarios[scenario_id].investigator.skills["spot hidden"] = 1
+
+        response = run_coc_action(state, scenario_id, "inspect hearth", seed=1)
+        listed = list_coc_scenarios(state)["scenarios"][0]
+
+        self.assertIn("Partial clue - Ashen Spiral", response["transcript"])
+        self.assertEqual(response["summary"]["discovered_clue_count"], 0)
+        self.assertEqual(response["summary"]["partial_clue_count"], 1)
+        self.assertEqual(response["summary"]["partial_clues"][0]["title"], "Ashen Spiral")
+        self.assertIn("Charcoal spiral rubbing", response["summary"]["inventory"])
+        self.assertEqual(listed["partial_clue_count"], 1)
+
     def test_list_campaigns_returns_memory_campaigns(self) -> None:
         state = APIState()
         first_id = create_demo_campaign(state)["campaign_id"]
@@ -226,6 +242,7 @@ class APITests(unittest.TestCase):
         self.assertEqual(response["scenarios"][0]["inventory_count"], 1)
         self.assertEqual(response["scenarios"][0]["npc_count"], 1)
         self.assertEqual(response["scenarios"][0]["discovered_clue_count"], 1)
+        self.assertEqual(response["scenarios"][0]["partial_clue_count"], 0)
         self.assertEqual(response["scenarios"][0]["clue_count"], 4)
 
     def test_delete_campaign_removes_campaign(self) -> None:

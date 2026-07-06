@@ -317,6 +317,9 @@ def coc_summary(state: APIState, scenario_id: str) -> dict:
     investigator = scenario.investigator
     location = scenario.current_location()
     discovered = [clue for clue in scenario.clues if clue.discovered]
+    partial = [
+        clue for clue in scenario.clues if clue.partial_discovered and not clue.discovered
+    ]
     return {
         "id": scenario.id,
         "title": scenario.title,
@@ -357,9 +360,19 @@ def coc_summary(state: APIState, scenario_id: str) -> dict:
         },
         "clue_count": len(scenario.clues),
         "discovered_clue_count": len(discovered),
+        "partial_clue_count": len(partial),
         "discovered_clues": [
             {"id": clue.id, "title": clue.title, "text": clue.text}
             for clue in discovered
+        ],
+        "partial_clues": [
+            {
+                "id": clue.id,
+                "title": clue.title,
+                "text": clue.failure_text or "",
+                "evidence": clue.failure_evidence,
+            }
+            for clue in partial
         ],
         "available_actions": _coc_available_actions(scenario),
     }
@@ -617,6 +630,9 @@ def _coc_scenario_list_item(scenario: COCScenario) -> dict:
         "current_sanity": scenario.investigator.current_sanity,
         "max_sanity": scenario.investigator.max_sanity,
         "discovered_clue_count": sum(1 for clue in scenario.clues if clue.discovered),
+        "partial_clue_count": sum(
+            1 for clue in scenario.clues if clue.partial_discovered and not clue.discovered
+        ),
         "clue_count": len(scenario.clues),
         "completion_required_count": completion_counts["required"],
         "completion_remaining_count": completion_counts["remaining"],

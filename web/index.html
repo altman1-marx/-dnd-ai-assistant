@@ -892,12 +892,13 @@
         metric("Review Findings", (review.findings || []).length),
         metric("NPCs", (summary.npcs || []).map((npc) => npc.name).join(", ") || "None"),
         metric("Clues", summary.discovered_clue_count + "/" + summary.clue_count + " discovered"),
+        metric("Partial Leads", summary.partial_clue_count || 0),
         metric("Evidence", (summary.inventory || []).length),
         metric("Available Actions", (summary.available_actions || []).length)
       ].join("");
       renderQuickActions(summary.available_actions || []);
       characters.innerHTML = renderInvestigator(investigator);
-      combat.innerHTML = renderCocEvidence(summary.inventory || []);
+      combat.innerHTML = renderCocEvidence(summary.inventory || []) + renderCocPartialClues(summary.partial_clues || []);
       if (review.findings && review.findings.length) {
         combat.innerHTML += renderCocReviewFindings(review.findings);
       }
@@ -930,6 +931,15 @@
       if (!items.length) return "<p class=\"muted\">No evidence collected.</p>";
       return items.map((item) => {
         return "<div class=\"item\"><strong>" + escapeHtml(item) + "</strong><p class=\"muted\">Evidence</p></div>";
+      }).join("");
+    }
+
+    function renderCocPartialClues(clues) {
+      if (!clues.length) return "";
+      return clues.map((clue) => {
+        return "<div class=\"item\"><strong>Partial lead: " + escapeHtml(clue.title)
+          + "</strong><p>" + escapeHtml(clue.text || "")
+          + "</p><p class=\"muted\">" + escapeHtml(clue.evidence || "Unconfirmed lead") + "</p></div>";
       }).join("");
     }
 
@@ -971,6 +981,7 @@
           + " | Evidence " + escapeHtml(String(scenario.inventory_count || 0))
           + " | Clues " + escapeHtml(String(scenario.discovered_clue_count))
           + "/" + escapeHtml(String(scenario.clue_count))
+          + " | Partial " + escapeHtml(String(scenario.partial_clue_count || 0))
           + " | Ending " + escapeHtml(completionCountLabel(scenario))
           + "</p></div><button type=\"button\" class=\"secondary\" data-load-coc=\""
           + escapeHtml(scenario.id) + "\">" + active + "</button></div>";
