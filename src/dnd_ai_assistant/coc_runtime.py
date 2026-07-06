@@ -562,7 +562,7 @@ def coc_keeper_hint(scenario: COCScenario) -> str:
     if not requirements:
         undiscovered = _visible_undiscovered_clues(scenario)
         if undiscovered:
-            return f"Something nearby deserves attention: inspect {undiscovered[0].title.lower()}."
+            return f"Something nearby deserves attention: {_preferred_clue_action(undiscovered[0])}."
         return "Review the clues you have and look for any place or witness you have not revisited."
     hint = _hint_for_required_clues(scenario, requirements.get("required_clue_ids", []))
     if hint:
@@ -636,12 +636,22 @@ def _hint_for_required_npcs(scenario: COCScenario, required_npc_ids: list[str]) 
 def _hint_for_clue(scenario: COCScenario, clue: COCClue) -> str:
     if clue.location_id in {None, scenario.current_location_id}:
         if clue.skill:
-            return f"Something here may yield to {clue.skill}: inspect {clue.title.lower()}."
-        return f"Something here deserves attention: inspect {clue.title.lower()}."
+            return f"Something here may yield to {clue.skill}: {_preferred_clue_action(clue)}."
+        return f"Something here deserves attention: {_preferred_clue_action(clue)}."
     location = scenario.locations.get(clue.location_id or "")
     if location is not None:
         return f"A missing lead is likely in {location.name}; find a route there."
     return "A required clue is still hidden; review unexplored leads."
+
+
+def _preferred_clue_action(clue: COCClue) -> str:
+    clue_title = clue.title.lower()
+    clue_words = f"{clue.id.replace('_', ' ')} {clue_title}"
+    if any(word in clue_words for word in ("journal", "diary", "letter", "book", "note")):
+        return f"read {clue_title}"
+    if any(word in clue_words for word in ("voice", "voices", "whisper", "well", "sound")):
+        return f"listen {clue_title}"
+    return f"inspect {clue_title}"
 
 
 def _hint_for_blocked_exit(scenario: COCScenario, exit_name: str) -> str:

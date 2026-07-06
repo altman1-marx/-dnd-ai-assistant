@@ -276,6 +276,22 @@ class COCRuntimeTests(unittest.TestCase):
 
         self.assertIn("Hint", output)
         self.assertIn("inspect scratched portrait", output)
+    def test_hint_uses_natural_actions_for_clue_types(self) -> None:
+        scenario = create_sample_coc_scenario()
+        scenario.completion_requirements = {}
+        runtime = COCRuntime(scenario)
+
+        handle_coc_action(runtime, "hint")
+        study_output = runtime.flush()
+        scenario.current_location_id = "garden"
+        for clue in scenario.clues:
+            if clue.id == "rain_gauge":
+                clue.discovered = True
+        handle_coc_action(runtime, "hint")
+        garden_output = runtime.flush()
+
+        self.assertIn("read waterlogged journal", study_output)
+        self.assertIn("listen voices in the well", garden_output)
 
     def test_hint_moves_to_next_location_after_gate_clue(self) -> None:
         scenario = create_sample_coc_scenario()
