@@ -108,6 +108,7 @@ class COCReviewTests(unittest.TestCase):
         self.assertEqual(data["title"], scenario.title)
         self.assertEqual(data["counts"]["locations"], 2)
         self.assertEqual(data["counts"]["clues"], 4)
+        self.assertEqual(data["counts"]["completion_goals"], 4)
         self.assertIn("findings", data)
 
     def test_coc_review_to_dict_is_machine_readable(self) -> None:

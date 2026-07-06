@@ -92,9 +92,13 @@ def coc_review_to_dict(scenario: COCScenario) -> dict:
             "clues": len(scenario.clues),
             "evidence": len([clue for clue in scenario.clues if clue.evidence]),
             "total_sanity_loss": sum(max(0, clue.sanity_loss) for clue in scenario.clues),
+            "completion_goals": _completion_goal_count(scenario),
         },
     }
 
+
+def _completion_goal_count(scenario: COCScenario) -> int:
+    return sum(len(values) for values in scenario.completion_requirements.values())
 
 def render_coc_review(scenario: COCScenario) -> str:
     review = review_coc_scenario(scenario)
