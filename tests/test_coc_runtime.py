@@ -121,6 +121,22 @@ class COCRuntimeTests(unittest.TestCase):
         self.assertIn("Briar House Cellar", output)
 
 
+    def test_recap_reports_state_and_next_lead(self) -> None:
+        scenario = create_sample_coc_scenario()
+        runtime = COCRuntime(scenario)
+
+        handle_coc_action(runtime, "inspect portrait")
+        runtime.flush()
+        handle_coc_action(runtime, "recap")
+        output = runtime.flush()
+
+        self.assertIn("Recap", output)
+        self.assertIn("Briar House Study", output)
+        self.assertIn("clues 1/4", output)
+        self.assertIn("Scratched Portrait", output)
+        self.assertIn("Next lead", output)
+
+
     def test_progress_reports_completion_requirements(self) -> None:
         scenario = create_sample_coc_scenario()
         runtime = COCRuntime(scenario)

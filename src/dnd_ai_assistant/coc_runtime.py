@@ -203,8 +203,11 @@ def handle_coc_action(runtime: COCRuntime, action: str) -> bool:
         return False
     if normalized in {"help", "?"}:
         runtime.narrate(
-            "Keeper: Actions: look, status, progress, hint, go <exit>, inspect <target>, talk <npc>, check <skill>, sanity, clues, inventory, quit."
+            "Keeper: Actions: look, status, recap, progress, hint, go <exit>, inspect <target>, talk <npc>, check <skill>, sanity, clues, inventory, quit."
         )
+        return True
+    if normalized in {"recap", "summary"}:
+        _describe_coc_recap(runtime)
         return True
     if normalized in {"hint", "nudge"}:
         _describe_keeper_hint(runtime)
@@ -320,6 +323,18 @@ def _describe_coc_status(runtime: COCRuntime) -> None:
     )
 
 
+
+def _describe_coc_recap(runtime: COCRuntime) -> None:
+    scenario = runtime.scenario
+    location = scenario.current_location()
+    discovered = [clue for clue in scenario.clues if clue.discovered]
+    evidence = ", ".join(scenario.inventory) if scenario.inventory else "none"
+    latest_clue = discovered[-1].title if discovered else "none"
+    runtime.narrate(
+        f"Keeper: Recap: {scenario.title}; location {location.name}; "
+        f"clues {len(discovered)}/{len(scenario.clues)}; latest clue {latest_clue}; evidence {evidence}."
+    )
+    runtime.narrate(f"Keeper: Next lead: {coc_keeper_hint(scenario)}")
 
 def _describe_completion_progress(runtime: COCRuntime) -> None:
     scenario = runtime.scenario

@@ -787,6 +787,7 @@ class APITests(unittest.TestCase):
         self.assertEqual(summary["exits"][0]["requirements"]["required_clue_ids"], ["portrait_truth"])
         self.assertTrue(action["summary"]["exits"][0]["available"])
         self.assertIn("progress", summary["available_actions"])
+        self.assertIn("recap", summary["available_actions"])
         self.assertIn("hint", summary["available_actions"])
         self.assertIn("scratched portrait", summary["keeper_hint"])
         self.assertEqual(summary["completion_progress"]["required_clue_ids"]["remaining"], ["portrait_truth", "lantern_wick"])
