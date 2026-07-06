@@ -617,6 +617,7 @@
         state.cocSummary = await api("GET", "/coc/" + state.scenarioId + "/summary");
         state.cocReview = await api("GET", "/coc/" + state.scenarioId + "/review");
         renderCocSummary();
+        renderCocRecentEvents(state.cocSummary.recent_events || []);
         setStatus(composeCocStatus());
       } catch (error) {
         setStatus(error.message, true);
@@ -788,6 +789,7 @@
         appendTranscript(data.transcript);
         state.cocSummary = data.summary;
         renderCocSummary();
+        renderCocRecentEvents(state.cocSummary.recent_events || []);
         setStatus(composeCocStatus());
         await refreshCampaigns();
       } catch (error) {
@@ -1211,20 +1213,27 @@ function clearCampaign() {
       });
     }
 
-    function appendTranscript(text) {
-      if (!text) return;
-      text.split(/\n\n+/).forEach((block) => {
-        const trimmed = block.trim();
-        if (!trimmed) return;
-        const parsed = trimmed.match(/^([^:\n]{1,32}):\s*([\s\S]*)$/);
-        if (parsed) {
-          appendTranscriptMessage(parsed[1], parsed[2]);
-        } else {
-          appendTranscriptMessage("Log", trimmed);
-        }
-      });
+    function renderCocRecentEvents(lines) {
+      lines.forEach((line) => appendTranscriptLine(line, "coc:" + line));
     }
 
+    function appendTranscript(text) {
+      if (!text) return;
+      text.split(/\n+/).forEach((line) => appendTranscriptLine(line, "coc:" + line.trim()));
+    }
+
+    function appendTranscriptLine(line, key) {
+      const trimmed = String(line || "").trim();
+      if (!trimmed) return;
+      if (key && state.transcriptEventIds.has(key)) return;
+      if (key) state.transcriptEventIds.add(key);
+      const parsed = trimmed.match(/^([^:\n]{1,32}):\s*([\s\S]*)$/);
+      if (parsed) {
+        appendTranscriptMessage(parsed[1], parsed[2]);
+      } else {
+        appendTranscriptMessage("Log", trimmed);
+      }
+    }
     function appendTranscriptMessage(actor, content, meta) {
       if (!content) return;
       const message = document.createElement("article");
