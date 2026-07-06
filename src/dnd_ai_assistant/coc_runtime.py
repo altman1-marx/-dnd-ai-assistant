@@ -89,7 +89,7 @@ def create_sample_coc_scenario() -> COCScenario:
         name="Eleanor Vale",
         occupation="Antiquarian",
         characteristics={"str": 45, "con": 55, "siz": 60, "dex": 50, "app": 55, "int": 70, "pow": 60, "edu": 75},
-        skills={"library use": 55, "spot hidden": 45, "occult": 40, "psychology": 35},
+        skills={"library use": 55, "spot hidden": 45, "occult": 40, "psychology": 35, "first aid": 50},
         luck=50,
     )
     locations = {
@@ -215,7 +215,7 @@ def handle_coc_action(runtime: COCRuntime, action: str) -> bool:
         return False
     if normalized in {"help", "?"}:
         runtime.narrate(
-            "Keeper: Actions: look, status, recap, progress, hint, go <exit>, inspect <target>, talk <npc>, check <skill>, push <target>, spend luck <target>, sanity, clues, inventory, quit."
+            "Keeper: Actions: look, status, recap, progress, hint, go <exit>, inspect <target>, talk <npc>, check <skill>, push <target>, spend luck <target>, first aid, sanity, clues, inventory, quit."
         )
         return True
     if normalized in {"recap", "summary"}:
@@ -246,6 +246,9 @@ def handle_coc_action(runtime: COCRuntime, action: str) -> bool:
     if normalized in {"inventory", "evidence"}:
         _describe_inventory(runtime)
         return True
+    if normalized in {"first aid", "first aid self"}:
+        _use_first_aid(runtime)
+        return True
     if normalized.startswith("go "):
         _move_coc_location(runtime, normalized[len("go ") :].strip())
         return True
@@ -267,6 +270,24 @@ def handle_coc_action(runtime: COCRuntime, action: str) -> bool:
     runtime.narrate("Keeper: That action is not supported yet.")
     return True
 
+
+def _use_first_aid(runtime: COCRuntime) -> None:
+    investigator = runtime.scenario.investigator
+    if investigator.current_hp >= investigator.max_hp:
+        runtime.narrate(f"Keeper: {investigator.name} does not need first aid right now.")
+        return
+    value = investigator.skill_value("first aid")
+    check = roll_percentile_check(value, rng=runtime.rng)
+    runtime.narrate(
+        f"Keeper: {investigator.name} rolls first aid {check.total} vs {value}: {check.success_level.value}."
+    )
+    if not check.success:
+        runtime.narrate("Keeper: The wound remains untreated.")
+        return
+    before = investigator.current_hp
+    investigator.heal(1)
+    healed = investigator.current_hp - before
+    runtime.narrate(f"Keeper: First aid restores {healed} HP; HP {investigator.current_hp}/{investigator.max_hp}.")
 
 def _inspect_coc_target(runtime: COCRuntime, target: str) -> None:
     clue = _match_clue(_visible_clues(runtime.scenario), target)

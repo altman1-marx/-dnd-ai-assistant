@@ -275,6 +275,35 @@ class COCRuntimeTests(unittest.TestCase):
         self.assertIn("clues 1/4", output)
         self.assertIn("evidence 0", output)
 
+    def test_first_aid_can_restore_one_hp(self) -> None:
+        scenario = create_sample_coc_scenario()
+        scenario.investigator.apply_damage(3)
+        scenario.investigator.skills["first aid"] = 100
+        runtime = COCRuntime(scenario, rng=random.Random(1))
+
+        handle_coc_action(runtime, "first aid")
+        output = runtime.flush()
+
+        self.assertIn("rolls first aid", output)
+        self.assertIn("restores 1 HP", output)
+        self.assertEqual(scenario.investigator.current_hp, scenario.investigator.max_hp - 2)
+
+    def test_first_aid_reports_full_hp_and_failure(self) -> None:
+        scenario = create_sample_coc_scenario()
+        runtime = COCRuntime(scenario, rng=random.Random(1))
+
+        handle_coc_action(runtime, "first aid")
+        full_output = runtime.flush()
+        scenario.investigator.apply_damage(2)
+        scenario.investigator.skills["first aid"] = 0
+        handle_coc_action(runtime, "first aid")
+        failed_output = runtime.flush()
+
+        self.assertIn("does not need first aid", full_output)
+        self.assertIn("wound remains untreated", failed_output)
+        self.assertEqual(scenario.investigator.current_hp, scenario.investigator.max_hp - 2)
+
+
     def test_go_moves_between_locations_and_reveals_local_clues(self) -> None:
         scenario = create_sample_coc_scenario()
         runtime = COCRuntime(scenario)

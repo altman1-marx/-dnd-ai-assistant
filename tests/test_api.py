@@ -123,7 +123,17 @@ class APITests(unittest.TestCase):
         self.assertIn("go cellar", summary["available_actions"])
         self.assertIn("talk mrs. ember", summary["available_actions"])
         self.assertIn("inventory", summary["available_actions"])
+        self.assertNotIn("first aid", summary["available_actions"])
         self.assertIn("inspect scratched portrait", summary["available_actions"])
+
+    def test_coc_summary_suggests_first_aid_when_injured(self) -> None:
+        state = APIState()
+        scenario_id = create_coc_demo(state)["scenario_id"]
+        state.coc_scenarios[scenario_id].investigator.apply_damage(2)
+
+        summary = coc_summary(state, scenario_id)
+
+        self.assertIn("first aid", summary["available_actions"])
 
     def test_coc_review_returns_quality_report(self) -> None:
         state = APIState()
