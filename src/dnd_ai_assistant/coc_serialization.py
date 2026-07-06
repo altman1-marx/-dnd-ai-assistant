@@ -70,6 +70,9 @@ def coc_scenario_to_dict(scenario: COCScenario) -> dict:
                 "discovered": clue.discovered,
                 "partial_discovered": clue.partial_discovered,
                 "push_attempted": clue.push_attempted,
+                "last_check_total": clue.last_check_total,
+                "last_required_total": clue.last_required_total,
+                "last_check_level": clue.last_check_level,
             }
             for clue in scenario.clues
         ],
@@ -125,6 +128,9 @@ def coc_scenario_from_dict(data: dict) -> COCScenario:
                 discovered=clue.get("discovered", False),
                 partial_discovered=clue.get("partial_discovered", False),
                 push_attempted=clue.get("push_attempted", False),
+                last_check_total=clue.get("last_check_total"),
+                last_required_total=clue.get("last_required_total"),
+                last_check_level=clue.get("last_check_level"),
             )
             for clue in data.get("clues", [])
         ],
@@ -367,6 +373,17 @@ def _validate_clue_data(data: object, index: int, seen_ids: set[str], location_i
         raise COCScenarioValidationError(f"clues[{index}].partial_discovered must be a boolean")
     if "push_attempted" in data and not isinstance(data["push_attempted"], bool):
         raise COCScenarioValidationError(f"clues[{index}].push_attempted must be a boolean")
+    _validate_optional_int_range(data, "last_check_total", 1, 100, prefix=f"clues[{index}]")
+    _validate_optional_int_range(data, "last_required_total", 1, 100, prefix=f"clues[{index}]")
+    if data.get("last_check_level") is not None and data["last_check_level"] not in {
+        "fumble",
+        "failure",
+        "regular",
+        "hard",
+        "extreme",
+        "critical",
+    }:
+        raise COCScenarioValidationError(f"clues[{index}].last_check_level must be a valid success level")
 
 
 def _validate_npcs_data(npcs: object, location_ids: set[str]) -> set[str]:

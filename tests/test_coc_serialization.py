@@ -18,6 +18,9 @@ class COCSerializationTests(unittest.TestCase):
         scenario = create_sample_coc_scenario()
         scenario.clues[0].discovered = True
         scenario.clues[1].push_attempted = True
+        scenario.clues[1].last_check_total = 50
+        scenario.clues[1].last_required_total = 45
+        scenario.clues[1].last_check_level = "failure"
         scenario.inventory.append("Waterlogged journal")
         scenario.investigator.lose_sanity(3)
         scenario.completed = True
@@ -39,6 +42,9 @@ class COCSerializationTests(unittest.TestCase):
         self.assertEqual(restored.clues[1].failure_evidence, "Charcoal spiral rubbing")
         self.assertFalse(restored.clues[1].partial_discovered)
         self.assertTrue(restored.clues[1].push_attempted)
+        self.assertEqual(restored.clues[1].last_check_total, 50)
+        self.assertEqual(restored.clues[1].last_required_total, 45)
+        self.assertEqual(restored.clues[1].last_check_level, "failure")
 
     def test_coc_scenario_save_and_load_file(self) -> None:
         scenario = create_sample_coc_scenario()
@@ -161,6 +167,19 @@ class COCSerializationTests(unittest.TestCase):
         data["clues"][1]["push_attempted"] = "yes"
 
         with self.assertRaisesRegex(COCScenarioValidationError, "push_attempted"):
+            validate_coc_scenario_data(data)
+
+    def test_validate_coc_scenario_data_rejects_bad_last_check_fields(self) -> None:
+        data = coc_scenario_to_dict(create_sample_coc_scenario())
+        data["clues"][1]["last_check_total"] = 0
+
+        with self.assertRaisesRegex(COCScenarioValidationError, "last_check_total"):
+            validate_coc_scenario_data(data)
+
+        data = coc_scenario_to_dict(create_sample_coc_scenario())
+        data["clues"][1]["last_check_level"] = "legendary"
+
+        with self.assertRaisesRegex(COCScenarioValidationError, "last_check_level"):
             validate_coc_scenario_data(data)
 
     def test_validate_coc_scenario_data_rejects_bad_inventory(self) -> None:

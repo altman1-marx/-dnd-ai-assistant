@@ -112,6 +112,7 @@ inspect hearth
 talk ember
 check library use
 push hearth
+spend luck hearth
 sanity
 clues
 inventory
@@ -534,7 +535,7 @@ python -m dnd_ai_assistant.demo serve-api `
 3. 点击 `Start Demo`，或选择一个 adventure JSON 文件并导入。
 4. 如果是手动导入，点击 `Add Sample Character`，然后用动作栏或输入框推进冒险。
 5. 可先点击 `DM Suggest` 生成叙述/规则建议，再点击 `Run Suggested` 执行同一条 runtime action。
-6. COC 模式可点击 `Start COC Demo`，或选择一个 COC scenario JSON 后点击 `Import COC Scenario`；配置 AI provider 后，也可以输入 premise 并点击 `Generate COC Scenario`。随后用 `look`、`recap`、`hint`、`progress`、`go cellar`、`talk ember`、`inspect portrait`、`push hearth`、`inventory` 等动作推进调查。配置 AI provider 后，`DM Suggest` 在 COC 模式下会生成 AI Keeper 建议。
+6. COC 模式可点击 `Start COC Demo`，或选择一个 COC scenario JSON 后点击 `Import COC Scenario`；配置 AI provider 后，也可以输入 premise 并点击 `Generate COC Scenario`。随后用 `look`、`recap`、`hint`、`progress`、`go cellar`、`talk ember`、`inspect portrait`、`push hearth`、`spend luck hearth`、`inventory` 等动作推进调查。配置 AI provider 后，`DM Suggest` 在 COC 模式下会生成 AI Keeper 建议。
 
 当前页面支持 API 健康检查、列出/删除内存中的 campaign、内置 demo adventure、导入冒险、添加示例角色、查看摘要、加载和按可见性过滤 session log、发送 runtime action、AI DM 建议、执行刚建议过的动作、规则搜索、COC demo/import/generate/list/summary/review/action、AI Keeper 建议和结构化 transcript。它是前端骨架，不需要 Node.js 或构建步骤。
 

@@ -45,6 +45,45 @@ class COCRuntimeTests(unittest.TestCase):
         self.assertTrue(scenario.clues[1].partial_discovered)
         self.assertIn("Charcoal spiral rubbing", scenario.inventory)
 
+    def test_spend_luck_can_convert_failed_clue_check(self) -> None:
+        scenario = create_sample_coc_scenario()
+        clue = scenario.clues[1]
+        clue.partial_discovered = True
+        clue.last_check_total = 50
+        clue.last_required_total = 45
+        clue.last_check_level = "failure"
+        runtime = COCRuntime(scenario)
+
+        handle_coc_action(runtime, "spend luck hearth")
+        output = runtime.flush()
+
+        self.assertIn("spends 5 Luck", output)
+        self.assertEqual(scenario.investigator.luck, 45)
+        self.assertTrue(clue.discovered)
+        self.assertIsNone(clue.last_check_total)
+
+    def test_spend_luck_reports_insufficient_luck_and_fumble(self) -> None:
+        scenario = create_sample_coc_scenario()
+        clue = scenario.clues[1]
+        clue.partial_discovered = True
+        clue.last_check_total = 90
+        clue.last_required_total = 20
+        clue.last_check_level = "failure"
+        runtime = COCRuntime(scenario)
+
+        handle_coc_action(runtime, "spend luck hearth")
+        low_luck_output = runtime.flush()
+        clue.last_check_total = 96
+        clue.last_required_total = 45
+        clue.last_check_level = "fumble"
+        handle_coc_action(runtime, "spend luck hearth")
+        fumble_output = runtime.flush()
+
+        self.assertIn("needs 70 Luck", low_luck_output)
+        self.assertFalse(clue.discovered)
+        self.assertIn("cannot erase a fumble", fumble_output)
+
+
     def test_push_roll_can_turn_partial_clue_into_full_clue(self) -> None:
         scenario = create_sample_coc_scenario()
         scenario.investigator.skills["spot hidden"] = 1

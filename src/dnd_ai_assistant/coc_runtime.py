@@ -23,6 +23,9 @@ class COCClue:
     discovered: bool = False
     partial_discovered: bool = False
     push_attempted: bool = False
+    last_check_total: int | None = None
+    last_required_total: int | None = None
+    last_check_level: str | None = None
 
 
 @dataclass
@@ -212,7 +215,7 @@ def handle_coc_action(runtime: COCRuntime, action: str) -> bool:
         return False
     if normalized in {"help", "?"}:
         runtime.narrate(
-            "Keeper: Actions: look, status, recap, progress, hint, go <exit>, inspect <target>, talk <npc>, check <skill>, push <target>, sanity, clues, inventory, quit."
+            "Keeper: Actions: look, status, recap, progress, hint, go <exit>, inspect <target>, talk <npc>, check <skill>, push <target>, spend luck <target>, sanity, clues, inventory, quit."
         )
         return True
     if normalized in {"recap", "summary"}:
@@ -251,6 +254,9 @@ def handle_coc_action(runtime: COCRuntime, action: str) -> bool:
         return True
     if normalized.startswith("push "):
         _push_coc_target(runtime, normalized[len("push ") :].strip())
+        return True
+    if normalized.startswith("spend luck "):
+        _spend_luck_on_coc_target(runtime, normalized[len("spend luck ") :].strip())
         return True
     if normalized.startswith("talk "):
         _talk_to_coc_npc(runtime, normalized[len("talk ") :].strip())
@@ -300,6 +306,33 @@ def _push_coc_target(runtime: COCRuntime, target: str) -> None:
     runtime.scenario.investigator.conditions.add("rattled")
     runtime.narrate(f"Keeper: Push roll fails for {clue.title}; SAN loss 1 and condition rattled.")
 
+def _spend_luck_on_coc_target(runtime: COCRuntime, target: str) -> None:
+    clue = _match_clue(_visible_clues(runtime.scenario), target)
+    if clue is None:
+        runtime.narrate("Keeper: There is no failed lead here to save with Luck.")
+        return
+    if clue.discovered:
+        runtime.narrate(f"Keeper: {clue.title} is already fully understood.")
+        return
+    if clue.last_check_total is None or clue.last_required_total is None:
+        runtime.narrate(f"Keeper: No failed roll for {clue.title} is waiting for Luck spending.")
+        return
+    if clue.last_check_level == "fumble":
+        runtime.narrate(f"Keeper: Luck cannot erase a fumble on {clue.title}.")
+        return
+    cost = clue.last_check_total - clue.last_required_total
+    if cost <= 0:
+        runtime.narrate(f"Keeper: {clue.title} does not need Luck spending right now.")
+        return
+    investigator = runtime.scenario.investigator
+    if investigator.luck < cost:
+        runtime.narrate(f"Keeper: {investigator.name} needs {cost} Luck for {clue.title}, but has {investigator.luck}.")
+        return
+    investigator.luck -= cost
+    runtime.narrate(f"Keeper: {investigator.name} spends {cost} Luck on {clue.title}; Luck is now {investigator.luck}.")
+    _reveal_coc_clue(runtime, clue)
+
+
 def _manual_coc_check(runtime: COCRuntime, skill_name: str) -> None:
     investigator = runtime.scenario.investigator
     value = investigator.skill_value(skill_name)
@@ -314,7 +347,11 @@ def _passes_clue_check(runtime: COCRuntime, clue: COCClue) -> bool:
     skill_value = investigator.skill_value(clue.skill or "")
     check = roll_percentile_check(skill_value, mode=PercentileRollMode.NORMAL, rng=runtime.rng)
     required = _required_success_level(clue.difficulty)
+    required_total = _required_total_for_success(skill_value, required)
     success = _success_rank(check.success_level.value) >= _success_rank(required)
+    clue.last_check_total = check.total
+    clue.last_required_total = required_total
+    clue.last_check_level = check.success_level.value
     runtime.narrate(
         f"Keeper: {investigator.name} rolls {clue.skill} {check.total} vs {skill_value}: "
         f"{check.success_level.value}; needs {required}."
@@ -339,6 +376,9 @@ def _reveal_partial_coc_clue(runtime: COCRuntime, clue: COCClue) -> None:
 
 def _reveal_coc_clue(runtime: COCRuntime, clue: COCClue) -> None:
     clue.discovered = True
+    clue.last_check_total = None
+    clue.last_required_total = None
+    clue.last_check_level = None
     runtime.narrate(f"Keeper: Clue found - {clue.title}: {clue.text}")
     if clue.sanity_loss > 0:
         runtime.scenario.investigator.lose_sanity(clue.sanity_loss)
@@ -609,7 +649,6 @@ def _exit_requirement_met(scenario: COCScenario, requirement: dict) -> bool:
     return True
 
 
-
 def _maybe_complete_scenario(runtime: COCRuntime) -> None:
     scenario = runtime.scenario
     if scenario.completed:
@@ -678,6 +717,14 @@ def _required_success_level(difficulty: str) -> str:
     if normalized in {"regular", "hard", "extreme"}:
         return normalized
     return "regular"
+
+
+def _required_total_for_success(skill_value: int, required: str) -> int:
+    if required == "extreme":
+        return max(1, skill_value // 5)
+    if required == "hard":
+        return max(1, skill_value // 2)
+    return skill_value
 
 
 def _success_rank(level: str) -> int:

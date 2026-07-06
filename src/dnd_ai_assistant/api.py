@@ -372,6 +372,7 @@ def coc_summary(state: APIState, scenario_id: str) -> dict:
                 "text": clue.failure_text or "",
                 "evidence": clue.failure_evidence,
                 "push_attempted": clue.push_attempted,
+                "luck_cost": _coc_luck_cost(clue),
             }
             for clue in partial
         ],
@@ -897,8 +898,23 @@ def _coc_available_actions(scenario: COCScenario) -> list[str]:
         if clue.partial_discovered and not clue.push_attempted:
             actions.append(f"push {clue.title.lower()}")
             actions.append(f"push {clue.id.replace('_', ' ')}")
+        if _coc_luck_cost(clue) is not None:
+            actions.append(f"spend luck {clue.title.lower()}")
+            actions.append(f"spend luck {clue.id.replace('_', ' ')}")
     return list(dict.fromkeys(actions))
 
+
+def _coc_luck_cost(clue) -> int | None:
+    if clue.discovered:
+        return None
+    if clue.last_check_total is None or clue.last_required_total is None:
+        return None
+    if clue.last_check_level == "fumble":
+        return None
+    cost = clue.last_check_total - clue.last_required_total
+    if cost <= 0:
+        return None
+    return cost
 
 def _coc_exit_available(scenario: COCScenario, exit_name: str) -> bool:
     requirement = scenario.current_location().exit_requirements.get(exit_name, {})

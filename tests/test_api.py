@@ -206,6 +206,8 @@ class APITests(unittest.TestCase):
         self.assertEqual(response["summary"]["partial_clues"][0]["title"], "Ashen Spiral")
         self.assertFalse(response["summary"]["partial_clues"][0]["push_attempted"])
         self.assertIn("push ashen spiral", response["summary"]["available_actions"])
+        self.assertIsNotNone(response["summary"]["partial_clues"][0]["luck_cost"])
+        self.assertIn("spend luck ashen spiral", response["summary"]["available_actions"])
         self.assertIn("Charcoal spiral rubbing", response["summary"]["inventory"])
         self.assertEqual(listed["partial_clue_count"], 1)
 
