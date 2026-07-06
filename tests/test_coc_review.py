@@ -116,10 +116,10 @@ class COCReviewTests(unittest.TestCase):
         data = json.loads(render_coc_review_json(scenario))
 
         self.assertEqual(data["title"], scenario.title)
-        self.assertEqual(data["counts"]["locations"], 2)
-        self.assertEqual(data["counts"]["clues"], 4)
+        self.assertEqual(data["counts"]["locations"], 3)
+        self.assertEqual(data["counts"]["clues"], 6)
         self.assertEqual(data["counts"]["completion_goals"], 4)
-        self.assertEqual(data["counts"]["soft_failure_clues"], 2)
+        self.assertEqual(data["counts"]["soft_failure_clues"], 4)
         self.assertIn("findings", data)
 
     def test_coc_review_to_dict_is_machine_readable(self) -> None:
@@ -128,7 +128,7 @@ class COCReviewTests(unittest.TestCase):
         data = coc_review_to_dict(scenario)
 
         self.assertTrue(data["ok"])
-        self.assertEqual(data["counts"]["npcs"], 1)
+        self.assertEqual(data["counts"]["npcs"], 2)
 
 
 if __name__ == "__main__":

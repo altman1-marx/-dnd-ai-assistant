@@ -106,7 +106,7 @@ class DemoTests(unittest.TestCase):
         self.assertEqual(exit_code, 0)
         self.assertIn("COC scenario is valid", printed)
         self.assertIn("The Glass Lake", printed)
-        self.assertIn("Locations: 2", printed)
+        self.assertIn("Locations: 3", printed)
 
     def test_review_coc_scenario_cli_prints_review(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

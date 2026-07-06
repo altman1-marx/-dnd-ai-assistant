@@ -212,8 +212,9 @@ class COCRuntimeTests(unittest.TestCase):
     def test_conclude_can_close_case_when_requirements_are_met(self) -> None:
         scenario = create_sample_coc_scenario()
         scenario.completed = False
-        scenario.clues[2].discovered = True
-        scenario.clues[3].discovered = True
+        for clue in scenario.clues:
+            if clue.id in {"portrait_truth", "lantern_wick"}:
+                clue.discovered = True
         scenario.inventory.append("Black wick sample")
         scenario.current_location_id = "cellar"
         runtime = COCRuntime(scenario)
@@ -225,6 +226,21 @@ class COCRuntimeTests(unittest.TestCase):
         self.assertIn("close the case", output)
         self.assertIn("The lantern waits below", output)
 
+    def test_garden_branch_has_constable_and_optional_clues(self) -> None:
+        scenario = create_sample_coc_scenario()
+        scenario.investigator.skills["spot hidden"] = 100
+        runtime = COCRuntime(scenario, rng=random.Random(1))
+
+        handle_coc_action(runtime, "go garden")
+        handle_coc_action(runtime, "talk hale")
+        handle_coc_action(runtime, "inspect rain gauge")
+        output = runtime.flush()
+
+        self.assertEqual(scenario.current_location_id, "garden")
+        self.assertIn("Rain-Drowned Garden", output)
+        self.assertIn("Constable Hale", output)
+        self.assertIn("Backward Rain Gauge", output)
+        self.assertIn("Backward rain gauge sketch", scenario.inventory)
 
     def test_help_and_quit(self) -> None:
         runtime = COCRuntime(create_sample_coc_scenario())
@@ -269,7 +285,7 @@ class COCRuntimeTests(unittest.TestCase):
 
         self.assertIn("Recap", output)
         self.assertIn("Briar House Study", output)
-        self.assertIn("clues 1/4", output)
+        self.assertIn("clues 1/6", output)
         self.assertIn("Scratched Portrait", output)
         self.assertIn("Next lead", output)
 
@@ -299,7 +315,7 @@ class COCRuntimeTests(unittest.TestCase):
         self.assertIn("MP 12/12", output)
         self.assertIn("SAN 60/60", output)
         self.assertIn("location Briar House Study", output)
-        self.assertIn("clues 1/4", output)
+        self.assertIn("clues 1/6", output)
         self.assertIn("evidence 0", output)
 
     def test_first_aid_can_restore_one_hp(self) -> None:

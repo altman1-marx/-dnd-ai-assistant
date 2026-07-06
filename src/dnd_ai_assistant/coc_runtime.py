@@ -100,7 +100,7 @@ def create_sample_coc_scenario() -> COCScenario:
                 "Rain presses against the study windows. A locked writing desk, a soot-stained "
                 "hearth, and a portrait with scratched-out eyes wait in the lamplight."
             ),
-            exits={"cellar": "cellar"},
+            exits={"cellar": "cellar", "garden": "garden"},
             exit_requirements={
                 "cellar": {
                     "required_clue_ids": ["portrait_truth"],
@@ -113,7 +113,16 @@ def create_sample_coc_scenario() -> COCScenario:
             id="cellar",
             name="Briar House Cellar",
             description="Wet stone steps descend to a cramped cellar where a brass lantern hangs cold and unlit.",
-            exits={"study": "study"},
+            exits={"study": "study", "garden": "garden"},
+        ),
+        "garden": COCLocation(
+            id="garden",
+            name="Rain-Drowned Garden",
+            description=(
+                "The rear garden is flooded ankle-deep. Bell-shaped flowers lean toward the house, "
+                "and a rain gauge ticks like a metronome beside an old well."
+            ),
+            exits={"study": "study", "cellar": "cellar"},
         ),
     }
     return COCScenario(
@@ -155,6 +164,30 @@ def create_sample_coc_scenario() -> COCScenario:
                 sanity_loss=2,
             ),
             COCClue(
+                id="rain_gauge",
+                title="Backward Rain Gauge",
+                text="The rain gauge has been filling upward from below. Its markings match the spiral in the hearth ash.",
+                location_id="garden",
+                evidence="Backward rain gauge sketch",
+                skill="spot hidden",
+                difficulty="regular",
+                failure_text="The gauge is wrong in a way that points back toward the hearth spiral.",
+                failure_evidence="Mud-smeared gauge note",
+            ),
+            COCClue(
+                id="well_whispers",
+                title="Voices in the Well",
+                text="A voice under the well repeats Mrs. Ember's warning in Mr. Briar's cadence.",
+                location_id="garden",
+                evidence="Recorded well whisper",
+                skill="psychology",
+                difficulty="hard",
+                sanity_loss=1,
+                failure_text="The cadence is familiar, but fear makes the words hard to place.",
+                failure_evidence="Shaken witness impression",
+                failure_sanity_loss=1,
+            ),
+            COCClue(
                 id="lantern_wick",
                 title="Black Wick",
                 text="The lantern wick is braided from black hair and sea grass. It twitches when named.",
@@ -174,7 +207,17 @@ def create_sample_coc_scenario() -> COCScenario:
                     "Mr. Briar forbade us from trimming the lantern wick.",
                     "The cellar door swells shut when the rain is heavy, but the portrait passage still breathes.",
                 ],
-            )
+            ),
+            COCNPC(
+                id="constable_hale",
+                name="Constable Hale",
+                description="A soaked constable guards the garden path and refuses to look directly into the well.",
+                location_id="garden",
+                dialogue=[
+                    "I heard the bell below the soil, not above it.",
+                    "The rain gauge was empty at dusk and overflowing by midnight, but the sky never changed.",
+                ],
+            ),
         ],
         locations=locations,
         current_location_id="study",
@@ -183,7 +226,8 @@ def create_sample_coc_scenario() -> COCScenario:
             "required_evidence": ["Black wick sample"],
             "required_location_ids": ["cellar"],
         },
-        ending_text="With enough clues gathered, the cellar route is clear. The lantern waits below.",
+        ending_text=("With enough clues gathered, the cellar route is clear. The lantern waits below, "
+                     "and the house exhales as if something has chosen to sleep again."),
     )
 
 
