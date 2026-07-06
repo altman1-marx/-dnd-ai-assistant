@@ -17,6 +17,7 @@ class COCSerializationTests(unittest.TestCase):
     def test_coc_scenario_round_trips_dict(self) -> None:
         scenario = create_sample_coc_scenario()
         scenario.clues[0].discovered = True
+        scenario.clues[1].push_attempted = True
         scenario.inventory.append("Waterlogged journal")
         scenario.investigator.lose_sanity(3)
         scenario.completed = True
@@ -37,6 +38,7 @@ class COCSerializationTests(unittest.TestCase):
         self.assertEqual(restored.talked_npc_ids, set())
         self.assertEqual(restored.clues[1].failure_evidence, "Charcoal spiral rubbing")
         self.assertFalse(restored.clues[1].partial_discovered)
+        self.assertTrue(restored.clues[1].push_attempted)
 
     def test_coc_scenario_save_and_load_file(self) -> None:
         scenario = create_sample_coc_scenario()
@@ -153,6 +155,13 @@ class COCSerializationTests(unittest.TestCase):
         with self.assertRaisesRegex(COCScenarioValidationError, "partial_discovered"):
             validate_coc_scenario_data(data)
 
+
+    def test_validate_coc_scenario_data_rejects_bad_push_attempted(self) -> None:
+        data = coc_scenario_to_dict(create_sample_coc_scenario())
+        data["clues"][1]["push_attempted"] = "yes"
+
+        with self.assertRaisesRegex(COCScenarioValidationError, "push_attempted"):
+            validate_coc_scenario_data(data)
 
     def test_validate_coc_scenario_data_rejects_bad_inventory(self) -> None:
         data = coc_scenario_to_dict(create_sample_coc_scenario())

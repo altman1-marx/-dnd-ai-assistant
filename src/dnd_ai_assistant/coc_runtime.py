@@ -22,6 +22,7 @@ class COCClue:
     failure_sanity_loss: int = 0
     discovered: bool = False
     partial_discovered: bool = False
+    push_attempted: bool = False
 
 
 @dataclass
@@ -211,7 +212,7 @@ def handle_coc_action(runtime: COCRuntime, action: str) -> bool:
         return False
     if normalized in {"help", "?"}:
         runtime.narrate(
-            "Keeper: Actions: look, status, recap, progress, hint, go <exit>, inspect <target>, talk <npc>, check <skill>, sanity, clues, inventory, quit."
+            "Keeper: Actions: look, status, recap, progress, hint, go <exit>, inspect <target>, talk <npc>, check <skill>, push <target>, sanity, clues, inventory, quit."
         )
         return True
     if normalized in {"recap", "summary"}:
@@ -248,6 +249,9 @@ def handle_coc_action(runtime: COCRuntime, action: str) -> bool:
     if normalized.startswith("inspect "):
         _inspect_coc_target(runtime, normalized[len("inspect ") :].strip())
         return True
+    if normalized.startswith("push "):
+        _push_coc_target(runtime, normalized[len("push ") :].strip())
+        return True
     if normalized.startswith("talk "):
         _talk_to_coc_npc(runtime, normalized[len("talk ") :].strip())
         return True
@@ -272,6 +276,29 @@ def _inspect_coc_target(runtime: COCRuntime, target: str) -> None:
             return
     _reveal_coc_clue(runtime, clue)
 
+
+def _push_coc_target(runtime: COCRuntime, target: str) -> None:
+    clue = _match_clue(_visible_clues(runtime.scenario), target)
+    if clue is None:
+        runtime.narrate("Keeper: There is no failed lead here to push.")
+        return
+    if clue.discovered:
+        runtime.narrate(f"Keeper: {clue.title} is already fully understood.")
+        return
+    if not clue.partial_discovered:
+        runtime.narrate(f"Keeper: Push {clue.title} only after a failed inspection has exposed a partial lead.")
+        return
+    if clue.push_attempted:
+        runtime.narrate(f"Keeper: {clue.title} has already been pushed; find another angle.")
+        return
+    clue.push_attempted = True
+    if _passes_clue_check(runtime, clue):
+        runtime.narrate(f"Keeper: The pushed investigation pays off for {clue.title}.")
+        _reveal_coc_clue(runtime, clue)
+        return
+    runtime.scenario.investigator.lose_sanity(1)
+    runtime.scenario.investigator.conditions.add("rattled")
+    runtime.narrate(f"Keeper: Push roll fails for {clue.title}; SAN loss 1 and condition rattled.")
 
 def _manual_coc_check(runtime: COCRuntime, skill_name: str) -> None:
     investigator = runtime.scenario.investigator

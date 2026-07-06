@@ -371,6 +371,7 @@ def coc_summary(state: APIState, scenario_id: str) -> dict:
                 "title": clue.title,
                 "text": clue.failure_text or "",
                 "evidence": clue.failure_evidence,
+                "push_attempted": clue.push_attempted,
             }
             for clue in partial
         ],
@@ -893,6 +894,9 @@ def _coc_available_actions(scenario: COCScenario) -> list[str]:
         actions.append(f"inspect {clue.id.replace('_', ' ')}")
         if clue.skill:
             actions.append(f"check {clue.skill}")
+        if clue.partial_discovered and not clue.push_attempted:
+            actions.append(f"push {clue.title.lower()}")
+            actions.append(f"push {clue.id.replace('_', ' ')}")
     return list(dict.fromkeys(actions))
 
 

@@ -45,6 +45,41 @@ class COCRuntimeTests(unittest.TestCase):
         self.assertTrue(scenario.clues[1].partial_discovered)
         self.assertIn("Charcoal spiral rubbing", scenario.inventory)
 
+    def test_push_roll_can_turn_partial_clue_into_full_clue(self) -> None:
+        scenario = create_sample_coc_scenario()
+        scenario.investigator.skills["spot hidden"] = 1
+        runtime = COCRuntime(scenario, rng=random.Random(1))
+
+        handle_coc_action(runtime, "inspect hearth")
+        runtime.flush()
+        scenario.investigator.skills["spot hidden"] = 99
+        handle_coc_action(runtime, "push hearth")
+        output = runtime.flush()
+
+        self.assertIn("pushed investigation pays off", output)
+        self.assertTrue(scenario.clues[1].discovered)
+        self.assertTrue(scenario.clues[1].push_attempted)
+        self.assertIn("Ash rubbing", scenario.inventory)
+
+    def test_push_roll_failure_has_consequence_and_cannot_repeat(self) -> None:
+        scenario = create_sample_coc_scenario()
+        scenario.investigator.skills["spot hidden"] = 1
+        runtime = COCRuntime(scenario, rng=random.Random(1))
+
+        handle_coc_action(runtime, "inspect hearth")
+        runtime.flush()
+        handle_coc_action(runtime, "push hearth")
+        first_output = runtime.flush()
+        handle_coc_action(runtime, "push hearth")
+        second_output = runtime.flush()
+
+        self.assertIn("Push roll fails", first_output)
+        self.assertIn("rattled", scenario.investigator.conditions)
+        self.assertEqual(scenario.investigator.current_sanity, 59)
+        self.assertTrue(scenario.clues[1].push_attempted)
+        self.assertIn("already been pushed", second_output)
+
+
     def test_skill_gated_clue_without_failure_text_still_blocks_on_failure(self) -> None:
         scenario = create_sample_coc_scenario()
         scenario.clues[1].failure_text = None
