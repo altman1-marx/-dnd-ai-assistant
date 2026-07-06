@@ -102,6 +102,7 @@ def coc_scenario_to_dict(scenario: COCScenario) -> dict:
         "talked_npc_ids": sorted(scenario.talked_npc_ids),
         "ending_text": scenario.ending_text,
         "completed": scenario.completed,
+        "session_log": list(scenario.session_log),
     }
 
 
@@ -160,6 +161,7 @@ def coc_scenario_from_dict(data: dict) -> COCScenario:
         talked_npc_ids=set(data.get("talked_npc_ids", [])),
         ending_text=data.get("ending_text", ""),
         completed=data.get("completed", False),
+        session_log=list(data.get("session_log", [])),
         id=data.get("id", None) or f"coc_{uuid4().hex[:12]}",
     )
 
@@ -190,6 +192,12 @@ def validate_coc_scenario_data(data: dict) -> None:
     for npc_id in talked_npc_ids:
         if not isinstance(npc_id, str) or not npc_id.strip():
             raise COCScenarioValidationError("talked_npc_ids must contain non-empty strings")
+    session_log = data.get("session_log", [])
+    if not isinstance(session_log, list):
+        raise COCScenarioValidationError("session_log must be a list")
+    for line in session_log:
+        if not isinstance(line, str) or not line.strip():
+            raise COCScenarioValidationError("session_log must contain non-empty strings")
     inventory = data.get("inventory", [])
     if not isinstance(inventory, list):
         raise COCScenarioValidationError("inventory must be a list")

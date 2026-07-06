@@ -140,6 +140,8 @@ class WebUITests(unittest.TestCase):
         self.assertIn("review.findings", html)
         self.assertIn("checkHealth();", html)
         self.assertIn("session_event_count", html)
+        self.assertIn("scenario.session_event_count", html)
+        self.assertIn("Events ", html)
         self.assertIn("String(value ?? \"\")", html)
         self.assertIn("current_location_id", html)
         self.assertIn("current_location_name", html)

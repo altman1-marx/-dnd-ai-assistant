@@ -61,6 +61,7 @@ class COCScenario:
     talked_npc_ids: set[str] = field(default_factory=set)
     ending_text: str = ""
     completed: bool = False
+    session_log: list[str] = field(default_factory=list)
     id: str = field(default_factory=lambda: f"coc_{uuid4().hex[:12]}")
 
     def current_location(self) -> COCLocation:
@@ -77,6 +78,7 @@ class COCRuntime:
 
     def narrate(self, line: str) -> None:
         self.transcript.append(line)
+        self.scenario.session_log.append(line)
 
     def flush(self) -> str:
         output = "\n".join(self.transcript)

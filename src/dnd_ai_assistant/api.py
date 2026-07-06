@@ -377,6 +377,8 @@ def coc_summary(state: APIState, scenario_id: str) -> dict:
             for clue in partial
         ],
         "available_actions": _coc_available_actions(scenario),
+        "session_event_count": len(scenario.session_log),
+        "recent_events": list(scenario.session_log[-20:]),
     }
 
 
@@ -638,6 +640,7 @@ def _coc_scenario_list_item(scenario: COCScenario) -> dict:
         "clue_count": len(scenario.clues),
         "completion_required_count": completion_counts["required"],
         "completion_remaining_count": completion_counts["remaining"],
+        "session_event_count": len(scenario.session_log),
     }
 
 

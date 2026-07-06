@@ -1051,6 +1051,7 @@
           + " | Clues " + escapeHtml(String(scenario.discovered_clue_count))
           + "/" + escapeHtml(String(scenario.clue_count))
           + " | Partial " + escapeHtml(String(scenario.partial_clue_count || 0))
+          + " | Events " + escapeHtml(String(scenario.session_event_count || 0))
           + " | Ending " + escapeHtml(completionCountLabel(scenario))
           + "</p></div><button type=\"button\" class=\"secondary\" data-load-coc=\""
           + escapeHtml(scenario.id) + "\">" + active + "</button></div>";

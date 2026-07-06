@@ -215,6 +215,8 @@ class APITests(unittest.TestCase):
         self.assertEqual(response["summary"]["investigator"]["current_sanity"], 58)
         self.assertEqual(response["summary"]["discovered_clue_count"], 1)
         self.assertEqual(response["summary"]["inventory"], ["Torn portrait canvas"])
+        self.assertGreater(response["summary"]["session_event_count"], 0)
+        self.assertIn("Clue found - Scratched Portrait", "\n".join(response["summary"]["recent_events"]))
 
     def test_coc_summary_exposes_partial_clues_after_soft_failure(self) -> None:
         state = APIState()
@@ -268,6 +270,7 @@ class APITests(unittest.TestCase):
         self.assertEqual(response["scenarios"][0]["current_sanity"], 58)
         self.assertFalse(response["scenarios"][0]["completed"])
         self.assertEqual(response["scenarios"][0]["inventory_count"], 1)
+        self.assertGreater(response["scenarios"][0]["session_event_count"], 0)
         self.assertEqual(response["scenarios"][0]["npc_count"], 2)
         self.assertEqual(response["scenarios"][0]["discovered_clue_count"], 1)
         self.assertEqual(response["scenarios"][0]["partial_clue_count"], 0)
@@ -311,6 +314,7 @@ class APITests(unittest.TestCase):
 
         self.assertIn(scenario_id, reader_state.coc_scenarios)
         self.assertEqual(reader_state.coc_scenarios[scenario_id].investigator.current_sanity, 58)
+        self.assertTrue(reader_state.coc_scenarios[scenario_id].session_log)
 
     def test_load_campaigns_from_state_dir_reads_existing_json(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
