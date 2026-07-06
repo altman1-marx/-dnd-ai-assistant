@@ -58,6 +58,8 @@ class WebUITests(unittest.TestCase):
         self.assertIn("refreshCocView", html)
         self.assertIn("renderCocSummary", html)
         self.assertIn("renderInvestigator", html)
+        self.assertIn("current_mp", html)
+        self.assertIn("max_mp", html)
         self.assertIn("renderCocEvidence", html)
         self.assertIn("renderCocPartialClues", html)
         self.assertIn("renderCocReviewFindings", html)
