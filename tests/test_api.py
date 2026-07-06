@@ -782,6 +782,8 @@ class APITests(unittest.TestCase):
 
         self.assertEqual(scenarios["scenarios"][0]["id"], imported["scenario_id"])
         self.assertEqual(scenarios["scenarios"][1]["id"], demo["scenario_id"])
+        self.assertEqual(scenarios["scenarios"][1]["completion_required_count"], 4)
+        self.assertEqual(scenarios["scenarios"][1]["completion_remaining_count"], 4)
         self.assertEqual(summary["system_id"], "coc7e")
         self.assertFalse(summary["exits"][0]["available"])
         self.assertEqual(summary["exits"][0]["requirements"]["required_clue_ids"], ["portrait_truth"])

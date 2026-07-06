@@ -602,6 +602,7 @@ def _coc_scenario_or_404(state: APIState, scenario_id: str) -> COCScenario:
 
 def _coc_scenario_list_item(scenario: COCScenario) -> dict:
     location = scenario.current_location()
+    completion_counts = _coc_completion_counts(scenario)
     return {
         "id": scenario.id,
         "title": scenario.title,
@@ -617,6 +618,8 @@ def _coc_scenario_list_item(scenario: COCScenario) -> dict:
         "max_sanity": scenario.investigator.max_sanity,
         "discovered_clue_count": sum(1 for clue in scenario.clues if clue.discovered),
         "clue_count": len(scenario.clues),
+        "completion_required_count": completion_counts["required"],
+        "completion_remaining_count": completion_counts["remaining"],
     }
 
 
@@ -826,6 +829,12 @@ def _available_actions(campaign: Campaign, active_combat: dict | None) -> list[s
                         actions.append(f"cast {spell} {name.lower()}")
     return list(dict.fromkeys(actions))
 
+
+def _coc_completion_counts(scenario: COCScenario) -> dict:
+    progress = _coc_completion_progress(scenario)
+    required = sum(len(group["required"]) for group in progress.values())
+    remaining = sum(len(group["remaining"]) for group in progress.values())
+    return {"required": required, "remaining": remaining}
 
 def _coc_completion_progress(scenario: COCScenario) -> dict:
     requirements = scenario.completion_requirements

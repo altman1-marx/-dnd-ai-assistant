@@ -971,6 +971,7 @@
           + " | Evidence " + escapeHtml(String(scenario.inventory_count || 0))
           + " | Clues " + escapeHtml(String(scenario.discovered_clue_count))
           + "/" + escapeHtml(String(scenario.clue_count))
+          + " | Ending " + escapeHtml(completionCountLabel(scenario))
           + "</p></div><button type=\"button\" class=\"secondary\" data-load-coc=\""
           + escapeHtml(scenario.id) + "\">" + active + "</button></div>";
       }).join("") : "<p class=\"muted\">No COC scenarios.</p>";
@@ -985,7 +986,13 @@
       });
     }
 
-    function clearCampaign() {
+    function completionCountLabel(scenario) {
+      const required = Number(scenario.completion_required_count || 0);
+      const remaining = Number(scenario.completion_remaining_count || 0);
+      if (!required) return "legacy";
+      return String(required - remaining) + "/" + String(required);
+    }
+function clearCampaign() {
       state.mode = "dnd";
       state.campaignId = "";
       state.scenarioId = "";
