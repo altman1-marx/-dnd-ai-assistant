@@ -939,10 +939,16 @@
       return clues.map((clue) => {
         return "<div class=\"item\"><strong>Partial lead: " + escapeHtml(clue.title)
           + "</strong><p>" + escapeHtml(clue.text || "")
-          + "</p><p class=\"muted\">" + escapeHtml(clue.evidence || "Unconfirmed lead") + "</p></div>";
+          + "</p><p class=\"muted\">" + escapeHtml(partialLeadMeta(clue)) + "</p></div>";
       }).join("");
     }
 
+    function partialLeadMeta(clue) {
+      const parts = [];
+      if (clue.evidence) parts.push(clue.evidence);
+      if (clue.luck_cost) parts.push("Luck cost " + String(clue.luck_cost));
+      return parts.join(" | ") || "Unconfirmed lead";
+    }
     function renderCocReviewFindings(findings) {
       return findings.map((finding) => {
         return "<div class=\"item\"><strong>" + escapeHtml(finding.code)

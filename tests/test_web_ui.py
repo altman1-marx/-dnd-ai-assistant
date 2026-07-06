@@ -62,6 +62,8 @@ class WebUITests(unittest.TestCase):
         self.assertIn("max_mp", html)
         self.assertIn("renderCocEvidence", html)
         self.assertIn("renderCocPartialClues", html)
+        self.assertIn("partialLeadMeta", html)
+        self.assertIn("Luck cost", html)
         self.assertIn("renderCocReviewFindings", html)
         self.assertIn("composeCocStatus", html)
         self.assertIn("refreshCampaignView", html)
