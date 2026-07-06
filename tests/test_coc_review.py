@@ -21,6 +21,7 @@ class COCReviewTests(unittest.TestCase):
         self.assertTrue(any("SAN loss" in strength for strength in review.strengths))
         self.assertTrue(any("Exit requirements" in strength for strength in review.strengths))
         self.assertTrue(any("Completion requirements" in strength for strength in review.strengths))
+        self.assertTrue(any("soft-failure" in strength for strength in review.strengths))
 
     def test_review_warns_about_thin_scenario(self) -> None:
         scenario = create_sample_coc_scenario()
@@ -90,6 +91,15 @@ class COCReviewTests(unittest.TestCase):
         self.assertTrue(any(finding.code == "completion_requirement_location" for finding in review.findings))
         self.assertTrue(any(finding.code == "completion_requirement_npc" for finding in review.findings))
 
+    def test_review_notes_skill_gated_clues_without_soft_failure(self) -> None:
+        scenario = create_sample_coc_scenario()
+        scenario.clues[1].failure_text = None
+
+        review = review_coc_scenario(scenario)
+
+        self.assertTrue(review.ok)
+        self.assertTrue(any(finding.code == "clue_soft_failure" for finding in review.findings))
+
 
     def test_render_coc_review_outputs_sections(self) -> None:
         scenario = create_sample_coc_scenario()
@@ -109,6 +119,7 @@ class COCReviewTests(unittest.TestCase):
         self.assertEqual(data["counts"]["locations"], 2)
         self.assertEqual(data["counts"]["clues"], 4)
         self.assertEqual(data["counts"]["completion_goals"], 4)
+        self.assertEqual(data["counts"]["soft_failure_clues"], 2)
         self.assertIn("findings", data)
 
     def test_coc_review_to_dict_is_machine_readable(self) -> None:

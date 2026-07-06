@@ -55,6 +55,7 @@ def review_coc_scenario(scenario: COCScenario) -> COCScenarioReview:
 
     _review_reachability(scenario, findings, strengths)
     _review_clue_distribution(scenario, findings, strengths)
+    _review_soft_failures(scenario, findings, strengths)
     _review_npcs(scenario, findings, strengths)
     _review_sanity_loss(scenario, findings, strengths)
     _review_evidence(scenario, findings, strengths)
@@ -91,6 +92,7 @@ def coc_review_to_dict(scenario: COCScenario) -> dict:
             "npcs": len(scenario.npcs),
             "clues": len(scenario.clues),
             "evidence": len([clue for clue in scenario.clues if clue.evidence]),
+            "soft_failure_clues": len([clue for clue in scenario.clues if clue.failure_text]),
             "total_sanity_loss": sum(max(0, clue.sanity_loss) for clue in scenario.clues),
             "completion_goals": _completion_goal_count(scenario),
         },
@@ -158,6 +160,31 @@ def _review_clue_distribution(
             )
         )
 
+
+def _review_soft_failures(
+    scenario: COCScenario,
+    findings: list[COCReviewFinding],
+    strengths: list[str],
+) -> None:
+    gated_clues = [clue for clue in scenario.clues if clue.skill]
+    if not gated_clues:
+        return
+    soft_failure_clues = [clue for clue in gated_clues if clue.failure_text]
+    if len(soft_failure_clues) == len(gated_clues):
+        strengths.append("Skill-gated clues include soft-failure leads to reduce dead ends.")
+        return
+    missing = sorted(clue.id for clue in gated_clues if not clue.failure_text)
+    findings.append(
+        COCReviewFinding(
+            code="clue_soft_failure",
+            severity="info",
+            message=(
+                "Add failure_text to skill-gated clues so failed rolls still reveal partial leads: "
+                + ", ".join(missing)
+                + "."
+            ),
+        )
+    )
 
 def _review_npcs(
     scenario: COCScenario,

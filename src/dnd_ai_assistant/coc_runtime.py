@@ -126,6 +126,8 @@ def create_sample_coc_scenario() -> COCScenario:
                 evidence="Waterlogged journal",
                 skill="library use",
                 difficulty="regular",
+                failure_text="The journal pages are waterlogged, but a repeated lighthouse sketch stands out.",
+                failure_evidence="Watermarked lighthouse sketch",
             ),
             COCClue(
                 id="hearth_symbol",
