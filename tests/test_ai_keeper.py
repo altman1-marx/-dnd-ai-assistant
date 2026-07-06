@@ -17,6 +17,9 @@ class AIKeeperTests(unittest.TestCase):
         self.assertIn("Briar House Study", prompt)
         self.assertIn("Mrs. Ember", prompt)
         self.assertIn("Torn portrait canvas", prompt)
+        self.assertIn("Completion goals", prompt)
+        self.assertIn("Deterministic keeper hint", prompt)
+        self.assertIn("clues 0/2", prompt)
         self.assertIn("talk to Mrs. Ember", prompt)
 
     def test_generate_keeper_suggestion_uses_provider_without_mutating_state(self) -> None:

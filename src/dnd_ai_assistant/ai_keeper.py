@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from .ai_provider import AIProvider
-from .coc_runtime import COCScenario
+from .coc_runtime import COCScenario, coc_keeper_hint
 
 
 @dataclass(frozen=True)
@@ -87,6 +87,31 @@ def _scenario_snapshot(scenario: COCScenario) -> str:
             f"Discovered clues: {discovered}",
             f"Undiscovered clues at current location: {undiscovered_here}",
             f"Evidence inventory: {evidence}",
+            f"Completion goals: {_completion_goal_summary(scenario)}",
+            f"Deterministic keeper hint: {coc_keeper_hint(scenario)}",
             f"Completed: {'yes' if scenario.completed else 'no'}",
         ]
     )
+
+def _completion_goal_summary(scenario: COCScenario) -> str:
+    requirements = scenario.completion_requirements
+    if not requirements:
+        discovered = sum(1 for clue in scenario.clues if clue.discovered)
+        return f"legacy clues {discovered}/{len(scenario.clues)}"
+    discovered_ids = {clue.id for clue in scenario.clues if clue.discovered}
+    inventory = set(scenario.inventory)
+    current_locations = {scenario.current_location_id} if scenario.current_location_id else set()
+    pieces = [
+        _goal_piece("clues", requirements.get("required_clue_ids", []), discovered_ids),
+        _goal_piece("evidence", requirements.get("required_evidence", []), inventory),
+        _goal_piece("locations", requirements.get("required_location_ids", []), current_locations),
+        _goal_piece("NPCs", requirements.get("required_npc_ids", []), scenario.talked_npc_ids),
+    ]
+    return ", ".join(piece for piece in pieces if piece) or "no explicit goals"
+
+
+def _goal_piece(label: str, required: list[str], current: set[str]) -> str:
+    if not required:
+        return ""
+    met = len([value for value in required if value in current])
+    return f"{label} {met}/{len(required)}"
