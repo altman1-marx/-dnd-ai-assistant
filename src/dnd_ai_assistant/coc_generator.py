@@ -58,7 +58,7 @@ def build_coc_scenario_prompt(request: COCScenarioRequest) -> str:
             "- Include connected locations with exits that reference existing location ids.",
             "- Use optional exit_requirements for puzzle or evidence-gated paths; requirements must reference existing exits, clue ids, and evidence names.",
             "- Put at least one clue in each important location.",
-            "- Give clues stable ids, optional skill gates, optional evidence names, and modest SAN loss.",
+            "- Give clues stable ids, optional skill gates, optional evidence names, modest SAN loss, and optional failure_text/failure_evidence for soft failure.",
             "- Keep investigator characteristics between 1 and 99 and skills between 0 and 100.",
             "- Set current_location_id to the first playable location.",
             "- Add completion_requirements for the intended ending; references must point to existing clues, evidence, locations, or NPCs.",
@@ -176,6 +176,9 @@ def _schema_instructions() -> str:
                     "skill": None,
                     "difficulty": "regular|hard|extreme",
                     "sanity_loss": 2,
+                    "failure_text": "A partial impression that points toward another lead.",
+                    "failure_evidence": "Smudged note",
+                    "failure_sanity_loss": 0,
                 }
             ],
             "inventory": [],

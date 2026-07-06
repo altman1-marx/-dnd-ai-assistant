@@ -35,6 +35,8 @@ class COCSerializationTests(unittest.TestCase):
         self.assertEqual(restored.npcs[0].name, "Mrs. Ember")
         self.assertEqual(restored.completion_requirements["required_clue_ids"], ["portrait_truth", "lantern_wick"])
         self.assertEqual(restored.talked_npc_ids, set())
+        self.assertEqual(restored.clues[1].failure_evidence, "Charcoal spiral rubbing")
+        self.assertFalse(restored.clues[1].partial_discovered)
 
     def test_coc_scenario_save_and_load_file(self) -> None:
         scenario = create_sample_coc_scenario()
@@ -134,6 +136,21 @@ class COCSerializationTests(unittest.TestCase):
         data["completion_requirements"]["required_location_ids"] = ["attic"]
 
         with self.assertRaisesRegex(COCScenarioValidationError, "unknown value: attic"):
+            validate_coc_scenario_data(data)
+
+
+    def test_validate_coc_scenario_data_rejects_bad_failure_fields(self) -> None:
+        data = coc_scenario_to_dict(create_sample_coc_scenario())
+        data["clues"][1]["failure_text"] = ""
+
+        with self.assertRaisesRegex(COCScenarioValidationError, "failure_text"):
+            validate_coc_scenario_data(data)
+
+    def test_validate_coc_scenario_data_rejects_bad_partial_discovered(self) -> None:
+        data = coc_scenario_to_dict(create_sample_coc_scenario())
+        data["clues"][1]["partial_discovered"] = "yes"
+
+        with self.assertRaisesRegex(COCScenarioValidationError, "partial_discovered"):
             validate_coc_scenario_data(data)
 
 

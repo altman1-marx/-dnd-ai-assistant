@@ -64,7 +64,11 @@ def coc_scenario_to_dict(scenario: COCScenario) -> dict:
                 "skill": clue.skill,
                 "difficulty": clue.difficulty,
                 "sanity_loss": clue.sanity_loss,
+                "failure_text": clue.failure_text,
+                "failure_evidence": clue.failure_evidence,
+                "failure_sanity_loss": clue.failure_sanity_loss,
                 "discovered": clue.discovered,
+                "partial_discovered": clue.partial_discovered,
             }
             for clue in scenario.clues
         ],
@@ -114,7 +118,11 @@ def coc_scenario_from_dict(data: dict) -> COCScenario:
                 skill=clue.get("skill"),
                 difficulty=clue.get("difficulty", "regular"),
                 sanity_loss=clue.get("sanity_loss", 0),
+                failure_text=clue.get("failure_text"),
+                failure_evidence=clue.get("failure_evidence"),
+                failure_sanity_loss=clue.get("failure_sanity_loss", 0),
                 discovered=clue.get("discovered", False),
+                partial_discovered=clue.get("partial_discovered", False),
             )
             for clue in data.get("clues", [])
         ],
@@ -336,6 +344,10 @@ def _validate_clue_data(data: object, index: int, seen_ids: set[str], location_i
         _require_nonempty_string(data, "skill", prefix=f"clues[{index}]")
     if data.get("evidence") is not None:
         _require_nonempty_string(data, "evidence", prefix=f"clues[{index}]")
+    if data.get("failure_text") is not None:
+        _require_nonempty_string(data, "failure_text", prefix=f"clues[{index}]")
+    if data.get("failure_evidence") is not None:
+        _require_nonempty_string(data, "failure_evidence", prefix=f"clues[{index}]")
     location_id = data.get("location_id")
     if location_id is not None:
         if not isinstance(location_id, str) or not location_id.strip():
@@ -346,8 +358,11 @@ def _validate_clue_data(data: object, index: int, seen_ids: set[str], location_i
     if difficulty not in {"regular", "hard", "extreme"}:
         raise COCScenarioValidationError(f"clues[{index}].difficulty must be regular, hard, or extreme")
     _validate_optional_int_range(data, "sanity_loss", 0, 99, prefix=f"clues[{index}]")
+    _validate_optional_int_range(data, "failure_sanity_loss", 0, 99, prefix=f"clues[{index}]")
     if "discovered" in data and not isinstance(data["discovered"], bool):
         raise COCScenarioValidationError(f"clues[{index}].discovered must be a boolean")
+    if "partial_discovered" in data and not isinstance(data["partial_discovered"], bool):
+        raise COCScenarioValidationError(f"clues[{index}].partial_discovered must be a boolean")
 
 
 def _validate_npcs_data(npcs: object, location_ids: set[str]) -> set[str]:

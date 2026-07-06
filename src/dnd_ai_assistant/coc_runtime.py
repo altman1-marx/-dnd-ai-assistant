@@ -17,7 +17,11 @@ class COCClue:
     skill: str | None = None
     difficulty: str = "regular"
     sanity_loss: int = 0
+    failure_text: str | None = None
+    failure_evidence: str | None = None
+    failure_sanity_loss: int = 0
     discovered: bool = False
+    partial_discovered: bool = False
 
 
 @dataclass
@@ -132,6 +136,8 @@ def create_sample_coc_scenario() -> COCScenario:
                 skill="spot hidden",
                 difficulty="hard",
                 sanity_loss=1,
+                failure_text="The spiral points toward the scratched portrait, but its full meaning remains unclear.",
+                failure_evidence="Charcoal spiral rubbing",
             ),
             COCClue(
                 id="portrait_truth",
@@ -260,7 +266,7 @@ def _inspect_coc_target(runtime: COCRuntime, target: str) -> None:
         return
     if clue.skill is not None:
         if not _passes_clue_check(runtime, clue):
-            runtime.narrate("Keeper: Something is here, but the pattern does not come together yet.")
+            _reveal_partial_coc_clue(runtime, clue)
             return
     _reveal_coc_clue(runtime, clue)
 
@@ -286,6 +292,21 @@ def _passes_clue_check(runtime: COCRuntime, clue: COCClue) -> bool:
     )
     return success
 
+
+def _reveal_partial_coc_clue(runtime: COCRuntime, clue: COCClue) -> None:
+    if not clue.failure_text:
+        runtime.narrate("Keeper: Something is here, but the pattern does not come together yet.")
+        return
+    if clue.partial_discovered:
+        runtime.narrate(f"Keeper: You have already found the partial lead for {clue.title}: {clue.failure_text}")
+        return
+    clue.partial_discovered = True
+    runtime.narrate(f"Keeper: Partial clue - {clue.title}: {clue.failure_text}")
+    if clue.failure_sanity_loss > 0:
+        runtime.scenario.investigator.lose_sanity(clue.failure_sanity_loss)
+        runtime.narrate(f"Keeper: SAN loss {clue.failure_sanity_loss}.")
+    if clue.failure_evidence:
+        _add_inventory_item(runtime, clue.failure_evidence)
 
 def _reveal_coc_clue(runtime: COCRuntime, clue: COCClue) -> None:
     clue.discovered = True

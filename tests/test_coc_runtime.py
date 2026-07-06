@@ -30,7 +30,7 @@ class COCRuntimeTests(unittest.TestCase):
         self.assertEqual(scenario.investigator.current_sanity, 58)
         self.assertEqual(scenario.inventory, ["Torn portrait canvas"])
 
-    def test_skill_gated_clue_can_fail(self) -> None:
+    def test_skill_gated_clue_failure_can_reveal_partial_lead(self) -> None:
         scenario = create_sample_coc_scenario()
         scenario.investigator.skills["spot hidden"] = 1
         runtime = COCRuntime(scenario, rng=random.Random(1))
@@ -39,8 +39,25 @@ class COCRuntimeTests(unittest.TestCase):
         output = runtime.flush()
 
         self.assertIn("needs hard", output)
+        self.assertIn("Partial clue - Ashen Spiral", output)
+        self.assertIn("points toward the scratched portrait", output)
+        self.assertFalse(scenario.clues[1].discovered)
+        self.assertTrue(scenario.clues[1].partial_discovered)
+        self.assertIn("Charcoal spiral rubbing", scenario.inventory)
+
+    def test_skill_gated_clue_without_failure_text_still_blocks_on_failure(self) -> None:
+        scenario = create_sample_coc_scenario()
+        scenario.clues[1].failure_text = None
+        scenario.clues[1].failure_evidence = None
+        scenario.investigator.skills["spot hidden"] = 1
+        runtime = COCRuntime(scenario, rng=random.Random(1))
+
+        handle_coc_action(runtime, "inspect hearth")
+        output = runtime.flush()
+
         self.assertIn("does not come together", output)
         self.assertFalse(scenario.clues[1].discovered)
+        self.assertFalse(scenario.clues[1].partial_discovered)
 
     def test_all_clues_revealed_triggers_ending(self) -> None:
         scenario = create_sample_coc_scenario()

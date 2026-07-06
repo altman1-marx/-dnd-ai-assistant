@@ -454,7 +454,7 @@ POST /coc/{scenario_id}/keeper-suggestion
       { "id": "mrs_ember", "name": "Mrs. Ember", "description": "The housekeeper twists a ring of keys.", "location_id": "study", "dialogue": ["Do not trim the wick."] }
     ],
     "clues": [
-      { "id": "portrait_truth", "title": "Scratched Portrait", "text": "A crawlspace descends into wet stone.", "location_id": "study", "evidence": "Torn portrait canvas", "sanity_loss": 2 }
+      { "id": "portrait_truth", "title": "Scratched Portrait", "text": "A crawlspace descends into wet stone.", "location_id": "study", "evidence": "Torn portrait canvas", "sanity_loss": 2, "failure_text": "The torn edge points toward a hidden passage, but not enough to open it.", "failure_evidence": "Canvas fiber sample", "failure_sanity_loss": 0 }
     ],
     "inventory": [],
     "ending_text": "The route below is clear."
