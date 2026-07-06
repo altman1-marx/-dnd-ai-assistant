@@ -42,7 +42,7 @@ def build_keeper_prompt(scenario: COCScenario, action: str) -> str:
         "You are a Keeper assistant for a Call of Cthulhu 7th edition investigation.",
         "Write a concise Keeper-facing suggestion for the next narration, clue handling, or tension beat.",
         "Do not mutate scenario state. Do not mark clues discovered, move locations, or change SAN/HP yourself.",
-        "If a roll, clue reveal, movement, or inventory update is needed, recommend the runtime action instead.",
+        "If a roll, clue reveal, movement, inventory update, Luck spend, first aid, or conclusion is needed, recommend the runtime action instead.",
         "",
         "Scenario state:",
         _scenario_snapshot(scenario),
@@ -62,6 +62,7 @@ def _scenario_snapshot(scenario: COCScenario) -> str:
     location = scenario.current_location()
     investigator = scenario.investigator
     discovered = ", ".join(clue.title for clue in scenario.clues if clue.discovered) or "none"
+    partial = _partial_lead_summary(scenario)
     undiscovered_here = ", ".join(
         clue.title
         for clue in scenario.clues
@@ -85,13 +86,55 @@ def _scenario_snapshot(scenario: COCScenario) -> str:
             f"HP/MP/SAN/Luck: {investigator.current_hp}/{investigator.current_mp}/{investigator.current_sanity}/{investigator.luck}",
             f"Conditions: {conditions}",
             f"Discovered clues: {discovered}",
+            f"Partial leads: {partial}",
             f"Undiscovered clues at current location: {undiscovered_here}",
             f"Evidence inventory: {evidence}",
             f"Completion goals: {_completion_goal_summary(scenario)}",
+            f"Suggested runtime actions: {_suggested_action_summary(scenario)}",
             f"Deterministic keeper hint: {coc_keeper_hint(scenario)}",
             f"Completed: {'yes' if scenario.completed else 'no'}",
         ]
     )
+
+def _partial_lead_summary(scenario: COCScenario) -> str:
+    parts: list[str] = []
+    for clue in scenario.clues:
+        if not clue.partial_discovered or clue.discovered:
+            continue
+        cost = _luck_cost(clue)
+        cost_text = f"; Luck cost {cost}" if cost is not None else ""
+        parts.append(f"{clue.title}: {clue.failure_text or 'unconfirmed lead'}{cost_text}")
+    return "; ".join(parts) or "none"
+
+
+def _suggested_action_summary(scenario: COCScenario) -> str:
+    actions = ["look", "recap", "hint", "progress", "clues", "inventory", "conclude"]
+    if scenario.investigator.current_hp < scenario.investigator.max_hp:
+        actions.append("first aid")
+    for clue in scenario.clues:
+        if clue.discovered:
+            continue
+        if clue.location_id not in {None, scenario.current_location_id}:
+            continue
+        actions.append(f"inspect {clue.title.lower()}")
+        if clue.partial_discovered and not clue.push_attempted:
+            actions.append(f"push {clue.title.lower()}")
+        if _luck_cost(clue) is not None:
+            actions.append(f"spend luck {clue.title.lower()}")
+    return ", ".join(dict.fromkeys(actions))
+
+
+def _luck_cost(clue) -> int | None:
+    if clue.discovered:
+        return None
+    if clue.last_check_total is None or clue.last_required_total is None:
+        return None
+    if clue.last_check_level == "fumble":
+        return None
+    cost = clue.last_check_total - clue.last_required_total
+    if cost <= 0:
+        return None
+    return cost
 
 def _completion_goal_summary(scenario: COCScenario) -> str:
     requirements = scenario.completion_requirements

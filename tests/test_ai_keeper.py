@@ -22,6 +22,22 @@ class AIKeeperTests(unittest.TestCase):
         self.assertIn("clues 0/2", prompt)
         self.assertIn("talk to Mrs. Ember", prompt)
 
+    def test_build_keeper_prompt_includes_partial_leads_and_luck_costs(self) -> None:
+        scenario = create_sample_coc_scenario()
+        clue = scenario.clues[1]
+        clue.partial_discovered = True
+        clue.last_check_total = 50
+        clue.last_required_total = 45
+        clue.last_check_level = "failure"
+
+        prompt = build_keeper_prompt(scenario, "what now?")
+
+        self.assertIn("Partial leads", prompt)
+        self.assertIn("Ashen Spiral", prompt)
+        self.assertIn("Luck cost 5", prompt)
+        self.assertIn("push ashen spiral", prompt)
+        self.assertIn("spend luck ashen spiral", prompt)
+
     def test_generate_keeper_suggestion_uses_provider_without_mutating_state(self) -> None:
         scenario = create_sample_coc_scenario()
         before_inventory = list(scenario.inventory)
