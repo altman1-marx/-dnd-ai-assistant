@@ -350,11 +350,14 @@ def _reveal_coc_clue(runtime: COCRuntime, clue: COCClue) -> None:
 
 def _describe_discovered_clues(runtime: COCRuntime) -> None:
     discovered = [clue for clue in runtime.scenario.clues if clue.discovered]
-    if not discovered:
+    partial = [clue for clue in runtime.scenario.clues if clue.partial_discovered and not clue.discovered]
+    if not discovered and not partial:
         runtime.narrate("Keeper: No clues discovered yet.")
         return
     for clue in discovered:
         runtime.narrate(f"- {clue.title}: {clue.text}")
+    for clue in partial:
+        runtime.narrate(f"- Partial lead - {clue.title}: {clue.failure_text or 'Unconfirmed lead.'}")
 
 
 def _describe_coc_status(runtime: COCRuntime) -> None:
@@ -362,27 +365,30 @@ def _describe_coc_status(runtime: COCRuntime) -> None:
     location = runtime.scenario.current_location()
     discovered = sum(1 for clue in runtime.scenario.clues if clue.discovered)
     total = len(runtime.scenario.clues)
+    partial = sum(1 for clue in runtime.scenario.clues if clue.partial_discovered and not clue.discovered)
     runtime.narrate(
         f"Keeper: {investigator.name} ({investigator.occupation}) - "
         f"location {location.name}, "
         f"HP {investigator.current_hp}/{investigator.max_hp}, "
         f"MP {investigator.current_mp}/{investigator.max_mp}, "
         f"SAN {investigator.current_sanity}/{investigator.max_sanity}, "
-        f"Luck {investigator.luck}, clues {discovered}/{total}, evidence {len(runtime.scenario.inventory)}, "
+        f"Luck {investigator.luck}, clues {discovered}/{total}, partial {partial}, "
+        f"evidence {len(runtime.scenario.inventory)}, "
         f"conditions: {', '.join(sorted(investigator.conditions)) or 'none'}."
     )
-
 
 
 def _describe_coc_recap(runtime: COCRuntime) -> None:
     scenario = runtime.scenario
     location = scenario.current_location()
     discovered = [clue for clue in scenario.clues if clue.discovered]
+    partial = [clue for clue in scenario.clues if clue.partial_discovered and not clue.discovered]
     evidence = ", ".join(scenario.inventory) if scenario.inventory else "none"
     latest_clue = discovered[-1].title if discovered else "none"
     runtime.narrate(
         f"Keeper: Recap: {scenario.title}; location {location.name}; "
-        f"clues {len(discovered)}/{len(scenario.clues)}; latest clue {latest_clue}; evidence {evidence}."
+        f"clues {len(discovered)}/{len(scenario.clues)}; partial {len(partial)}; "
+        f"latest clue {latest_clue}; evidence {evidence}."
     )
     runtime.narrate(f"Keeper: Next lead: {coc_keeper_hint(scenario)}")
 

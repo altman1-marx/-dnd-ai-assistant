@@ -94,6 +94,25 @@ class COCRuntimeTests(unittest.TestCase):
         self.assertFalse(scenario.clues[1].discovered)
         self.assertFalse(scenario.clues[1].partial_discovered)
 
+    def test_partial_clues_are_reported_in_clues_status_and_recap(self) -> None:
+        scenario = create_sample_coc_scenario()
+        scenario.investigator.skills["spot hidden"] = 1
+        runtime = COCRuntime(scenario, rng=random.Random(1))
+
+        handle_coc_action(runtime, "inspect hearth")
+        runtime.flush()
+        handle_coc_action(runtime, "clues")
+        clues_output = runtime.flush()
+        handle_coc_action(runtime, "status")
+        status_output = runtime.flush()
+        handle_coc_action(runtime, "recap")
+        recap_output = runtime.flush()
+
+        self.assertIn("Partial lead - Ashen Spiral", clues_output)
+        self.assertIn("partial 1", status_output)
+        self.assertIn("partial 1", recap_output)
+
+
     def test_all_clues_revealed_triggers_ending(self) -> None:
         scenario = create_sample_coc_scenario()
         for clue in scenario.clues:
