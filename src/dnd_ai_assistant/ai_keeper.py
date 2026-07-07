@@ -123,8 +123,15 @@ def _suggested_action_summary(scenario: COCScenario) -> str:
             continue
         if clue.location_id not in {None, scenario.current_location_id}:
             continue
-        actions.append(_preferred_clue_action(clue))
+        preferred = _preferred_clue_action(clue)
+        actions.append(preferred)
         actions.append(f"search {clue.title.lower()}")
+        if clue.skill:
+            actions.append(f"{preferred} bonus")
+            actions.append(f"{preferred} penalty")
+            actions.append(f"check {clue.skill}")
+            actions.append(f"check {clue.skill} bonus")
+            actions.append(f"check {clue.skill} penalty")
         if clue.partial_discovered and not clue.push_attempted:
             actions.append(f"push {clue.title.lower()}")
         if _luck_cost(clue) is not None:

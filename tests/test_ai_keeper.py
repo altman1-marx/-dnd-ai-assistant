@@ -62,7 +62,9 @@ class AIKeeperTests(unittest.TestCase):
         prompt = build_keeper_prompt(scenario, "what do I hear?")
 
         self.assertIn("listen voices in the well", prompt)
+        self.assertIn("listen voices in the well bonus", prompt)
         self.assertIn("search backward rain gauge", prompt)
+        self.assertIn("check spot hidden penalty", prompt)
 
     def test_generate_keeper_suggestion_uses_provider_without_mutating_state(self) -> None:
         scenario = create_sample_coc_scenario()
