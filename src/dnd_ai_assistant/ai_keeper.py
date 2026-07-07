@@ -89,12 +89,19 @@ def _scenario_snapshot(scenario: COCScenario) -> str:
             f"Partial leads: {partial}",
             f"Undiscovered clues at current location: {undiscovered_here}",
             f"Evidence inventory: {evidence}",
+            f"Recent session log: {_recent_session_log_summary(scenario)}",
             f"Completion goals: {_completion_goal_summary(scenario)}",
             f"Suggested runtime actions: {_suggested_action_summary(scenario)}",
             f"Deterministic keeper hint: {coc_keeper_hint(scenario)}",
             f"Completed: {'yes' if scenario.completed else 'no'}",
         ]
     )
+
+def _recent_session_log_summary(scenario: COCScenario, limit: int = 12) -> str:
+    if not scenario.session_log:
+        return "none"
+    recent = [line.strip() for line in scenario.session_log[-limit:] if line.strip()]
+    return " | ".join(recent) or "none"
 
 def _partial_lead_summary(scenario: COCScenario) -> str:
     parts: list[str] = []

@@ -9,6 +9,7 @@ class AIKeeperTests(unittest.TestCase):
     def test_build_keeper_prompt_uses_coc_state_and_guardrails(self) -> None:
         scenario = create_sample_coc_scenario()
         scenario.inventory.append("Torn portrait canvas")
+        scenario.session_log.extend(["Player: inspect portrait", "Keeper: Clue found - Scratched Portrait"])
 
         prompt = build_keeper_prompt(scenario, "talk to Mrs. Ember")
 
@@ -19,8 +20,23 @@ class AIKeeperTests(unittest.TestCase):
         self.assertIn("Torn portrait canvas", prompt)
         self.assertIn("Completion goals", prompt)
         self.assertIn("Deterministic keeper hint", prompt)
+        self.assertIn("Recent session log", prompt)
+        self.assertIn("Player: inspect portrait", prompt)
+        self.assertIn("Clue found - Scratched Portrait", prompt)
         self.assertIn("clues 0/2", prompt)
         self.assertIn("talk to Mrs. Ember", prompt)
+
+
+    def test_build_keeper_prompt_limits_recent_session_log(self) -> None:
+        scenario = create_sample_coc_scenario()
+        scenario.session_log = [f"Keeper: beat {index}" for index in range(20)]
+
+        prompt = build_keeper_prompt(scenario, "look")
+
+        self.assertIn("Recent session log", prompt)
+        self.assertNotIn("beat 0", prompt)
+        self.assertIn("beat 8", prompt)
+        self.assertIn("beat 19", prompt)
 
     def test_build_keeper_prompt_includes_partial_leads_and_luck_costs(self) -> None:
         scenario = create_sample_coc_scenario()
