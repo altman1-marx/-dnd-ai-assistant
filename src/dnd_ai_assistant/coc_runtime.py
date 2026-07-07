@@ -361,7 +361,8 @@ def _inspection_alias_target(normalized_action: str) -> str | None:
 
 
 def _inspect_coc_target(runtime: COCRuntime, target: str) -> None:
-    clue = _match_clue(_visible_clues(runtime.scenario), target)
+    normalized_target, mode = _parse_manual_check_request(target)
+    clue = _match_clue(_visible_clues(runtime.scenario), normalized_target)
     if clue is None:
         runtime.narrate("Keeper: You find no clear lead there.")
         return
@@ -369,7 +370,7 @@ def _inspect_coc_target(runtime: COCRuntime, target: str) -> None:
         runtime.narrate(f"Keeper: You have already found {clue.title}: {clue.text}")
         return
     if clue.skill is not None:
-        if not _passes_clue_check(runtime, clue):
+        if not _passes_clue_check(runtime, clue, mode=mode):
             _reveal_partial_coc_clue(runtime, clue)
             return
     _reveal_coc_clue(runtime, clue)
@@ -448,18 +449,19 @@ def _parse_manual_check_request(text: str) -> tuple[str, PercentileRollMode]:
     return text.strip(), PercentileRollMode.NORMAL
 
 
-def _passes_clue_check(runtime: COCRuntime, clue: COCClue) -> bool:
+def _passes_clue_check(runtime: COCRuntime, clue: COCClue, mode: PercentileRollMode = PercentileRollMode.NORMAL) -> bool:
     investigator = runtime.scenario.investigator
     skill_value = investigator.skill_value(clue.skill or "")
-    check = roll_percentile_check(skill_value, mode=PercentileRollMode.NORMAL, rng=runtime.rng)
+    check = roll_percentile_check(skill_value, mode=mode, rng=runtime.rng)
     required = _required_success_level(clue.difficulty)
     required_total = _required_total_for_success(skill_value, required)
     success = _success_rank(check.success_level.value) >= _success_rank(required)
     clue.last_check_total = check.total
     clue.last_required_total = required_total
     clue.last_check_level = check.success_level.value
+    mode_text = "" if mode == PercentileRollMode.NORMAL else f" ({mode.value} die)"
     runtime.narrate(
-        f"Keeper: {investigator.name} rolls {clue.skill} {check.total} vs {skill_value}: "
+        f"Keeper: {investigator.name} rolls {clue.skill}{mode_text} {check.total} vs {skill_value}: "
         f"{check.success_level.value}; needs {required}."
     )
     return success

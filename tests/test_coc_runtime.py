@@ -60,6 +60,24 @@ class COCRuntimeTests(unittest.TestCase):
         self.assertTrue(scenario.clues[1].partial_discovered)
         self.assertIn("Charcoal spiral rubbing", scenario.inventory)
 
+
+    def test_skill_gated_clue_inspection_supports_bonus_and_penalty_dice(self) -> None:
+        bonus_scenario = create_sample_coc_scenario()
+        penalty_scenario = create_sample_coc_scenario()
+        bonus_scenario.investigator.skills["spot hidden"] = 1
+        penalty_scenario.investigator.skills["spot hidden"] = 1
+        bonus_runtime = COCRuntime(bonus_scenario, rng=random.Random(1))
+        penalty_runtime = COCRuntime(penalty_scenario, rng=random.Random(1))
+
+        handle_coc_action(bonus_runtime, "inspect hearth bonus")
+        handle_coc_action(penalty_runtime, "inspect hearth penalty")
+        bonus_output = bonus_runtime.flush()
+        penalty_output = penalty_runtime.flush()
+
+        self.assertIn("rolls spot hidden (bonus die)", bonus_output)
+        self.assertIn("rolls spot hidden (penalty die)", penalty_output)
+        self.assertTrue(bonus_scenario.clues[1].partial_discovered)
+        self.assertTrue(penalty_scenario.clues[1].partial_discovered)
     def test_spend_luck_can_convert_failed_clue_check(self) -> None:
         scenario = create_sample_coc_scenario()
         clue = scenario.clues[1]

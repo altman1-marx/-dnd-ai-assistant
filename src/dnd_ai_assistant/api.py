@@ -902,6 +902,11 @@ def _coc_available_actions(scenario: COCScenario) -> list[str]:
         actions.append(f"inspect {clue_id}")
         actions.append(f"search {clue_title}")
         actions.append(f"search {clue_id}")
+        if clue.skill:
+            actions.append(f"inspect {clue_title} bonus")
+            actions.append(f"inspect {clue_title} penalty")
+            actions.append(f"search {clue_title} bonus")
+            actions.append(f"search {clue_title} penalty")
         clue_words = f"{clue_id} {clue_title}"
         if any(word in clue_words for word in ("journal", "diary", "letter", "book", "note")):
             actions.append(f"read {clue_title}")

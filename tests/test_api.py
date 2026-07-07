@@ -128,6 +128,8 @@ class APITests(unittest.TestCase):
         self.assertNotIn("first aid", summary["available_actions"])
         self.assertIn("inspect scratched portrait", summary["available_actions"])
         self.assertIn("search scratched portrait", summary["available_actions"])
+        self.assertIn("inspect waterlogged journal bonus", summary["available_actions"])
+        self.assertIn("search waterlogged journal penalty", summary["available_actions"])
         self.assertIn("read waterlogged journal", summary["available_actions"])
         self.assertIn("check library use bonus", summary["available_actions"])
         self.assertIn("check library use penalty", summary["available_actions"])
