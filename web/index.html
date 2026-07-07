@@ -757,6 +757,12 @@
     }
 
     async function runAction(action) {
+      if (action.includes("<text>")) {
+        actionInput.value = action.replace("<text>", "").trim() + " ";
+        actionInput.focus();
+        setStatus("Complete the action text, then send.");
+        return;
+      }
       if (state.mode === "coc") {
         await runCocAction(action);
         return;
