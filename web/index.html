@@ -220,6 +220,23 @@
 
     .quick-actions {
       display: grid;
+      gap: 10px;
+    }
+
+    .quick-action-group {
+      display: grid;
+      gap: 6px;
+    }
+
+    .quick-action-group-title {
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+
+    .quick-action-buttons {
+      display: grid;
       grid-template-columns: repeat(4, minmax(0, 1fr));
       gap: 8px;
     }
@@ -1323,12 +1340,36 @@ function clearCampaign() {
     function renderQuickActions(actions) {
       const fallback = ["look", "inspect"];
       const preferred = actions.length ? actions : fallback;
-      quickActions.innerHTML = preferred.map((action) => {
-        return "<button type=\"button\" class=\"secondary\" data-action=\"" + escapeHtml(action) + "\">"
-          + escapeHtml(actionLabel(action)) + "</button>";
+      const groups = groupQuickActions(preferred);
+      quickActions.innerHTML = Object.entries(groups).map(([label, groupedActions]) => {
+        return "<div class=\"quick-action-group\"><div class=\"quick-action-group-title\">" + escapeHtml(label)
+          + "</div><div class=\"quick-action-buttons\">" + groupedActions.map((action) => {
+            return "<button type=\"button\" class=\"secondary\" data-action=\"" + escapeHtml(action) + "\">"
+              + escapeHtml(actionLabel(action)) + "</button>";
+          }).join("") + "</div></div>";
       }).join("");
       bindQuickActions();
       setControls(Boolean(state.campaignId || state.scenarioId));
+    }
+
+    function groupQuickActions(actions) {
+      return actions.reduce((groups, action) => {
+        const label = quickActionGroupLabel(action);
+        if (!groups[label]) groups[label] = [];
+        groups[label].push(action);
+        return groups;
+      }, {});
+    }
+
+    function quickActionGroupLabel(action) {
+      if (action.startsWith("check ")) return "Skills";
+      if (action.startsWith("note ") || action.startsWith("keeper note ")) return "Notes";
+      if (action.startsWith("go ") || action === "dash" || action === "disengage" || action === "flee") return "Movement";
+      if (action.startsWith("inspect ") || action.startsWith("search ") || action.startsWith("read ") || action.startsWith("listen ") || action.startsWith("talk ")) return "Investigation";
+      if (action.startsWith("cast ")) return "Magic";
+      if (action.startsWith("attack ") || action === "combat" || action === "dodge" || action === "surrender" || action === "accept surrender") return "Combat";
+      if (action === "conclude" || action === "progress" || action === "recap" || action === "hint" || action === "clues" || action === "inventory") return "Case";
+      return "General";
     }
 
     function bindQuickActions() {
