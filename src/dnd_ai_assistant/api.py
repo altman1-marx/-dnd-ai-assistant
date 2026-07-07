@@ -911,6 +911,8 @@ def _coc_available_actions(scenario: COCScenario) -> list[str]:
             actions.append(f"listen {clue_id}")
         if clue.skill:
             actions.append(f"check {clue.skill}")
+            actions.append(f"check {clue.skill} bonus")
+            actions.append(f"check {clue.skill} penalty")
         if clue.partial_discovered and not clue.push_attempted:
             actions.append(f"push {clue.title.lower()}")
             actions.append(f"push {clue.id.replace('_', ' ')}")

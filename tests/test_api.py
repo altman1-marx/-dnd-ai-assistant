@@ -129,6 +129,9 @@ class APITests(unittest.TestCase):
         self.assertIn("inspect scratched portrait", summary["available_actions"])
         self.assertIn("search scratched portrait", summary["available_actions"])
         self.assertIn("read waterlogged journal", summary["available_actions"])
+        self.assertIn("check library use bonus", summary["available_actions"])
+        self.assertIn("check library use penalty", summary["available_actions"])
+
     def test_coc_summary_suggests_listen_actions_for_auditory_clues(self) -> None:
         state = APIState()
         response = create_coc_demo(state)

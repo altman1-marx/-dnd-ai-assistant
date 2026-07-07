@@ -269,6 +269,21 @@ class COCRuntimeTests(unittest.TestCase):
         self.assertIn("rolls psychology", output)
         self.assertIn("targets regular 35, hard 17, extreme 7", output)
 
+
+    def test_manual_check_supports_bonus_and_penalty_dice(self) -> None:
+        bonus_runtime = COCRuntime(create_sample_coc_scenario(), rng=random.Random(1))
+        penalty_runtime = COCRuntime(create_sample_coc_scenario(), rng=random.Random(1))
+
+        handle_coc_action(bonus_runtime, "check psychology bonus")
+        handle_coc_action(penalty_runtime, "check psychology penalty")
+        bonus_output = bonus_runtime.flush()
+        penalty_output = penalty_runtime.flush()
+
+        self.assertIn("rolls psychology (bonus die)", bonus_output)
+        self.assertIn("rolls psychology (penalty die)", penalty_output)
+        self.assertIn("targets regular 35, hard 17, extreme 7", bonus_output)
+        self.assertIn("targets regular 35, hard 17, extreme 7", penalty_output)
+
     def test_note_actions_record_session_context(self) -> None:
         scenario = create_sample_coc_scenario()
         runtime = COCRuntime(scenario)

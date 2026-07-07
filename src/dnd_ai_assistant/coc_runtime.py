@@ -427,13 +427,25 @@ def _spend_luck_on_coc_target(runtime: COCRuntime, target: str) -> None:
 
 def _manual_coc_check(runtime: COCRuntime, skill_name: str) -> None:
     investigator = runtime.scenario.investigator
-    value = investigator.skill_value(skill_name)
-    check = roll_percentile_check(value, rng=runtime.rng)
+    normalized_skill, mode = _parse_manual_check_request(skill_name)
+    value = investigator.skill_value(normalized_skill)
+    check = roll_percentile_check(value, mode=mode, rng=runtime.rng)
+    mode_text = "" if mode == PercentileRollMode.NORMAL else f" ({mode.value} die)"
     runtime.narrate(
-        f"Keeper: {investigator.name} rolls {skill_name} {check.total} vs {value}: {check.success_level.value}; "
+        f"Keeper: {investigator.name} rolls {normalized_skill}{mode_text} {check.total} vs {value}: {check.success_level.value}; "
         f"targets regular {value}, hard {_required_total_for_success(value, 'hard')}, "
         f"extreme {_required_total_for_success(value, 'extreme')}."
     )
+
+
+def _parse_manual_check_request(text: str) -> tuple[str, PercentileRollMode]:
+    words = text.strip().split()
+    if not words:
+        return "", PercentileRollMode.NORMAL
+    last = words[-1].lower()
+    if last in {"bonus", "penalty"}:
+        return " ".join(words[:-1]), PercentileRollMode(last)
+    return text.strip(), PercentileRollMode.NORMAL
 
 
 def _passes_clue_check(runtime: COCRuntime, clue: COCClue) -> bool:
