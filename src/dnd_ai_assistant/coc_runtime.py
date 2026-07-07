@@ -430,7 +430,9 @@ def _manual_coc_check(runtime: COCRuntime, skill_name: str) -> None:
     value = investigator.skill_value(skill_name)
     check = roll_percentile_check(value, rng=runtime.rng)
     runtime.narrate(
-        f"Keeper: {investigator.name} rolls {skill_name} {check.total} vs {value}: {check.success_level.value}."
+        f"Keeper: {investigator.name} rolls {skill_name} {check.total} vs {value}: {check.success_level.value}; "
+        f"targets regular {value}, hard {_required_total_for_success(value, 'hard')}, "
+        f"extreme {_required_total_for_success(value, 'extreme')}."
     )
 
 

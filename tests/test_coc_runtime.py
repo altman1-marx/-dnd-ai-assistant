@@ -258,6 +258,17 @@ class COCRuntimeTests(unittest.TestCase):
         self.assertIn("Backward rain gauge sketch", scenario.inventory)
 
 
+
+    def test_manual_check_reports_success_thresholds(self) -> None:
+        scenario = create_sample_coc_scenario()
+        runtime = COCRuntime(scenario, rng=random.Random(1))
+
+        handle_coc_action(runtime, "check psychology")
+        output = runtime.flush()
+
+        self.assertIn("rolls psychology", output)
+        self.assertIn("targets regular 35, hard 17, extreme 7", output)
+
     def test_note_actions_record_session_context(self) -> None:
         scenario = create_sample_coc_scenario()
         runtime = COCRuntime(scenario)
