@@ -257,6 +257,20 @@ class COCRuntimeTests(unittest.TestCase):
         self.assertIn("Backward Rain Gauge", output)
         self.assertIn("Backward rain gauge sketch", scenario.inventory)
 
+
+    def test_note_actions_record_session_context(self) -> None:
+        scenario = create_sample_coc_scenario()
+        runtime = COCRuntime(scenario)
+
+        handle_coc_action(runtime, "note I suspect the rain gauge")
+        handle_coc_action(runtime, "keeper note Hale is hiding fear")
+        output = runtime.flush()
+
+        self.assertIn("Player note: I suspect the rain gauge", output)
+        self.assertIn("Keeper note: Hale is hiding fear", output)
+        self.assertIn("Player note: I suspect the rain gauge", scenario.session_log)
+        self.assertIn("Keeper note: Hale is hiding fear", scenario.session_log)
+
     def test_help_and_quit(self) -> None:
         runtime = COCRuntime(create_sample_coc_scenario())
 
@@ -265,6 +279,7 @@ class COCRuntimeTests(unittest.TestCase):
         output = runtime.flush()
 
         self.assertIn("Actions:", output)
+        self.assertIn("note <text>", output)
         self.assertIn("investigation pauses", output)
 
     def test_hint_points_to_next_completion_step(self) -> None:

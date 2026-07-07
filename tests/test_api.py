@@ -218,6 +218,17 @@ class APITests(unittest.TestCase):
         self.assertGreater(response["summary"]["session_event_count"], 0)
         self.assertIn("Clue found - Scratched Portrait", "\n".join(response["summary"]["recent_events"]))
 
+
+    def test_run_coc_note_action_updates_recent_events(self) -> None:
+        state = APIState()
+        scenario_id = create_coc_demo(state)["scenario_id"]
+
+        response = run_coc_action(state, scenario_id, "note I distrust the well", seed=1)
+
+        self.assertIn("Player note: I distrust the well", response["transcript"])
+        self.assertIn("Player note: I distrust the well", response["summary"]["recent_events"])
+        self.assertGreater(response["summary"]["session_event_count"], 0)
+
     def test_coc_summary_exposes_partial_clues_after_soft_failure(self) -> None:
         state = APIState()
         scenario_id = create_coc_demo(state)["scenario_id"]

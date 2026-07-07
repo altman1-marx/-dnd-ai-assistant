@@ -261,7 +261,7 @@ def handle_coc_action(runtime: COCRuntime, action: str) -> bool:
         return False
     if normalized in {"help", "?"}:
         runtime.narrate(
-            "Keeper: Actions: look, status, recap, progress, hint, go <exit>, inspect/search/read/listen/examine <target>, talk <npc>, check <skill>, push <target>, spend luck <target>, first aid, conclude, sanity, clues, inventory, quit."
+            "Keeper: Actions: look, status, recap, progress, hint, note <text>, keeper note <text>, go <exit>, inspect/search/read/listen/examine <target>, talk <npc>, check <skill>, push <target>, spend luck <target>, first aid, conclude, sanity, clues, inventory, quit."
         )
         return True
     if normalized in {"recap", "summary"}:
@@ -298,6 +298,12 @@ def handle_coc_action(runtime: COCRuntime, action: str) -> bool:
     if normalized in {"first aid", "first aid self"}:
         _use_first_aid(runtime)
         return True
+    if normalized.startswith("keeper note "):
+        _record_coc_note(runtime, action[len("keeper note ") :].strip(), keeper_only=True)
+        return True
+    if normalized.startswith("note "):
+        _record_coc_note(runtime, action[len("note ") :].strip(), keeper_only=False)
+        return True
     if normalized.startswith("go "):
         _move_coc_location(runtime, normalized[len("go ") :].strip())
         return True
@@ -320,6 +326,13 @@ def handle_coc_action(runtime: COCRuntime, action: str) -> bool:
     runtime.narrate("Keeper: That action is not supported yet.")
     return True
 
+
+def _record_coc_note(runtime: COCRuntime, text: str, keeper_only: bool = False) -> None:
+    if not text.strip():
+        runtime.narrate("Keeper: Note text cannot be empty.")
+        return
+    prefix = "Keeper note" if keeper_only else "Player note"
+    runtime.narrate(f"{prefix}: {text.strip()}")
 
 def _use_first_aid(runtime: COCRuntime) -> None:
     investigator = runtime.scenario.investigator
