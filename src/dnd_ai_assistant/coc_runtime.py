@@ -5,6 +5,7 @@ from dataclasses import dataclass, field
 from uuid import uuid4
 
 from .core.coc7e import Investigator, PercentileRollMode, roll_percentile_check
+from .core.dice import roll as roll_dice
 
 
 @dataclass
@@ -261,7 +262,7 @@ def handle_coc_action(runtime: COCRuntime, action: str) -> bool:
         return False
     if normalized in {"help", "?"}:
         runtime.narrate(
-            "Keeper: Actions: look, status, recap, progress, hint, note <text>, keeper note <text>, go <exit>, inspect/search/read/listen/examine <target>, talk <npc>, check <skill>, push <target>, spend luck <target>, first aid, conclude, sanity, clues, inventory, quit."
+            "Keeper: Actions: look, status, recap, progress, hint, note <text>, keeper note <text>, go <exit>, inspect/search/read/listen/examine <target>, talk <npc>, check <skill>, san check <success>/<failure>, push <target>, spend luck <target>, first aid, conclude, sanity, clues, inventory, quit."
         )
         return True
     if normalized in {"recap", "summary"}:
@@ -319,6 +320,9 @@ def handle_coc_action(runtime: COCRuntime, action: str) -> bool:
         return True
     if normalized.startswith("talk "):
         _talk_to_coc_npc(runtime, normalized[len("talk ") :].strip())
+        return True
+    if normalized.startswith("san check "):
+        _manual_sanity_check(runtime, normalized[len("san check ") :].strip())
         return True
     if normalized.startswith("check "):
         _manual_coc_check(runtime, normalized[len("check ") :].strip())
@@ -425,6 +429,27 @@ def _spend_luck_on_coc_target(runtime: COCRuntime, target: str) -> None:
     runtime.narrate(f"Keeper: {investigator.name} spends {cost} Luck on {clue.title}; Luck is now {investigator.luck}.")
     _reveal_coc_clue(runtime, clue)
 
+
+def _manual_sanity_check(runtime: COCRuntime, loss_expression: str) -> None:
+    parts = [part.strip() for part in loss_expression.split("/", 1)]
+    if len(parts) != 2 or not parts[0] or not parts[1]:
+        runtime.narrate("Keeper: Use san check <success loss>/<failure loss>, such as san check 0/1d4.")
+        return
+    investigator = runtime.scenario.investigator
+    sanity_value = investigator.current_sanity or 0
+    check = roll_percentile_check(sanity_value, rng=runtime.rng)
+    selected_expression = parts[0] if check.success else parts[1]
+    try:
+        loss_roll = roll_dice(selected_expression, rng=runtime.rng)
+    except ValueError as exc:
+        runtime.narrate(f"Keeper: Invalid SAN loss expression: {exc}")
+        return
+    before = investigator.current_sanity or 0
+    investigator.lose_sanity(loss_roll.total)
+    runtime.narrate(
+        f"Keeper: {investigator.name} rolls SAN {check.total} vs {sanity_value}: {check.success_level.value}; "
+        f"SAN loss {loss_roll.total} ({selected_expression}), SAN {before}->{investigator.current_sanity}."
+    )
 
 def _manual_coc_check(runtime: COCRuntime, skill_name: str) -> None:
     investigator = runtime.scenario.investigator

@@ -277,6 +277,27 @@ class COCRuntimeTests(unittest.TestCase):
 
 
 
+
+    def test_sanity_check_rolls_loss_expression(self) -> None:
+        scenario = create_sample_coc_scenario()
+        runtime = COCRuntime(scenario, rng=random.Random(1))
+
+        handle_coc_action(runtime, "san check 0/1d4")
+        output = runtime.flush()
+
+        self.assertIn("rolls SAN", output)
+        self.assertIn("SAN loss", output)
+        self.assertLessEqual(scenario.investigator.current_sanity, scenario.investigator.max_sanity)
+        self.assertIn("SAN", output)
+
+    def test_sanity_check_reports_bad_format(self) -> None:
+        runtime = COCRuntime(create_sample_coc_scenario())
+
+        handle_coc_action(runtime, "san check 1d4")
+        output = runtime.flush()
+
+        self.assertIn("Use san check <success loss>/<failure loss>", output)
+
     def test_manual_check_reports_success_thresholds(self) -> None:
         scenario = create_sample_coc_scenario()
         runtime = COCRuntime(scenario, rng=random.Random(1))
@@ -324,6 +345,7 @@ class COCRuntimeTests(unittest.TestCase):
 
         self.assertIn("Actions:", output)
         self.assertIn("note <text>", output)
+        self.assertIn("san check <success>/<failure>", output)
         self.assertIn("investigation pauses", output)
 
     def test_hint_points_to_next_completion_step(self) -> None:

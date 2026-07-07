@@ -133,6 +133,9 @@ class APITests(unittest.TestCase):
         self.assertIn("read waterlogged journal", summary["available_actions"])
         self.assertIn("check library use bonus", summary["available_actions"])
         self.assertIn("check library use penalty", summary["available_actions"])
+        self.assertIn("note <text>", summary["available_actions"])
+        self.assertIn("keeper note <text>", summary["available_actions"])
+        self.assertIn("san check 0/1d4", summary["available_actions"])
 
     def test_coc_summary_suggests_listen_actions_for_auditory_clues(self) -> None:
         state = APIState()
