@@ -123,13 +123,23 @@ def _suggested_action_summary(scenario: COCScenario) -> str:
             continue
         if clue.location_id not in {None, scenario.current_location_id}:
             continue
-        actions.append(f"inspect {clue.title.lower()}")
+        actions.append(_preferred_clue_action(clue))
+        actions.append(f"search {clue.title.lower()}")
         if clue.partial_discovered and not clue.push_attempted:
             actions.append(f"push {clue.title.lower()}")
         if _luck_cost(clue) is not None:
             actions.append(f"spend luck {clue.title.lower()}")
     return ", ".join(dict.fromkeys(actions))
 
+
+def _preferred_clue_action(clue) -> str:
+    clue_title = clue.title.lower()
+    clue_words = f"{clue.id.replace('_', ' ')} {clue_title}"
+    if any(word in clue_words for word in ("journal", "diary", "letter", "book", "note")):
+        return f"read {clue_title}"
+    if any(word in clue_words for word in ("voice", "voices", "whisper", "well", "sound")):
+        return f"listen {clue_title}"
+    return f"inspect {clue_title}"
 
 def _luck_cost(clue) -> int | None:
     if clue.discovered:

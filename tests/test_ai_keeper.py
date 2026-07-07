@@ -54,6 +54,16 @@ class AIKeeperTests(unittest.TestCase):
         self.assertIn("push ashen spiral", prompt)
         self.assertIn("spend luck ashen spiral", prompt)
 
+
+    def test_build_keeper_prompt_prefers_listen_for_auditory_clues(self) -> None:
+        scenario = create_sample_coc_scenario()
+        scenario.current_location_id = "garden"
+
+        prompt = build_keeper_prompt(scenario, "what do I hear?")
+
+        self.assertIn("listen voices in the well", prompt)
+        self.assertIn("search backward rain gauge", prompt)
+
     def test_generate_keeper_suggestion_uses_provider_without_mutating_state(self) -> None:
         scenario = create_sample_coc_scenario()
         before_inventory = list(scenario.inventory)
