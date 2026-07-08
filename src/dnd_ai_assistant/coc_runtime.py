@@ -262,7 +262,7 @@ def handle_coc_action(runtime: COCRuntime, action: str) -> bool:
         return False
     if normalized in {"help", "?"}:
         runtime.narrate(
-            "Keeper: Actions: look, status, recap, progress, hint, note <text>, keeper note <text>, go <exit>, inspect/search/read/listen/examine <target>, talk <npc>, check <skill>, san check <success>/<failure>, push <target>, spend luck <target>, first aid, conclude, sanity, clues, inventory, quit."
+            "Keeper: Actions: look, status, recap, progress, hint, note <text>, keeper note <text>, go <exit>, inspect/search/read/listen/examine <target>, talk <npc>, check <skill>, san check <success>/<failure>, push <target>, spend luck <target>, first aid, take damage <dice>, heal <dice>, conclude, sanity, clues, inventory, quit."
         )
         return True
     if normalized in {"recap", "summary"}:
@@ -298,6 +298,15 @@ def handle_coc_action(runtime: COCRuntime, action: str) -> bool:
         return True
     if normalized in {"first aid", "first aid self"}:
         _use_first_aid(runtime)
+        return True
+    if normalized.startswith("take damage "):
+        _manual_coc_damage(runtime, normalized[len("take damage ") :].strip())
+        return True
+    if normalized.startswith("damage "):
+        _manual_coc_damage(runtime, normalized[len("damage ") :].strip())
+        return True
+    if normalized.startswith("heal "):
+        _manual_coc_heal(runtime, normalized[len("heal ") :].strip())
         return True
     if normalized.startswith("keeper note "):
         _record_coc_note(runtime, action[len("keeper note ") :].strip(), keeper_only=True)
@@ -355,6 +364,46 @@ def _use_first_aid(runtime: COCRuntime) -> None:
     investigator.heal(1)
     healed = investigator.current_hp - before
     runtime.narrate(f"Keeper: First aid restores {healed} HP; HP {investigator.current_hp}/{investigator.max_hp}.")
+
+
+def _manual_coc_damage(runtime: COCRuntime, expression: str) -> None:
+    investigator = runtime.scenario.investigator
+    try:
+        damage = roll_dice(expression, rng=runtime.rng)
+    except ValueError as exc:
+        runtime.narrate(f"Keeper: Damage expression is invalid: {exc}")
+        return
+    before = investigator.current_hp
+    before_conditions = set(investigator.conditions)
+    investigator.apply_damage(damage.total)
+    runtime.narrate(
+        f"Keeper: {investigator.name} takes {damage.total} damage ({expression}); "
+        f"HP {before}->{investigator.current_hp}/{investigator.max_hp}."
+    )
+    _narrate_new_physical_conditions(runtime, before_conditions)
+
+
+def _manual_coc_heal(runtime: COCRuntime, expression: str) -> None:
+    investigator = runtime.scenario.investigator
+    try:
+        healing = roll_dice(expression, rng=runtime.rng)
+    except ValueError as exc:
+        runtime.narrate(f"Keeper: Healing expression is invalid: {exc}")
+        return
+    before = investigator.current_hp
+    investigator.heal(healing.total)
+    restored = investigator.current_hp - before
+    runtime.narrate(
+        f"Keeper: {investigator.name} recovers {restored} HP ({expression}); "
+        f"HP {before}->{investigator.current_hp}/{investigator.max_hp}."
+    )
+
+
+def _narrate_new_physical_conditions(runtime: COCRuntime, before_conditions: set[str]) -> None:
+    new_conditions = sorted(runtime.scenario.investigator.conditions - before_conditions)
+    if not new_conditions:
+        return
+    runtime.narrate("Keeper: Physical condition gained - " + ", ".join(new_conditions) + ".")
 
 def _inspection_alias_target(normalized_action: str) -> str | None:
     for verb in ("listen to", "inspect", "search", "read", "listen", "examine"):

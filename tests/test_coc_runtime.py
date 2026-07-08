@@ -441,6 +441,34 @@ class COCRuntimeTests(unittest.TestCase):
         self.assertIn("clues 1/6", output)
         self.assertIn("evidence 0", output)
 
+    def test_manual_damage_and_healing_update_hp_conditions(self) -> None:
+        scenario = create_sample_coc_scenario()
+        runtime = COCRuntime(scenario, rng=random.Random(1))
+
+        handle_coc_action(runtime, "take damage 20")
+        damage_output = runtime.flush()
+        damage_conditions = set(scenario.investigator.conditions)
+        handle_coc_action(runtime, "heal 1")
+        heal_output = runtime.flush()
+
+        self.assertIn("takes 20 damage", damage_output)
+        self.assertIn("Physical condition gained", damage_output)
+        self.assertIn("major_wound", damage_conditions)
+        self.assertIn("dying", damage_conditions)
+        self.assertIn("unconscious", damage_conditions)
+        self.assertNotIn("dying", scenario.investigator.conditions)
+        self.assertNotIn("unconscious", scenario.investigator.conditions)
+        self.assertIn("recovers 1 HP", heal_output)
+        self.assertEqual(scenario.investigator.current_hp, 1)
+
+    def test_manual_damage_reports_invalid_expression(self) -> None:
+        runtime = COCRuntime(create_sample_coc_scenario())
+
+        handle_coc_action(runtime, "take damage not dice")
+        output = runtime.flush()
+
+        self.assertIn("Damage expression is invalid", output)
+
     def test_first_aid_can_restore_one_hp(self) -> None:
         scenario = create_sample_coc_scenario()
         scenario.investigator.apply_damage(3)
