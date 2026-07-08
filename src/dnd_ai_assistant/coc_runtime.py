@@ -445,11 +445,20 @@ def _manual_sanity_check(runtime: COCRuntime, loss_expression: str) -> None:
         runtime.narrate(f"Keeper: Invalid SAN loss expression: {exc}")
         return
     before = investigator.current_sanity or 0
+    before_conditions = set(investigator.conditions)
     investigator.lose_sanity(loss_roll.total)
     runtime.narrate(
         f"Keeper: {investigator.name} rolls SAN {check.total} vs {sanity_value}: {check.success_level.value}; "
         f"SAN loss {loss_roll.total} ({selected_expression}), SAN {before}->{investigator.current_sanity}."
     )
+    _narrate_new_sanity_conditions(runtime, before_conditions)
+
+def _narrate_new_sanity_conditions(runtime: COCRuntime, before_conditions: set[str]) -> None:
+    new_conditions = sorted(runtime.scenario.investigator.conditions - before_conditions)
+    if not new_conditions:
+        return
+    runtime.narrate("Keeper: SAN condition gained - " + ", ".join(new_conditions) + ".")
+
 
 def _manual_coc_check(runtime: COCRuntime, skill_name: str) -> None:
     investigator = runtime.scenario.investigator

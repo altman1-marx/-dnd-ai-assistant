@@ -290,6 +290,17 @@ class COCRuntimeTests(unittest.TestCase):
         self.assertLessEqual(scenario.investigator.current_sanity, scenario.investigator.max_sanity)
         self.assertIn("SAN", output)
 
+
+    def test_sanity_check_reports_new_insanity_condition(self) -> None:
+        scenario = create_sample_coc_scenario()
+        runtime = COCRuntime(scenario, rng=random.Random(1))
+
+        handle_coc_action(runtime, "san check 5/5")
+        output = runtime.flush()
+
+        self.assertIn("SAN condition gained - temporary_insanity", output)
+        self.assertIn("temporary_insanity", scenario.investigator.conditions)
+
     def test_sanity_check_reports_bad_format(self) -> None:
         runtime = COCRuntime(create_sample_coc_scenario())
 
