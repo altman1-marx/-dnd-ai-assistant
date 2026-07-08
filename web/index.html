@@ -954,6 +954,7 @@
 
     function renderCocInvestigationPanel(summary, review) {
       const sections = [
+        renderCocSanityState(summary.investigator || {}),
         renderCocProgress(summary.completion_progress || {}),
         renderCocExits(summary.exits || []),
         renderCocNpcs(summary.npcs || []),
@@ -966,6 +967,17 @@
       }
       return sections.filter(Boolean).join("");
     }
+
+    function renderCocSanityState(investigator) {
+      const conditions = investigator.conditions || [];
+      const sanity = String(investigator.current_sanity ?? "?") + "/" + String(investigator.max_sanity ?? "?");
+      const luck = investigator.luck === undefined ? "?" : String(investigator.luck);
+      const conditionText = conditions.length ? conditions.join(", ") : "No active SAN conditions";
+      return "<div class=\"item\"><strong>Sanity State</strong><p>SAN " + escapeHtml(sanity)
+        + " | Luck " + escapeHtml(luck) + "</p><p class=\"muted\">"
+        + escapeHtml(conditionText) + "</p></div>";
+    }
+
 
     function renderCocProgress(progress) {
       const groups = Object.entries(progress);
