@@ -13,6 +13,7 @@ from dnd_ai_assistant.api import (
     APIState,
     add_sample_character,
     campaign_log,
+    coc_briefing,
     campaign_state,
     campaign_summary,
     coc_review,
@@ -255,6 +256,22 @@ class APITests(unittest.TestCase):
         self.assertIn("spend luck ashen spiral", response["summary"]["available_actions"])
         self.assertIn("Charcoal spiral rubbing", response["summary"]["inventory"])
         self.assertEqual(listed["partial_clue_count"], 1)
+
+    def test_coc_briefing_endpoint_returns_keeper_snapshot(self) -> None:
+        state = APIState()
+        scenario_id = create_coc_demo(state)["scenario_id"]
+        run_coc_action(state, scenario_id, "inspect portrait", seed=1)
+
+        response = coc_briefing(state, scenario_id)
+        routed = route_request(state, "GET", f"/coc/{scenario_id}/briefing", {})
+
+        self.assertEqual(response["scenario_id"], scenario_id)
+        self.assertEqual(routed["title"], "The Lantern Under Briar House")
+        self.assertEqual(routed["progress"]["discovered_clues"], 1)
+        self.assertIn("COC Keeper Briefing", routed["text"])
+        self.assertIn("Next Keeper moves", routed["text"])
+        self.assertTrue(routed["keeper_notes"]["hidden_clues"])
+
 
     def test_list_campaigns_returns_memory_campaigns(self) -> None:
         state = APIState()

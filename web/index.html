@@ -408,6 +408,12 @@
         <div id="combat" class="list"></div>
       </section>
 
+      <section class="stack" aria-labelledby="briefing-title">
+        <h2 id="briefing-title">Keeper Briefing</h2>
+        <button id="briefingButton" type="button" class="secondary" disabled>Load Keeper Briefing</button>
+        <div id="keeperBriefing" class="status">No briefing loaded.</div>
+      </section>
+
       <section class="stack" aria-labelledby="rules-title">
         <h2 id="rules-title">Rules</h2>
         <input id="rulesQuery" placeholder="Search rules, e.g. grapple attack action" autocomplete="off">
@@ -427,6 +433,7 @@
       summary: null,
       cocSummary: null,
       cocReview: null,
+      cocBriefing: null,
       pendingSuggestedAction: "",
       lastRulesQuery: "",
       logStatus: "",
@@ -457,6 +464,8 @@
     const logVisibility = document.getElementById("logVisibility");
     const quickActions = document.querySelector(".quick-actions");
     const activityTitle = document.getElementById("activityTitle");
+    const briefingButton = document.getElementById("briefingButton");
+    const keeperBriefing = document.getElementById("keeperBriefing");
 
     document.getElementById("healthButton").addEventListener("click", checkHealth);
     document.getElementById("importButton").addEventListener("click", importAdventure);
@@ -476,6 +485,7 @@
     sendButton.addEventListener("click", sendTypedAction);
     dmButton.addEventListener("click", suggestTypedAction);
     runSuggestedButton.addEventListener("click", runSuggestedAction);
+    briefingButton.addEventListener("click", loadKeeperBriefing);
     actionInput.addEventListener("keydown", (event) => {
       if (event.key === "Enter") sendTypedAction();
     });
@@ -518,6 +528,8 @@
         state.mode = "dnd";
         state.campaignId = data.campaign_id;
         state.scenarioId = "";
+        state.cocBriefing = null;
+        renderKeeperBriefing(null);
         appendTranscriptMessage("System", "Imported " + data.campaign.title + ".");
         setControls(true);
         await refreshCampaigns();
@@ -533,6 +545,8 @@
         state.mode = "dnd";
         state.campaignId = data.campaign_id;
         state.scenarioId = "";
+        state.cocBriefing = null;
+        renderKeeperBriefing(null);
         appendTranscriptMessage("System", "Started demo adventure " + data.campaign.title + " with Leth.");
         setControls(true);
         await refreshCampaigns();
@@ -633,9 +647,22 @@
       try {
         state.cocSummary = await api("GET", "/coc/" + state.scenarioId + "/summary");
         state.cocReview = await api("GET", "/coc/" + state.scenarioId + "/review");
+        state.cocBriefing = await api("GET", "/coc/" + state.scenarioId + "/briefing");
         renderCocSummary();
+        renderKeeperBriefing(state.cocBriefing);
         renderCocRecentEvents(state.cocSummary.recent_events || []);
         setStatus(composeCocStatus());
+      } catch (error) {
+        setStatus(error.message, true);
+      }
+    }
+
+    async function loadKeeperBriefing() {
+      if (!state.scenarioId) return;
+      try {
+        state.cocBriefing = await api("GET", "/coc/" + state.scenarioId + "/briefing");
+        renderKeeperBriefing(state.cocBriefing);
+        setStatus("Keeper briefing loaded.");
       } catch (error) {
         setStatus(error.message, true);
       }
@@ -675,6 +702,8 @@
       state.mode = "dnd";
       state.campaignId = campaignId;
       state.scenarioId = "";
+      state.cocBriefing = null;
+      renderKeeperBriefing(null);
       setControls(true);
       await refreshCampaignView();
     }
@@ -1240,6 +1269,14 @@ function clearCampaign() {
       return action + rules;
     }
 
+    function renderKeeperBriefing(briefing) {
+      if (!briefing) {
+        keeperBriefing.textContent = state.mode === "coc" ? "Briefing unavailable." : "COC mode only.";
+        return;
+      }
+      keeperBriefing.textContent = briefing.text || "Keeper briefing is empty.";
+    }
+
     function renderRecentEvents(events) {
       events.forEach((event) => {
         if (state.transcriptEventIds.has(event.id)) return;
@@ -1333,6 +1370,7 @@ function clearCampaign() {
     function setControls(enabled) {
       const dndMode = state.mode === "dnd";
       sampleButton.disabled = !enabled || !dndMode;
+      briefingButton.disabled = !enabled || state.mode !== "coc";
       refreshButton.disabled = !enabled;
       clearTranscriptButton.disabled = !enabled;
       logVisibility.disabled = !enabled || !dndMode;
