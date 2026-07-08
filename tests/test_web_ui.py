@@ -170,6 +170,7 @@ class WebUITests(unittest.TestCase):
         self.assertIn("quick-action-group", html)
         self.assertIn("quick-action-buttons", html)
         self.assertIn("Skills", html)
+        self.assertIn("action === \"skills\"", html)
         self.assertIn("Health", html)
         self.assertIn("take damage", html)
         self.assertIn("heal ", html)

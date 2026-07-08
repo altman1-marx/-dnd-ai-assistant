@@ -262,7 +262,7 @@ def handle_coc_action(runtime: COCRuntime, action: str) -> bool:
         return False
     if normalized in {"help", "?"}:
         runtime.narrate(
-            "Keeper: Actions: look, status, recap, progress, hint, note <text>, keeper note <text>, go <exit>, inspect/search/read/listen/examine <target>, talk <npc>, check <skill>, san check <success>/<failure>, push <target>, spend luck <target>, first aid, take damage <dice>, heal <dice>, conclude, sanity, clues, inventory, quit."
+            "Keeper: Actions: look, status, skills, recap, progress, hint, note <text>, keeper note <text>, go <exit>, inspect/search/read/listen/examine <target>, talk <npc>, check <skill>, san check <success>/<failure>, push <target>, spend luck <target>, first aid, take damage <dice>, heal <dice>, conclude, sanity, clues, inventory, quit."
         )
         return True
     if normalized in {"recap", "summary"}:
@@ -279,6 +279,9 @@ def handle_coc_action(runtime: COCRuntime, action: str) -> bool:
         return True
     if normalized == "status":
         _describe_coc_status(runtime)
+        return True
+    if normalized in {"skills", "sheet", "investigator"}:
+        _describe_coc_skills(runtime)
         return True
     if normalized in {"look", "look around"}:
         describe_coc_scene(runtime)
@@ -339,6 +342,17 @@ def handle_coc_action(runtime: COCRuntime, action: str) -> bool:
     runtime.narrate("Keeper: That action is not supported yet.")
     return True
 
+
+
+def _describe_coc_skills(runtime: COCRuntime) -> None:
+    investigator = runtime.scenario.investigator
+    if not investigator.skills:
+        runtime.narrate(f"Keeper: {investigator.name} has no recorded skills.")
+        return
+    skills = ", ".join(
+        f"{name} {value}" for name, value in sorted(investigator.skills.items())
+    )
+    runtime.narrate(f"Keeper: {investigator.name} skills: {skills}.")
 
 def _record_coc_note(runtime: COCRuntime, text: str, keeper_only: bool = False) -> None:
     if not text.strip():

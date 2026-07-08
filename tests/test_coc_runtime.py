@@ -425,6 +425,16 @@ class COCRuntimeTests(unittest.TestCase):
         self.assertIn("evidence 0/1", output)
         self.assertIn("locations 0/1", output)
 
+    def test_skills_action_lists_investigator_skills(self) -> None:
+        runtime = COCRuntime(create_sample_coc_scenario())
+
+        handle_coc_action(runtime, "skills")
+        output = runtime.flush()
+
+        self.assertIn("Eleanor Vale skills", output)
+        self.assertIn("library use 55", output)
+        self.assertIn("spot hidden 45", output)
+
 
     def test_status_reports_resources_and_clue_progress(self) -> None:
         scenario = create_sample_coc_scenario()

@@ -1414,7 +1414,7 @@ function clearCampaign() {
     function quickActionGroupLabel(action) {
       if (action.startsWith("san check ") || action.startsWith("take damage ")
         || action.startsWith("heal ") || action === "first aid") return "Health";
-      if (action.startsWith("check ")) return "Skills";
+      if (action.startsWith("check ") || action === "skills") return "Skills";
       if (action.startsWith("note ") || action.startsWith("keeper note ")) return "Notes";
       if (action.startsWith("go ") || action === "dash" || action === "disengage" || action === "flee") return "Movement";
       if (action.startsWith("inspect ") || action.startsWith("search ") || action.startsWith("read ") || action.startsWith("listen ") || action.startsWith("talk ")) return "Investigation";

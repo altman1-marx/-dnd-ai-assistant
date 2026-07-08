@@ -125,6 +125,7 @@ class APITests(unittest.TestCase):
         self.assertIn("go garden", summary["available_actions"])
         self.assertIn("talk mrs. ember", summary["available_actions"])
         self.assertIn("inventory", summary["available_actions"])
+        self.assertIn("skills", summary["available_actions"])
         self.assertIn("conclude", summary["available_actions"])
         self.assertNotIn("first aid", summary["available_actions"])
         self.assertIn("inspect scratched portrait", summary["available_actions"])
