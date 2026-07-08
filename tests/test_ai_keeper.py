@@ -66,6 +66,17 @@ class AIKeeperTests(unittest.TestCase):
         self.assertIn("search backward rain gauge", prompt)
         self.assertIn("check spot hidden penalty", prompt)
 
+
+    def test_build_keeper_prompt_lists_executable_runtime_actions(self) -> None:
+        scenario = create_sample_coc_scenario()
+        scenario.current_location_id = "garden"
+
+        prompt = build_keeper_prompt(scenario, "what now?")
+
+        self.assertIn("san check 0/1d4", prompt)
+        self.assertIn("listen voices in the well bonus", prompt)
+        self.assertIn("check psychology penalty", prompt)
+        self.assertIn("search backward rain gauge", prompt)
     def test_generate_keeper_suggestion_uses_provider_without_mutating_state(self) -> None:
         scenario = create_sample_coc_scenario()
         before_inventory = list(scenario.inventory)

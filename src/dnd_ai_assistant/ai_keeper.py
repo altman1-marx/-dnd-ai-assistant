@@ -115,7 +115,7 @@ def _partial_lead_summary(scenario: COCScenario) -> str:
 
 
 def _suggested_action_summary(scenario: COCScenario) -> str:
-    actions = ["look", "recap", "hint", "progress", "clues", "inventory", "conclude"]
+    actions = ["look", "recap", "hint", "progress", "clues", "inventory", "san check 0/1d4", "conclude"]
     if scenario.investigator.current_hp < scenario.investigator.max_hp:
         actions.append("first aid")
     for clue in scenario.clues:
