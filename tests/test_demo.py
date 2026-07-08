@@ -14,6 +14,7 @@ from dnd_ai_assistant.demo import (
     run_quickstart,
     run_scripted_coc,
     run_scripted_scene,
+    summarize_coc_state,
     summarize_state,
     write_coc_scenario_template,
 )
@@ -135,6 +136,36 @@ class DemoTests(unittest.TestCase):
         self.assertEqual(exit_code, 0)
         self.assertEqual(data["title"], "The Glass Lake")
         self.assertIn("counts", data)
+
+    def test_coc_briefing_cli_prints_keeper_snapshot(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "coc.json"
+            write_coc_scenario_template(path, "The Glass Lake")
+            text = summarize_coc_state(path)
+            argv = ["dnd-ai-assistant", "coc-briefing", str(path)]
+
+            with patch("sys.argv", argv), patch("builtins.print") as mocked_print:
+                exit_code = main()
+
+        self.assertEqual(exit_code, 0)
+        self.assertIn("COC Keeper Briefing", text)
+        self.assertIn("The Glass Lake", mocked_print.call_args.args[0])
+        self.assertIn("Next Keeper moves", mocked_print.call_args.args[0])
+
+    def test_coc_briefing_cli_prints_json(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "coc.json"
+            write_coc_scenario_template(path, "The Glass Lake")
+            argv = ["dnd-ai-assistant", "coc-briefing", str(path), "--format", "json"]
+
+            with patch("sys.argv", argv), patch("builtins.print") as mocked_print:
+                exit_code = main()
+            data = json.loads(mocked_print.call_args.args[0])
+
+        self.assertEqual(exit_code, 0)
+        self.assertEqual(data["title"], "The Glass Lake")
+        self.assertIn("hidden_clues", data["keeper_notes"])
+
 
     def test_coc_scenario_prompt_cli_prints_prompt(self) -> None:
         argv = [

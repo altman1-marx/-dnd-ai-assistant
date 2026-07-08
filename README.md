@@ -76,6 +76,13 @@ python -m dnd_ai_assistant.demo coc-scenario-prompt `
   --investigator-occupation "Journalist"
 ```
 
+生成 Keeper 续团简报：
+
+```powershell
+python -m dnd_ai_assistant.demo coc-briefing scenarios\briar_house.json
+python -m dnd_ai_assistant.demo coc-briefing scenarios\briar_house.json --format json
+```
+
 使用 OpenAI-compatible provider 生成 COC 剧本：
 
 ```powershell

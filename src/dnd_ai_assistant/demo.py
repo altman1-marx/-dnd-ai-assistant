@@ -15,6 +15,7 @@ from .adventure_runtime import AdventureRuntime, describe_current_location, hand
 from .ai_dm import generate_dm_suggestion
 from .ai_provider import build_provider
 from .api import run_server
+from .coc_briefing import build_coc_briefing, render_coc_briefing
 from .coc_runtime import COCRuntime, create_sample_coc_scenario, describe_coc_scene, handle_coc_action
 from .coc_serialization import coc_scenario_to_dict, load_coc_scenario, save_coc_scenario
 from .coc_generator import COCScenarioRequest, build_coc_scenario_prompt, generate_coc_scenario_file
@@ -102,6 +103,14 @@ def run_scripted_coc(
         save_coc_scenario(scenario, save_state_path)
         runtime.narrate(f"Keeper: Saved COC scenario state to {save_state_path}.")
     return runtime.flush()
+
+
+def summarize_coc_state(path: str | Path, output_format: str = "text") -> str:
+    scenario = load_coc_scenario(path)
+    briefing = build_coc_briefing(scenario)
+    if output_format == "json":
+        return json.dumps(briefing, ensure_ascii=False, indent=2)
+    return render_coc_briefing(briefing)
 
 
 def write_coc_scenario_template(path: str | Path, title: str = "The Lantern Under Briar House") -> None:
@@ -404,6 +413,10 @@ def main() -> int:
     review_coc.add_argument("path", help="Path to a COC scenario JSON file.")
     review_coc.add_argument("--format", choices=("text", "json"), default="text", help="Review output format.")
 
+    coc_briefing = subparsers.add_parser("coc-briefing", help="Print a Keeper briefing for a saved COC scenario.")
+    coc_briefing.add_argument("path", help="Path to a saved COC scenario JSON file.")
+    coc_briefing.add_argument("--format", choices=("text", "json"), default="text", help="Briefing output format.")
+
     coc_prompt = subparsers.add_parser("coc-scenario-prompt", help="Print a prompt for a COC scenario-writing AI.")
     coc_prompt.add_argument("--premise", required=True, help="Scenario premise or inspiration.")
     coc_prompt.add_argument("--investigator-occupation", default="Antiquarian", help="Investigator occupation.")
@@ -604,6 +617,9 @@ def main() -> int:
             print(render_coc_review_json(scenario))
         else:
             print(render_coc_review(scenario))
+        return 0
+    if args.command == "coc-briefing":
+        print(summarize_coc_state(args.path, args.format))
         return 0
     if args.command == "coc-scenario-prompt":
         print(build_coc_scenario_prompt(coc_request_from_args(args)))
