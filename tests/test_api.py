@@ -139,6 +139,8 @@ class APITests(unittest.TestCase):
         self.assertIn("keeper note <text>", summary["available_actions"])
         self.assertIn("san check 0/1d4", summary["available_actions"])
         self.assertIn("take damage 1d4", summary["available_actions"])
+        self.assertIn("spend luck 5", summary["available_actions"])
+        self.assertIn("recover luck 1d10", summary["available_actions"])
 
     def test_coc_summary_suggests_listen_actions_for_auditory_clues(self) -> None:
         state = APIState()

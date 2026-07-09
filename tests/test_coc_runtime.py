@@ -334,6 +334,35 @@ class COCRuntimeTests(unittest.TestCase):
         self.assertIn("targets regular 35, hard 17, extreme 7", bonus_output)
         self.assertIn("targets regular 35, hard 17, extreme 7", penalty_output)
 
+    def test_manual_luck_spend_and_recovery(self) -> None:
+        scenario = create_sample_coc_scenario()
+        scenario.investigator.luck = 98
+        runtime = COCRuntime(scenario, rng=random.Random(1))
+
+        handle_coc_action(runtime, "spend luck 5")
+        spend_output = runtime.flush()
+        handle_coc_action(runtime, "recover luck 10")
+        recover_output = runtime.flush()
+
+        self.assertIn("spends 5 Luck", spend_output)
+        self.assertEqual(scenario.investigator.luck, 100)
+        self.assertIn("recovers", recover_output)
+        self.assertIn("Luck 93->100", recover_output)
+
+    def test_manual_luck_spend_reports_bad_amounts(self) -> None:
+        runtime = COCRuntime(create_sample_coc_scenario())
+
+        handle_coc_action(runtime, "spend luck 0")
+        zero_output = runtime.flush()
+        handle_coc_action(runtime, "spend luck 500")
+        high_output = runtime.flush()
+        handle_coc_action(runtime, "recover luck not dice")
+        bad_recovery_output = runtime.flush()
+
+        self.assertIn("positive number", zero_output)
+        self.assertIn("only has", high_output)
+        self.assertIn("Luck recovery expression is invalid", bad_recovery_output)
+
     def test_note_actions_record_session_context(self) -> None:
         scenario = create_sample_coc_scenario()
         runtime = COCRuntime(scenario)

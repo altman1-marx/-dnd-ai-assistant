@@ -173,6 +173,8 @@ class WebUITests(unittest.TestCase):
         self.assertIn("action === \"skills\"", html)
         self.assertIn("Health", html)
         self.assertIn("take damage", html)
+        self.assertIn("recover luck", html)
+        self.assertIn("spend luck", html)
         self.assertIn("heal ", html)
         self.assertIn("Notes", html)
         self.assertIn("Investigation", html)

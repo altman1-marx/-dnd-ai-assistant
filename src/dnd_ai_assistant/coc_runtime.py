@@ -262,7 +262,7 @@ def handle_coc_action(runtime: COCRuntime, action: str) -> bool:
         return False
     if normalized in {"help", "?"}:
         runtime.narrate(
-            "Keeper: Actions: look, status, skills, recap, progress, hint, note <text>, keeper note <text>, go <exit>, inspect/search/read/listen/examine <target>, talk <npc>, check <skill>, san check <success>/<failure>, push <target>, spend luck <target>, first aid, take damage <dice>, heal <dice>, conclude, sanity, clues, inventory, quit."
+            "Keeper: Actions: look, status, skills, recap, progress, hint, note <text>, keeper note <text>, go <exit>, inspect/search/read/listen/examine <target>, talk <npc>, check <skill>, san check <success>/<failure>, push <target>, spend luck <target|amount>, recover luck <dice>, first aid, take damage <dice>, heal <dice>, conclude, sanity, clues, inventory, quit."
         )
         return True
     if normalized in {"recap", "summary"}:
@@ -329,6 +329,12 @@ def handle_coc_action(runtime: COCRuntime, action: str) -> bool:
         return True
     if normalized.startswith("spend luck "):
         _spend_luck_on_coc_target(runtime, normalized[len("spend luck ") :].strip())
+        return True
+    if normalized.startswith("recover luck "):
+        _recover_coc_luck(runtime, normalized[len("recover luck ") :].strip())
+        return True
+    if normalized.startswith("gain luck "):
+        _recover_coc_luck(runtime, normalized[len("gain luck ") :].strip())
         return True
     if normalized.startswith("talk "):
         _talk_to_coc_npc(runtime, normalized[len("talk ") :].strip())
@@ -466,7 +472,43 @@ def _push_coc_target(runtime: COCRuntime, target: str) -> None:
     runtime.scenario.investigator.conditions.add("rattled")
     runtime.narrate(f"Keeper: Push roll fails for {clue.title}; SAN loss 1 and condition rattled.")
 
+
+def _spend_fixed_luck(runtime: COCRuntime, amount_text: str) -> bool:
+    try:
+        amount = int(amount_text)
+    except ValueError:
+        return False
+    investigator = runtime.scenario.investigator
+    if amount <= 0:
+        runtime.narrate("Keeper: Luck spend must be a positive number.")
+        return True
+    if amount > investigator.luck:
+        runtime.narrate(f"Keeper: {investigator.name} only has {investigator.luck} Luck.")
+        return True
+    before = investigator.luck
+    investigator.luck -= amount
+    runtime.narrate(f"Keeper: {investigator.name} spends {amount} Luck; Luck {before}->{investigator.luck}.")
+    return True
+
+
+def _recover_coc_luck(runtime: COCRuntime, expression: str) -> None:
+    investigator = runtime.scenario.investigator
+    try:
+        recovery = roll_dice(expression, rng=runtime.rng)
+    except ValueError as exc:
+        runtime.narrate(f"Keeper: Luck recovery expression is invalid: {exc}")
+        return
+    before = investigator.luck
+    investigator.luck = min(100, investigator.luck + recovery.total)
+    gained = investigator.luck - before
+    runtime.narrate(
+        f"Keeper: {investigator.name} recovers {gained} Luck ({expression}); "
+        f"Luck {before}->{investigator.luck}."
+    )
+
 def _spend_luck_on_coc_target(runtime: COCRuntime, target: str) -> None:
+    if _spend_fixed_luck(runtime, target):
+        return
     clue = _match_clue(_visible_clues(runtime.scenario), target)
     if clue is None:
         runtime.narrate("Keeper: There is no failed lead here to save with Luck.")
