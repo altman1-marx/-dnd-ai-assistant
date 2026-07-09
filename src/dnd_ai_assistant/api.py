@@ -399,6 +399,40 @@ def run_coc_action(state: APIState, scenario_id: str, action: str, seed: int = 1
     }
 
 
+def coc_player_card(state: APIState, scenario_id: str) -> dict:
+    scenario = _coc_scenario_or_404(state, scenario_id)
+    investigator = scenario.investigator
+    discovered = [clue for clue in scenario.clues if clue.discovered]
+    partial = [clue for clue in scenario.clues if clue.partial_discovered and not clue.discovered]
+    return {
+        "scenario_id": scenario.id,
+        "title": scenario.title,
+        "system_id": "coc7e",
+        "completed": scenario.completed,
+        "location": scenario.current_location().name,
+        "investigator": {
+            "name": investigator.name,
+            "occupation": investigator.occupation,
+            "hp": {"current": investigator.current_hp, "max": investigator.max_hp},
+            "mp": {"current": investigator.current_mp, "max": investigator.max_mp},
+            "sanity": {"current": investigator.current_sanity, "max": investigator.max_sanity},
+            "luck": investigator.luck,
+            "conditions": sorted(investigator.conditions),
+            "skills": {name: investigator.skills[name] for name in sorted(investigator.skills)},
+        },
+        "inventory": list(scenario.inventory),
+        "discovered_clues": [
+            {"id": clue.id, "title": clue.title, "text": clue.text, "evidence": clue.evidence}
+            for clue in discovered
+        ],
+        "partial_leads": [
+            {"id": clue.id, "title": clue.title, "text": clue.failure_text or "", "evidence": clue.failure_evidence}
+            for clue in partial
+        ],
+        "available_actions": _coc_player_actions(scenario),
+    }
+
+
 def coc_briefing(state: APIState, scenario_id: str) -> dict:
     return build_coc_briefing(_coc_scenario_or_404(state, scenario_id))
 
@@ -534,6 +568,8 @@ def route_request(state: APIState, method: str, path: str, body: dict) -> dict:
         return create_coc_demo(state)
     if method == "GET" and len(parts) == 3 and parts[0] == "coc" and parts[2] == "summary":
         return coc_summary(state, parts[1])
+    if method == "GET" and len(parts) == 3 and parts[0] == "coc" and parts[2] == "player-card":
+        return coc_player_card(state, parts[1])
     if method == "GET" and len(parts) == 3 and parts[0] == "coc" and parts[2] == "briefing":
         return coc_briefing(state, parts[1])
     if method == "GET" and len(parts) == 3 and parts[0] == "coc" and parts[2] == "review":
@@ -887,6 +923,15 @@ def _requirement_progress(required: list[str], current: set[str]) -> dict:
         "remaining": remaining,
         "complete": not remaining,
     }
+
+
+def _coc_player_actions(scenario: COCScenario) -> list[str]:
+    actions = []
+    for action in _coc_available_actions(scenario):
+        if action.startswith("keeper note "):
+            continue
+        actions.append(action)
+    return actions
 
 
 def _coc_available_actions(scenario: COCScenario) -> list[str]:
