@@ -59,6 +59,67 @@ def build_coc_briefing(scenario: COCScenario) -> dict:
     return briefing
 
 
+def build_coc_table_packet(scenario: COCScenario) -> dict:
+    """Build a compact pre-session packet for the Keeper and player-facing handout."""
+    briefing = build_coc_briefing(scenario)
+    investigator = scenario.investigator
+    location = scenario.current_location()
+    visible_npcs = [npc for npc in scenario.npcs if npc.location_id in {None, location.id}]
+    player_actions = ["look", "status", "skills", "recap", "hint"]
+    player_actions.extend(briefing["opening"].get("first_turn_actions", []))
+    packet = {
+        "scenario_id": scenario.id,
+        "title": scenario.title,
+        "system_id": "coc7e",
+        "keeper_opening": briefing["opening"],
+        "keeper_checklist": {
+            "first_turn_actions": list(dict.fromkeys(player_actions))[:8],
+            "hidden_clue_count": len([clue for clue in scenario.clues if not clue.discovered]),
+            "safety_note": briefing["opening"].get("safety_note", ""),
+            "open_threads": list(briefing.get("open_threads", [])),
+        },
+        "player_handout": {
+            "investigator": investigator.name,
+            "occupation": investigator.occupation,
+            "starting_location": location.name,
+            "case_hook": briefing["opening"].get("investigator_hook", ""),
+            "known_people": [npc.name for npc in visible_npcs],
+            "known_evidence": list(scenario.inventory),
+            "suggested_actions": list(dict.fromkeys(player_actions))[:8],
+        },
+    }
+    packet["text"] = render_coc_table_packet(packet)
+    return packet
+
+
+def render_coc_table_packet(packet: dict) -> str:
+    handout = packet["player_handout"]
+    checklist = packet["keeper_checklist"]
+    opening = packet["keeper_opening"]
+    lines = [
+        f"COC Table Packet: {packet['title']}",
+        "Keeper opening:",
+        f"- Read aloud: {opening.get('read_aloud', '')}",
+        f"- Safety note: {opening.get('safety_note', '')}",
+        "Player handout:",
+        f"- Investigator: {handout['investigator']} ({handout['occupation']})",
+        f"- Starting location: {handout['starting_location']}",
+        f"- Case hook: {handout['case_hook']}",
+    ]
+    if handout.get("known_people"):
+        lines.append("- Known people: " + ", ".join(handout["known_people"]))
+    if handout.get("known_evidence"):
+        lines.append("- Known evidence: " + ", ".join(handout["known_evidence"]))
+    if handout.get("suggested_actions"):
+        lines.append("- Suggested actions: " + ", ".join(handout["suggested_actions"]))
+    lines.append("Keeper checklist:")
+    lines.append(f"- Hidden clues: {checklist['hidden_clue_count']}")
+    if checklist.get("first_turn_actions"):
+        lines.append("- First turn buttons: " + ", ".join(checklist["first_turn_actions"]))
+    if checklist.get("open_threads"):
+        lines.append("- Open threads: " + " | ".join(checklist["open_threads"][:4]))
+    return "\n".join(lines)
+
 def render_coc_briefing(briefing: dict) -> str:
     lines = [
         f"COC Keeper Briefing: {briefing['title']}",

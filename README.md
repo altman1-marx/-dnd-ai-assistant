@@ -87,6 +87,8 @@ python -m dnd_ai_assistant.demo coc-scenario-prompt `
 ```powershell
 python -m dnd_ai_assistant.demo coc-briefing scenarios\briar_house.json
 python -m dnd_ai_assistant.demo coc-briefing scenarios\briar_house.json --format json
+python -m dnd_ai_assistant.demo coc-table-packet scenarios\briar_house.json
+python -m dnd_ai_assistant.demo coc-table-packet scenarios\briar_house.json --format json
 ```
 
 使用 OpenAI-compatible provider 生成 COC 剧本：
@@ -372,6 +374,7 @@ POST /coc/demo
 GET  /coc/{scenario_id}/summary
 GET  /coc/{scenario_id}/player-card
 GET  /coc/{scenario_id}/briefing
+GET  /coc/{scenario_id}/table-packet
 GET  /coc/{scenario_id}/review
 POST /coc/{scenario_id}/actions
 POST /coc/{scenario_id}/keeper-suggestion
@@ -443,6 +446,7 @@ POST /coc/demo
 GET  /coc/{scenario_id}/summary
 GET  /coc/{scenario_id}/player-card
 GET  /coc/{scenario_id}/briefing
+GET  /coc/{scenario_id}/table-packet
 GET  /coc/{scenario_id}/review
 POST /coc/{scenario_id}/actions
 POST /coc/{scenario_id}/keeper-suggestion
@@ -495,7 +499,7 @@ POST /coc/{scenario_id}/keeper-suggestion
 
 `GET /coc/{scenario_id}/player-card` 会返回玩家可见的调查员手卡，包括 HP/MP/SAN/Luck、conditions、skills、inventory、已发现线索、部分线索和过滤后的可用动作；它不会返回隐藏线索队列或 Keeper-only briefing。
 
-`GET /coc/{scenario_id}/briefing` 会返回 Keeper 面向的续团简报，包括当前地点、调查员 HP/SAN/Luck、证据、隐藏线索队列、部分线索、风险、下一步 Keeper moves 和可直接显示的 `text`。`GET /coc/{scenario_id}/review` 会返回 COC 剧本质量审查，包括地点可达性、线索数量与分布、NPC 台词、证据 inventory 覆盖、结局文本和总 SAN loss 预算。
+`GET /coc/{scenario_id}/briefing` 会返回 Keeper 面向的续团简报，包括当前地点、调查员 HP/SAN/Luck、证据、隐藏线索队列、部分线索、风险、下一步 Keeper moves 和可直接显示的 `text`。`GET /coc/{scenario_id}/table-packet` 会返回开桌包，合并 Keeper opening、玩家 handout、首轮动作按钮、隐藏线索数量和安全提示，适合开局前复制给主持人使用。`GET /coc/{scenario_id}/review` 会返回 COC 剧本质量审查，包括地点可达性、线索数量与分布、NPC 台词、证据 inventory 覆盖、结局文本和总 SAN loss 预算。
 
 Keeper briefing 还会返回结构化的 `opening`、`open_threads` 和 `spotlight_actions`：`opening` 包含可直接朗读的开场、调查员钩子、首轮目标、安全提示和首轮动作；`open_threads` 列出未解决的线索、卡住的出口和结局门槛；`spotlight_actions` 给出当前最值得推给玩家的动作。Web 面板会把 opening/spotlight actions 渲染成按钮，Keeper 可以直接点击执行。
 
@@ -568,7 +572,7 @@ python -m dnd_ai_assistant.demo serve-api `
 5. 可先点击 `DM Suggest` 生成叙述/规则建议，再点击 `Run Suggested` 执行同一条 runtime action。
 6. COC 模式可先选择 `Briar House` 或 `Glass Lake Signal`，再点击 `Start COC Demo`，或选择一个 COC scenario JSON 后点击 `Import COC Scenario`；配置 AI provider 后，也可以输入 premise 并点击 `Generate COC Scenario`。随后用 `look`、`recap`、`hint`、`progress`、`go cellar`、`talk ember`、`inspect portrait`、`push hearth`、`spend luck hearth`、`spend luck 5`、`recover luck 1d10`、`san check 0/1d4`、`take damage 1d4`、`heal 1d3`、`first aid`、`skills`、`conclude`、`inventory` 等动作推进调查。配置 AI provider 后，`DM Suggest` 在 COC 模式下会生成 AI Keeper 建议。
 
-当前页面支持 API 健康检查、列出/删除内存中的 campaign、内置 demo adventure、导入冒险、添加示例角色、查看摘要、加载和按可见性过滤 session log、发送 runtime action、AI DM 建议、执行刚建议过的动作、规则搜索、COC demo/import/generate/list/summary/player-card/briefing/review/action、AI Keeper 建议和结构化 transcript。它是前端骨架，不需要 Node.js 或构建步骤。
+当前页面支持 API 健康检查、列出/删除内存中的 campaign、内置 demo adventure、导入冒险、添加示例角色、查看摘要、加载和按可见性过滤 session log、发送 runtime action、AI DM 建议、执行刚建议过的动作、规则搜索、COC demo/import/generate/list/summary/player-card/briefing/table-packet/review/action、AI Keeper 建议和结构化 transcript。它是前端骨架，不需要 Node.js 或构建步骤。
 
 ## 近期路线
 

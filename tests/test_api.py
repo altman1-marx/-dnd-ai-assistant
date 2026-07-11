@@ -14,6 +14,7 @@ from dnd_ai_assistant.api import (
     add_sample_character,
     campaign_log,
     coc_briefing,
+    coc_table_packet,
     coc_player_card,
     campaign_state,
     campaign_summary,
@@ -280,6 +281,19 @@ class APITests(unittest.TestCase):
         self.assertNotIn("keeper note <text>", routed["available_actions"])
         self.assertNotIn("hidden_clues", routed)
 
+
+
+    def test_coc_table_packet_endpoint_returns_start_packet(self) -> None:
+        state = APIState()
+        scenario_id = create_coc_demo(state)["scenario_id"]
+
+        response = coc_table_packet(state, scenario_id)
+        routed = route_request(state, "GET", f"/coc/{scenario_id}/table-packet", {})
+
+        self.assertEqual(response["scenario_id"], scenario_id)
+        self.assertIn("keeper_opening", routed)
+        self.assertIn("player_handout", routed)
+        self.assertIn("COC Table Packet", routed["text"])
 
     def test_coc_briefing_endpoint_returns_keeper_snapshot(self) -> None:
         state = APIState()

@@ -423,6 +423,7 @@
       <section class="stack" aria-labelledby="briefing-title">
         <h2 id="briefing-title">Keeper Briefing</h2>
         <button id="briefingButton" type="button" class="secondary" disabled>Load Keeper Briefing</button>
+        <button id="tablePacketButton" type="button" class="secondary" disabled>Table Packet</button>
         <div id="keeperBriefing" class="status">No briefing loaded.</div>
       </section>
 
@@ -447,6 +448,7 @@
       cocSummary: null,
       cocReview: null,
       cocBriefing: null,
+      cocTablePacket: null,
       cocPlayerCard: null,
       pendingSuggestedAction: "",
       lastRulesQuery: "",
@@ -480,6 +482,7 @@
     const quickActions = document.querySelector(".quick-actions");
     const activityTitle = document.getElementById("activityTitle");
     const briefingButton = document.getElementById("briefingButton");
+    const tablePacketButton = document.getElementById("tablePacketButton");
     const keeperBriefing = document.getElementById("keeperBriefing");
     const playerCardButton = document.getElementById("playerCardButton");
     const playerCard = document.getElementById("playerCard");
@@ -503,6 +506,7 @@
     dmButton.addEventListener("click", suggestTypedAction);
     runSuggestedButton.addEventListener("click", runSuggestedAction);
     briefingButton.addEventListener("click", loadKeeperBriefing);
+    tablePacketButton.addEventListener("click", loadTablePacket);
     playerCardButton.addEventListener("click", loadPlayerCard);
     actionInput.addEventListener("keydown", (event) => {
       if (event.key === "Enter") sendTypedAction();
@@ -548,6 +552,7 @@
         state.campaignId = data.campaign_id;
         state.scenarioId = "";
         state.cocBriefing = null;
+        state.cocTablePacket = null;
         state.cocPlayerCard = null;
         renderKeeperBriefing(null);
         renderPlayerCard(null);
@@ -567,6 +572,7 @@
         state.campaignId = data.campaign_id;
         state.scenarioId = "";
         state.cocBriefing = null;
+        state.cocTablePacket = null;
         state.cocPlayerCard = null;
         renderKeeperBriefing(null);
         renderPlayerCard(null);
@@ -716,6 +722,16 @@
       }
     }
 
+    async function loadTablePacket() {
+      if (!state.scenarioId) return;
+      try {
+        state.cocTablePacket = await api("GET", "/coc/" + state.scenarioId + "/table-packet");
+        renderTablePacket(state.cocTablePacket);
+        setStatus("COC table packet loaded.");
+      } catch (error) {
+        setStatus(error.message, true);
+      }
+    }
     async function loadPlayerCard() {
       if (!state.scenarioId) return;
       try {
@@ -762,6 +778,7 @@
       state.campaignId = campaignId;
       state.scenarioId = "";
       state.cocBriefing = null;
+      state.cocTablePacket = null;
       state.cocPlayerCard = null;
       renderKeeperBriefing(null);
       renderPlayerCard(null);
@@ -1348,6 +1365,13 @@ function clearCampaign() {
         + "\nDiscovered clues: " + clues;
     }
 
+    function renderTablePacket(packet) {
+      if (!packet) {
+        keeperBriefing.textContent = "No table packet loaded.";
+        return;
+      }
+      keeperBriefing.textContent = packet.text || "COC table packet is empty.";
+    }
     function renderKeeperBriefing(briefing) {
       if (!briefing) {
         keeperBriefing.textContent = state.mode === "coc" ? "Briefing unavailable." : "COC mode only.";
@@ -1461,6 +1485,7 @@ function clearCampaign() {
       const dndMode = state.mode === "dnd";
       sampleButton.disabled = !enabled || !dndMode;
       briefingButton.disabled = !enabled || state.mode !== "coc";
+      tablePacketButton.disabled = !enabled || state.mode !== "coc";
       playerCardButton.disabled = !enabled || state.mode !== "coc";
       refreshButton.disabled = !enabled;
       clearTranscriptButton.disabled = !enabled;

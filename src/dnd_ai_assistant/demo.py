@@ -15,7 +15,7 @@ from .adventure_runtime import AdventureRuntime, describe_current_location, hand
 from .ai_dm import generate_dm_suggestion
 from .ai_provider import build_provider
 from .api import run_server
-from .coc_briefing import build_coc_briefing, render_coc_briefing
+from .coc_briefing import build_coc_briefing, build_coc_table_packet, render_coc_briefing, render_coc_table_packet
 from .coc_runtime import COCRuntime, coc_demo_scenario_names, create_coc_demo_scenario, describe_coc_scene, handle_coc_action
 from .coc_serialization import coc_scenario_to_dict, load_coc_scenario, save_coc_scenario
 from .coc_generator import COCScenarioRequest, build_coc_scenario_prompt, generate_coc_scenario_file
@@ -112,6 +112,14 @@ def summarize_coc_state(path: str | Path, output_format: str = "text") -> str:
     if output_format == "json":
         return json.dumps(briefing, ensure_ascii=False, indent=2)
     return render_coc_briefing(briefing)
+
+
+def coc_table_packet_text(path: str | Path, output_format: str = "text") -> str:
+    scenario = load_coc_scenario(path)
+    packet = build_coc_table_packet(scenario)
+    if output_format == "json":
+        return json.dumps(packet, ensure_ascii=False, indent=2)
+    return render_coc_table_packet(packet)
 
 
 def write_coc_scenario_template(path: str | Path, title: str | None = None, demo_scenario: str = "briar_house") -> None:
@@ -422,6 +430,10 @@ def main() -> int:
     coc_briefing.add_argument("path", help="Path to a saved COC scenario JSON file.")
     coc_briefing.add_argument("--format", choices=("text", "json"), default="text", help="Briefing output format.")
 
+    coc_packet = subparsers.add_parser("coc-table-packet", help="Print a table-start packet for a saved COC scenario.")
+    coc_packet.add_argument("path", help="Path to a saved COC scenario JSON file.")
+    coc_packet.add_argument("--format", choices=("text", "json"), default="text", help="Packet output format.")
+
     coc_prompt = subparsers.add_parser("coc-scenario-prompt", help="Print a prompt for a COC scenario-writing AI.")
     coc_prompt.add_argument("--premise", required=True, help="Scenario premise or inspiration.")
     coc_prompt.add_argument("--investigator-occupation", default="Antiquarian", help="Investigator occupation.")
@@ -625,6 +637,9 @@ def main() -> int:
         return 0
     if args.command == "coc-briefing":
         print(summarize_coc_state(args.path, args.format))
+        return 0
+    if args.command == "coc-table-packet":
+        print(coc_table_packet_text(args.path, args.format))
         return 0
     if args.command == "coc-scenario-prompt":
         print(build_coc_scenario_prompt(coc_request_from_args(args)))

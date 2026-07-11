@@ -15,7 +15,7 @@ from .adventure_generator import extract_json_object
 from .ai_dm import generate_dm_suggestion
 from .ai_keeper import generate_keeper_suggestion
 from .ai_provider import AIProvider
-from .coc_briefing import build_coc_briefing
+from .coc_briefing import build_coc_briefing, build_coc_table_packet
 from .coc_runtime import COCRuntime, COCScenario, coc_demo_scenario_names, coc_demo_scenario_options, coc_keeper_hint, create_coc_demo_scenario, handle_coc_action
 from .coc_generator import COCScenarioRequest, generate_coc_scenario_text
 from .coc_review import coc_review_to_dict
@@ -443,6 +443,10 @@ def coc_briefing(state: APIState, scenario_id: str) -> dict:
     return build_coc_briefing(_coc_scenario_or_404(state, scenario_id))
 
 
+def coc_table_packet(state: APIState, scenario_id: str) -> dict:
+    return build_coc_table_packet(_coc_scenario_or_404(state, scenario_id))
+
+
 def coc_review(state: APIState, scenario_id: str) -> dict:
     return coc_review_to_dict(_coc_scenario_or_404(state, scenario_id))
 
@@ -580,6 +584,8 @@ def route_request(state: APIState, method: str, path: str, body: dict) -> dict:
         return coc_player_card(state, parts[1])
     if method == "GET" and len(parts) == 3 and parts[0] == "coc" and parts[2] == "briefing":
         return coc_briefing(state, parts[1])
+    if method == "GET" and len(parts) == 3 and parts[0] == "coc" and parts[2] == "table-packet":
+        return coc_table_packet(state, parts[1])
     if method == "GET" and len(parts) == 3 and parts[0] == "coc" and parts[2] == "review":
         return coc_review(state, parts[1])
     if method == "POST" and len(parts) == 3 and parts[0] == "coc" and parts[2] == "actions":

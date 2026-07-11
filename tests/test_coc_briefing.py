@@ -1,7 +1,7 @@
 import random
 import unittest
 
-from dnd_ai_assistant.coc_briefing import build_coc_briefing, render_coc_briefing
+from dnd_ai_assistant.coc_briefing import build_coc_briefing, build_coc_table_packet, render_coc_briefing, render_coc_table_packet
 from dnd_ai_assistant.coc_runtime import COCRuntime, create_sample_coc_scenario, handle_coc_action
 
 
@@ -65,6 +65,20 @@ class COCBriefingTests(unittest.TestCase):
         self.assertTrue(briefing["opening"]["first_objectives"])
         self.assertLessEqual(len(briefing["opening"]["first_turn_actions"]), 3)
         self.assertIn("escalating dread", briefing["opening"]["safety_note"])
+
+
+    def test_table_packet_combines_keeper_opening_and_player_handout(self) -> None:
+        scenario = create_sample_coc_scenario()
+        packet = build_coc_table_packet(scenario)
+        text = render_coc_table_packet(packet)
+
+        self.assertEqual(packet["title"], "The Lantern Under Briar House")
+        self.assertIn("keeper_opening", packet)
+        self.assertEqual(packet["player_handout"]["investigator"], "Eleanor Vale")
+        self.assertIn("Mrs. Ember", packet["player_handout"]["known_people"])
+        self.assertIn("read waterlogged journal", packet["keeper_checklist"]["first_turn_actions"])
+        self.assertIn("COC Table Packet", text)
+        self.assertIn("Player handout", text)
 
     def test_render_briefing_handles_completed_case(self) -> None:
         scenario = create_sample_coc_scenario()
