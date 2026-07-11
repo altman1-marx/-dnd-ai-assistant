@@ -16,7 +16,7 @@ from .ai_dm import generate_dm_suggestion
 from .ai_provider import build_provider
 from .api import run_server
 from .coc_briefing import build_coc_briefing, render_coc_briefing
-from .coc_runtime import COCRuntime, create_sample_coc_scenario, describe_coc_scene, handle_coc_action
+from .coc_runtime import COCRuntime, coc_demo_scenario_names, create_coc_demo_scenario, describe_coc_scene, handle_coc_action
 from .coc_serialization import coc_scenario_to_dict, load_coc_scenario, save_coc_scenario
 from .coc_generator import COCScenarioRequest, build_coc_scenario_prompt, generate_coc_scenario_file
 from .coc_review import review_coc_scenario, render_coc_review, render_coc_review_json
@@ -92,8 +92,9 @@ def run_scripted_coc(
     actions: list[str],
     scenario_path: str | Path | None = None,
     save_state_path: str | Path | None = None,
+    demo_scenario: str = "briar_house",
 ) -> str:
-    scenario = load_coc_scenario(scenario_path) if scenario_path is not None else create_sample_coc_scenario()
+    scenario = load_coc_scenario(scenario_path) if scenario_path is not None else create_coc_demo_scenario(demo_scenario)
     runtime = COCRuntime(scenario, rng=random.Random(seed))
     describe_coc_scene(runtime)
     for action in actions:
@@ -113,9 +114,10 @@ def summarize_coc_state(path: str | Path, output_format: str = "text") -> str:
     return render_coc_briefing(briefing)
 
 
-def write_coc_scenario_template(path: str | Path, title: str = "The Lantern Under Briar House") -> None:
-    scenario = create_sample_coc_scenario()
-    scenario.title = title
+def write_coc_scenario_template(path: str | Path, title: str | None = None, demo_scenario: str = "briar_house") -> None:
+    scenario = create_coc_demo_scenario(demo_scenario)
+    if title is not None:
+        scenario.title = title
     output_path = Path(path)
     output_path.parent.mkdir(parents=True, exist_ok=True)
     output_path.write_text(json.dumps(coc_scenario_to_dict(scenario), ensure_ascii=False, indent=2), encoding="utf-8")
@@ -137,8 +139,9 @@ def run_interactive_coc(
     seed: int,
     scenario_path: str | Path | None = None,
     save_state_path: str | Path | None = None,
+    demo_scenario: str = "briar_house",
 ) -> int:
-    scenario = load_coc_scenario(scenario_path) if scenario_path is not None else create_sample_coc_scenario()
+    scenario = load_coc_scenario(scenario_path) if scenario_path is not None else create_coc_demo_scenario(demo_scenario)
     runtime = COCRuntime(scenario, rng=random.Random(seed))
     describe_coc_scene(runtime)
     print(runtime.flush())
@@ -395,6 +398,7 @@ def main() -> int:
     play_coc.add_argument("--seed", type=int, default=1, help="Random seed for reproducible percentile rolls.")
     play_coc.add_argument("--scenario", default=None, help="Optional saved COC scenario JSON to load.")
     play_coc.add_argument("--save-state", default=None, help="Where to save updated COC scenario state.")
+    play_coc.add_argument("--demo-scenario", choices=coc_demo_scenario_names(), default="briar_house", help="Built-in COC demo to use when --scenario is not provided.")
     play_coc.add_argument(
         "--action",
         action="append",
@@ -404,7 +408,8 @@ def main() -> int:
 
     new_coc = subparsers.add_parser("new-coc-scenario", help="Write a starter Call of Cthulhu scenario JSON.")
     new_coc.add_argument("--output", required=True, help="Where to write the COC scenario JSON file.")
-    new_coc.add_argument("--title", default="The Lantern Under Briar House", help="Scenario title for the template.")
+    new_coc.add_argument("--title", default=None, help="Optional title override for the template.")
+    new_coc.add_argument("--demo-scenario", choices=coc_demo_scenario_names(), default="briar_house", help="Built-in COC demo template to copy.")
 
     validate_coc = subparsers.add_parser("validate-coc-scenario", help="Validate a Call of Cthulhu scenario JSON file.")
     validate_coc.add_argument("path", help="Path to a COC scenario JSON file.")
@@ -594,11 +599,11 @@ def main() -> int:
         return run_interactive_scene(args.seed, args.scene, args.save_state)
     if args.command == "play-coc":
         if args.action:
-            print(run_scripted_coc(args.seed, args.action, args.scenario, args.save_state))
+            print(run_scripted_coc(args.seed, args.action, args.scenario, args.save_state, args.demo_scenario))
             return 0
-        return run_interactive_coc(args.seed, args.scenario, args.save_state)
+        return run_interactive_coc(args.seed, args.scenario, args.save_state, args.demo_scenario)
     if args.command == "new-coc-scenario":
-        write_coc_scenario_template(args.output, args.title)
+        write_coc_scenario_template(args.output, args.title, args.demo_scenario)
         print(f"Wrote COC scenario template: {args.output}")
         return 0
     if args.command == "validate-coc-scenario":

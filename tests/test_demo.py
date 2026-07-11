@@ -51,6 +51,38 @@ class DemoTests(unittest.TestCase):
         self.assertIn("SAN 58/60", output)
         self.assertIn("investigation pauses", output)
 
+
+    def test_scripted_coc_can_use_named_builtin_demo(self) -> None:
+        output = run_scripted_coc(
+            seed=1,
+            actions=["read signal log", "go lighthouse", "inspect cracked lens"],
+            demo_scenario="glass_lake",
+        )
+
+        self.assertIn("The Glass Lake Signal", output)
+        self.assertIn("Cracked Green Lens", output)
+        self.assertIn("false moon dims", output)
+
+    def test_new_coc_scenario_cli_can_write_named_demo_template(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "glass_lake.json"
+            argv = [
+                "dnd-ai-assistant",
+                "new-coc-scenario",
+                "--output",
+                str(path),
+                "--demo-scenario",
+                "glass_lake",
+            ]
+
+            with patch("sys.argv", argv), patch("builtins.print"):
+                exit_code = main()
+            raw = json.loads(path.read_text(encoding="utf-8"))
+
+        self.assertEqual(exit_code, 0)
+        self.assertEqual(raw["title"], "The Glass Lake Signal")
+        self.assertEqual(raw["location"], "Glass Lake Boathouse")
+
     def test_scripted_coc_can_save_and_resume_state(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / "coc.json"

@@ -1,7 +1,7 @@
 import random
 import unittest
 
-from dnd_ai_assistant.coc_runtime import COCRuntime, create_sample_coc_scenario, describe_coc_scene, handle_coc_action
+from dnd_ai_assistant.coc_runtime import COCRuntime, create_coc_demo_scenario, create_glass_lake_coc_scenario, create_sample_coc_scenario, describe_coc_scene, handle_coc_action
 
 
 class COCRuntimeTests(unittest.TestCase):
@@ -16,6 +16,30 @@ class COCRuntimeTests(unittest.TestCase):
         self.assertIn("Exits: cellar", output)
         self.assertIn("Present: Mrs. Ember", output)
         self.assertIn("SAN 60/60", output)
+
+
+    def test_glass_lake_sample_can_complete_core_path(self) -> None:
+        scenario = create_glass_lake_coc_scenario()
+        runtime = COCRuntime(scenario, rng=random.Random(1))
+
+        handle_coc_action(runtime, "read signal log")
+        handle_coc_action(runtime, "go lighthouse")
+        handle_coc_action(runtime, "inspect cracked lens")
+        output = runtime.flush()
+
+        self.assertTrue(scenario.completed)
+        self.assertEqual(scenario.current_location_id, "lighthouse")
+        self.assertIn("Signal Log", output)
+        self.assertIn("Cracked Green Lens", output)
+        self.assertIn("false moon dims", output)
+        self.assertIn("Cracked green lens shard", scenario.inventory)
+
+    def test_named_coc_demo_factory_rejects_unknown_scenario(self) -> None:
+        scenario = create_coc_demo_scenario("glass-lake")
+
+        self.assertEqual(scenario.title, "The Glass Lake Signal")
+        with self.assertRaisesRegex(ValueError, "Unknown COC demo scenario"):
+            create_coc_demo_scenario("missing")
 
     def test_inspect_reveals_obvious_clue_and_applies_sanity_loss(self) -> None:
         scenario = create_sample_coc_scenario()

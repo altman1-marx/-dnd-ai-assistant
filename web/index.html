@@ -347,6 +347,12 @@
         <button id="cocImportButton" type="button">Import COC Scenario</button>
         <textarea id="cocPremise" placeholder="COC premise, e.g. A lake reflects the wrong moon."></textarea>
         <button id="cocGenerateButton" type="button" class="secondary">Generate COC Scenario</button>
+        <label>Demo Scenario
+          <select id="cocDemoScenario">
+            <option value="briar_house">Briar House</option>
+            <option value="glass_lake">Glass Lake Signal</option>
+          </select>
+        </label>
         <button id="cocDemoButton" type="button" class="secondary">Start COC Demo</button>
         <div id="cocList" class="campaign-list"></div>
       </section>
@@ -572,7 +578,7 @@
 
     async function loadCocDemo() {
       try {
-        const data = await api("POST", "/coc/demo", {});
+        const data = await api("POST", "/coc/demo", { scenario: document.getElementById("cocDemoScenario").value });
         if (state.scenarioId !== data.scenario_id || state.mode !== "coc") clearTranscriptView();
         state.mode = "coc";
         state.scenarioId = data.scenario_id;

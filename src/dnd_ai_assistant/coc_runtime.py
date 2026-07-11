@@ -234,6 +234,172 @@ def create_sample_coc_scenario() -> COCScenario:
     )
 
 
+def create_glass_lake_coc_scenario() -> COCScenario:
+    investigator = Investigator(
+        name="Mara Voss",
+        occupation="Radio Operator",
+        characteristics={"str": 40, "con": 50, "siz": 55, "dex": 60, "app": 50, "int": 65, "pow": 55, "edu": 70},
+        skills={
+            "listen": 55,
+            "library use": 50,
+            "mechanical repair": 45,
+            "occult": 35,
+            "psychology": 40,
+            "spot hidden": 55,
+            "first aid": 40,
+        },
+        luck=55,
+    )
+    locations = {
+        "boathouse": COCLocation(
+            id="boathouse",
+            name="Glass Lake Boathouse",
+            description=(
+                "The lakeside boathouse smells of wet rope and cold oil. A radio set clicks in bursts, "
+                "and the keeper's signal log lies open beneath a green-glass lamp."
+            ),
+            exits={"shore": "shore", "lighthouse": "lighthouse"},
+            exit_requirements={
+                "lighthouse": {
+                    "required_clue_ids": ["signal_log"],
+                    "required_evidence": ["Signal log page"],
+                    "message": "The lighthouse path is too exposed until the signal timings make sense.",
+                }
+            },
+        ),
+        "shore": COCLocation(
+            id="shore",
+            name="Moonwrong Shore",
+            description=(
+                "Flat stones vanish under black water. The lake reflects a second moon that does not hang in the sky, "
+                "and a brass bell buoy rocks without making a sound."
+            ),
+            exits={"boathouse": "boathouse", "lighthouse": "lighthouse"},
+        ),
+        "lighthouse": COCLocation(
+            id="lighthouse",
+            name="Abandoned Lake Lighthouse",
+            description=(
+                "The inland lighthouse should be useless, yet its lantern room pulses with green light. "
+                "Cracked glass dust glitters across the stairs."
+            ),
+            exits={"boathouse": "boathouse", "shore": "shore"},
+        ),
+    }
+    return COCScenario(
+        title="The Glass Lake Signal",
+        location="Glass Lake Boathouse",
+        description=locations["boathouse"].description,
+        investigator=investigator,
+        clues=[
+            COCClue(
+                id="signal_log",
+                title="Signal Log",
+                text="The log records the lighthouse flashing replies before anyone sent the first message.",
+                location_id="boathouse",
+                evidence="Signal log page",
+                skill=None,
+            ),
+            COCClue(
+                id="green_radio",
+                title="Green Radio Pulse",
+                text="The radio carrier wave matches no station; it repeats the keeper's name in clipped Morse code.",
+                location_id="boathouse",
+                evidence="Morse pulse transcript",
+                skill="mechanical repair",
+                difficulty="regular",
+                failure_text="The pulse is too warped to decode cleanly, but it repeats whenever the lake moon brightens.",
+                failure_evidence="Warped radio pulse note",
+            ),
+            COCClue(
+                id="wrong_moon",
+                title="Wrong Moon Reflection",
+                text="The reflected moon has a vertical crack through it, identical to the lighthouse lens fracture.",
+                location_id="shore",
+                evidence="Sketch of the wrong moon",
+                skill="spot hidden",
+                difficulty="regular",
+                sanity_loss=1,
+                failure_text="The reflection moves a heartbeat after the real sky, enough to prove it is answering something below.",
+                failure_evidence="Delayed moon reflection note",
+                failure_sanity_loss=1,
+            ),
+            COCClue(
+                id="silent_bell",
+                title="Silent Bell Buoy",
+                text="When your ear nears the bell, the missing sound arrives inside your teeth: three chimes, then your name.",
+                location_id="shore",
+                evidence="Silent bell cadence",
+                skill="listen",
+                difficulty="hard",
+                sanity_loss=1,
+                failure_text="The bell refuses to ring aloud, but the pattern is three beats and a long drag toward the lighthouse.",
+                failure_evidence="Three-beat bell pattern",
+            ),
+            COCClue(
+                id="cracked_lens",
+                title="Cracked Green Lens",
+                text="The lens crack contains wet fingerprints pressed from the inside of the glass.",
+                location_id="lighthouse",
+                evidence="Cracked green lens shard",
+                skill=None,
+                sanity_loss=2,
+            ),
+        ],
+        npcs=[
+            COCNPC(
+                id="keeper_iona",
+                name="Keeper Iona Reed",
+                description="The retired keeper sits wrapped in a naval coat, refusing to face the lake after dusk.",
+                location_id="boathouse",
+                dialogue=[
+                    "The lamp answered us first. We only learned its alphabet afterward.",
+                    "If the bell speaks your name, do not answer from the shore.",
+                ],
+            ),
+            COCNPC(
+                id="deputy_mallory",
+                name="Deputy Mallory",
+                description="A sleepless deputy watches the lighthouse with a revolver held too tightly.",
+                location_id="shore",
+                dialogue=[
+                    "I saw the keeper walk into the light last week. I buried him two years ago.",
+                    "The path is open, but I would rather swim away than climb those stairs.",
+                ],
+            ),
+        ],
+        locations=locations,
+        current_location_id="boathouse",
+        completion_requirements={
+            "required_clue_ids": ["signal_log", "cracked_lens"],
+            "required_evidence": ["Cracked green lens shard"],
+            "required_location_ids": ["lighthouse"],
+        },
+        ending_text=(
+            "With the signal log decoded and the cracked lens exposed, the false moon dims under Glass Lake. "
+            "The lighthouse flashes once in surrender, then goes properly dark."
+        ),
+    )
+
+
+COC_DEMO_SCENARIOS = {
+    "briar_house": create_sample_coc_scenario,
+    "glass_lake": create_glass_lake_coc_scenario,
+}
+
+
+def coc_demo_scenario_names() -> list[str]:
+    return sorted(COC_DEMO_SCENARIOS)
+
+
+def create_coc_demo_scenario(name: str = "briar_house") -> COCScenario:
+    key = name.strip().lower().replace("-", "_").replace(" ", "_")
+    factory = COC_DEMO_SCENARIOS.get(key)
+    if factory is None:
+        available = ", ".join(coc_demo_scenario_names())
+        raise ValueError(f"Unknown COC demo scenario '{name}'. Available: {available}.")
+    return factory()
+
 def describe_coc_scene(runtime: COCRuntime) -> None:
     scenario = runtime.scenario
     investigator = scenario.investigator

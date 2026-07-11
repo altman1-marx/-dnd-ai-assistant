@@ -862,6 +862,20 @@ class APITests(unittest.TestCase):
         deleted = route_request(state, "DELETE", f"/campaigns/{campaign_id}", {})
         self.assertTrue(deleted["deleted"])
 
+
+    def test_route_request_supports_named_coc_demo_scenarios(self) -> None:
+        state = APIState()
+
+        options = route_request(state, "GET", "/coc/demo-options", {})
+        demo = route_request(state, "POST", "/coc/demo", {"scenario": "glass_lake"})
+
+        self.assertIn("glass_lake", options["scenarios"])
+        self.assertEqual(demo["demo_scenario"], "glass_lake")
+        self.assertEqual(demo["scenario"]["title"], "The Glass Lake Signal")
+        self.assertIn("glass_lake", demo["available_demo_scenarios"])
+        with self.assertRaisesRegex(APIError, "Unknown COC demo scenario"):
+            route_request(state, "POST", "/coc/demo", {"scenario": "missing"})
+
     def test_route_request_supports_coc_demo_summary_and_action(self) -> None:
         state = APIState()
 

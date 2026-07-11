@@ -16,7 +16,7 @@ from .ai_dm import generate_dm_suggestion
 from .ai_keeper import generate_keeper_suggestion
 from .ai_provider import AIProvider
 from .coc_briefing import build_coc_briefing
-from .coc_runtime import COCRuntime, COCScenario, coc_keeper_hint, create_sample_coc_scenario, handle_coc_action
+from .coc_runtime import COCRuntime, COCScenario, coc_demo_scenario_names, coc_keeper_hint, create_coc_demo_scenario, handle_coc_action
 from .coc_generator import COCScenarioRequest, generate_coc_scenario_text
 from .coc_review import coc_review_to_dict
 from .coc_serialization import coc_scenario_from_dict, coc_scenario_to_dict, load_coc_scenario, save_coc_scenario
@@ -303,12 +303,17 @@ def health_status(state: APIState) -> dict:
     }
 
 
-def create_coc_demo(state: APIState) -> dict:
-    scenario = create_sample_coc_scenario()
+def create_coc_demo(state: APIState, scenario_name: str = "briar_house") -> dict:
+    try:
+        scenario = create_coc_demo_scenario(scenario_name)
+    except ValueError as exc:
+        raise APIError(400, str(exc), "unknown_coc_demo_scenario") from exc
     state.coc_scenarios[scenario.id] = scenario
     _persist_coc_scenario(state, scenario)
     return {
         "scenario_id": scenario.id,
+        "demo_scenario": scenario_name,
+        "available_demo_scenarios": coc_demo_scenario_names(),
         "scenario": coc_scenario_to_dict(scenario),
     }
 
@@ -564,8 +569,10 @@ def route_request(state: APIState, method: str, path: str, body: dict) -> dict:
         return create_demo_campaign(state)
     if method == "POST" and parts == ["campaigns", "demo-with-character"]:
         return create_playable_demo_campaign(state)
+    if method == "GET" and parts == ["coc", "demo-options"]:
+        return {"scenarios": coc_demo_scenario_names()}
     if method == "POST" and parts == ["coc", "demo"]:
-        return create_coc_demo(state)
+        return create_coc_demo(state, str(body.get("scenario", "briar_house")))
     if method == "GET" and len(parts) == 3 and parts[0] == "coc" and parts[2] == "summary":
         return coc_summary(state, parts[1])
     if method == "GET" and len(parts) == 3 and parts[0] == "coc" and parts[2] == "player-card":
