@@ -16,6 +16,7 @@ def build_coc_briefing(scenario: COCScenario) -> dict:
     next_actions = _next_actions(scenario, partial, hidden, blocked_exits, remaining_goals)
     open_threads = _open_threads(scenario, partial, hidden, blocked_exits, remaining_goals)
     spotlight_actions = _spotlight_actions(scenario, partial, hidden, blocked_exits, remaining_goals)
+    opening = _opening_brief(scenario, hidden, blocked_exits, spotlight_actions)
     briefing = {
         "scenario_id": scenario.id,
         "title": scenario.title,
@@ -52,6 +53,7 @@ def build_coc_briefing(scenario: COCScenario) -> dict:
         "next_actions": next_actions,
         "open_threads": open_threads,
         "spotlight_actions": spotlight_actions,
+        "opening": opening,
     }
     briefing["text"] = render_coc_briefing(briefing)
     return briefing
@@ -69,6 +71,17 @@ def render_coc_briefing(briefing: dict) -> str:
         lines.append("Conditions: " + ", ".join(conditions))
     if briefing["progress"].get("inventory"):
         lines.append("Evidence: " + ", ".join(briefing["progress"]["inventory"]))
+    opening = briefing.get("opening") or {}
+    if opening:
+        lines.append("Opening brief:")
+        if opening.get("read_aloud"):
+            lines.append("- Read aloud: " + opening["read_aloud"])
+        if opening.get("investigator_hook"):
+            lines.append("- Investigator hook: " + opening["investigator_hook"])
+        if opening.get("first_objectives"):
+            lines.append("- First objectives: " + "; ".join(opening["first_objectives"]))
+        if opening.get("safety_note"):
+            lines.append("- Safety note: " + opening["safety_note"])
     if briefing["risks"]:
         lines.append("Risks:")
         lines.extend(f"- {risk}" for risk in briefing["risks"])
@@ -94,6 +107,45 @@ def render_coc_briefing(briefing: dict) -> str:
         lines.extend(f"- {event}" for event in briefing["keeper_notes"]["recent_events"])
     return "\n".join(lines)
 
+
+def _opening_brief(
+    scenario: COCScenario,
+    hidden: list,
+    blocked_exits: list[dict],
+    spotlight_actions: list[str],
+) -> dict:
+    location = scenario.current_location()
+    investigator = scenario.investigator
+    local_hidden = [clue for clue in hidden if clue.location_id in {None, location.id}]
+    first_clue = local_hidden[0] if local_hidden else (hidden[0] if hidden else None)
+    objectives = [
+        f"Establish why {investigator.name} is at {location.name}.",
+        "Let the player choose how to inspect the first strange detail.",
+    ]
+    if first_clue is not None:
+        objectives.append(f"Steer attention toward {first_clue.title} without naming it as the answer.")
+    if blocked_exits:
+        objectives.append(f"Foreshadow the blocked {blocked_exits[0]['name']} route and its pressure.")
+    return {
+        "read_aloud": _opening_read_aloud(scenario, first_clue),
+        "investigator_hook": (
+            f"{investigator.name}, a {investigator.occupation}, has enough expertise to notice what locals missed. "
+            f"Ask what personal reason made them answer this case tonight."
+        ),
+        "first_objectives": objectives[:4],
+        "first_turn_actions": list(spotlight_actions[:3]),
+        "safety_note": "Confirm the table is comfortable with escalating dread, body horror, and loss of control before play.",
+    }
+
+
+def _opening_read_aloud(scenario: COCScenario, first_clue) -> str:
+    location = scenario.current_location()
+    clue_hint = ""
+    if first_clue is not None:
+        clue_hint = f" One detail refuses to sit still: {first_clue.title}."
+    npc_names = [npc.name for npc in scenario.npcs if npc.location_id in {None, location.id}]
+    npc_hint = f" {npc_names[0]} is close enough to answer questions." if npc_names else ""
+    return f"At {location.name}, {location.description}{clue_hint}{npc_hint} What do you do first?"
 
 def _clue_brief(clue) -> dict:
     return {

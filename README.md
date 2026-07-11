@@ -497,7 +497,7 @@ POST /coc/{scenario_id}/keeper-suggestion
 
 `GET /coc/{scenario_id}/briefing` 会返回 Keeper 面向的续团简报，包括当前地点、调查员 HP/SAN/Luck、证据、隐藏线索队列、部分线索、风险、下一步 Keeper moves 和可直接显示的 `text`。`GET /coc/{scenario_id}/review` 会返回 COC 剧本质量审查，包括地点可达性、线索数量与分布、NPC 台词、证据 inventory 覆盖、结局文本和总 SAN loss 预算。
 
-Keeper briefing 还会返回结构化的 `open_threads` 和 `spotlight_actions`：前者列出未解决的线索、卡住的出口和结局门槛；后者给出当前最值得推给玩家的动作。Web 面板会把 spotlight actions 渲染成按钮，Keeper 可以直接点击执行。
+Keeper briefing 还会返回结构化的 `opening`、`open_threads` 和 `spotlight_actions`：`opening` 包含可直接朗读的开场、调查员钩子、首轮目标、安全提示和首轮动作；`open_threads` 列出未解决的线索、卡住的出口和结局门槛；`spotlight_actions` 给出当前最值得推给玩家的动作。Web 面板会把 opening/spotlight actions 渲染成按钮，Keeper 可以直接点击执行。
 
 `POST /coc/generate` 使用 API 启动时配置的 AI provider 生成并导入 COC scenario：
 

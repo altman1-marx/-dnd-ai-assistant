@@ -1327,7 +1327,10 @@ function clearCampaign() {
         keeperBriefing.textContent = state.mode === "coc" ? "Briefing unavailable." : "COC mode only.";
         return;
       }
-      const actions = briefing.spotlight_actions || [];
+      const opening = briefing.opening || {};
+      const openingActions = opening.first_turn_actions || [];
+      const actions = [...openingActions, ...(briefing.spotlight_actions || [])]
+        .filter((action, index, values) => values.indexOf(action) === index);
       const actionButtons = actions.length ? "\n\n" + actions.map((action) => {
         return "<button type=\"button\" class=\"secondary\" data-keeper-action=\""
           + escapeHtml(action) + "\">" + escapeHtml(actionLabel(action)) + "</button>";

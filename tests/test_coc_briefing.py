@@ -25,6 +25,13 @@ class COCBriefingTests(unittest.TestCase):
         self.assertIn("read waterlogged journal", briefing["spotlight_actions"])
         self.assertIn("Open threads", briefing["text"])
         self.assertIn("Spotlight actions", briefing["text"])
+        self.assertIn("opening", briefing)
+        self.assertIn("Rain presses against the study windows", briefing["opening"]["read_aloud"])
+        self.assertIn("Waterlogged Journal", briefing["opening"]["read_aloud"])
+        self.assertIn("Eleanor Vale", briefing["opening"]["investigator_hook"])
+        self.assertIn("read waterlogged journal", briefing["opening"]["first_turn_actions"])
+        self.assertIn("Opening brief", briefing["text"])
+        self.assertIn("Safety note", briefing["text"])
 
     def test_briefing_reports_partial_leads_risks_and_recent_log(self) -> None:
         scenario = create_sample_coc_scenario()
@@ -44,6 +51,20 @@ class COCBriefingTests(unittest.TestCase):
         self.assertIn("Partial leads", briefing["text"])
         self.assertIn("Recent table log", briefing["text"])
         self.assertIn("Player: inspect hearth", briefing["text"])
+
+
+    def test_opening_brief_adapts_after_progress(self) -> None:
+        scenario = create_sample_coc_scenario()
+        runtime = COCRuntime(scenario, rng=random.Random(1))
+        handle_coc_action(runtime, "inspect portrait")
+        runtime.flush()
+
+        briefing = build_coc_briefing(scenario)
+
+        self.assertIn("Briar House Study", briefing["opening"]["read_aloud"])
+        self.assertTrue(briefing["opening"]["first_objectives"])
+        self.assertLessEqual(len(briefing["opening"]["first_turn_actions"]), 3)
+        self.assertIn("escalating dread", briefing["opening"]["safety_note"])
 
     def test_render_briefing_handles_completed_case(self) -> None:
         scenario = create_sample_coc_scenario()

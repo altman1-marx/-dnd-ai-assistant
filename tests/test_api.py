@@ -294,6 +294,9 @@ class APITests(unittest.TestCase):
         self.assertEqual(routed["progress"]["discovered_clues"], 1)
         self.assertIn("COC Keeper Briefing", routed["text"])
         self.assertIn("Next Keeper moves", routed["text"])
+        self.assertIn("opening", routed)
+        self.assertIn("Read aloud", routed["text"])
+        self.assertTrue(routed["opening"]["first_turn_actions"])
         self.assertTrue(routed["keeper_notes"]["hidden_clues"])
 
 

@@ -30,6 +30,7 @@ class WebUITests(unittest.TestCase):
         self.assertIn("loadKeeperBriefing", html)
         self.assertIn("renderKeeperBriefing", html)
         self.assertIn("spotlight_actions", html)
+        self.assertIn("opening", html)
         self.assertIn("data-keeper-action", html)
         self.assertIn("button.dataset.keeperAction", html)
         self.assertIn("cocBriefing", html)
