@@ -174,6 +174,42 @@
       white-space: pre-wrap;
     }
 
+    .packet-view {
+      display: grid;
+      gap: 12px;
+      color: var(--text);
+      white-space: normal;
+    }
+
+    .packet-section {
+      display: grid;
+      gap: 6px;
+      border-bottom: 1px solid var(--line);
+      padding-bottom: 10px;
+    }
+
+    .packet-section:last-child {
+      border-bottom: 0;
+      padding-bottom: 0;
+    }
+
+    .packet-section h3 {
+      margin: 0;
+      font-size: 13px;
+      color: var(--accent);
+    }
+
+    .packet-section ul {
+      margin: 0;
+      padding-left: 18px;
+    }
+
+    .packet-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
     .transcript {
       flex: 1;
       min-height: 320px;
@@ -1370,7 +1406,56 @@ function clearCampaign() {
         keeperBriefing.textContent = "No table packet loaded.";
         return;
       }
-      keeperBriefing.textContent = packet.text || "COC table packet is empty.";
+      const profile = packet.scenario_profile || {};
+      const checklist = packet.keeper_checklist || {};
+      const handout = packet.player_handout || {};
+      const opening = packet.keeper_opening || {};
+      const actions = checklist.first_turn_actions || [];
+      const clueMap = packet.clue_map || [];
+      const npcCards = packet.npc_cards || [];
+      const actionButtons = actions.length ? "<div class=\"packet-actions\">" + actions.map((action) => {
+        return "<button type=\"button\" class=\"secondary\" data-keeper-action=\""
+          + escapeHtml(action) + "\">" + escapeHtml(actionLabel(action)) + "</button>";
+      }).join("") + "</div>" : "";
+      const clueHtml = clueMap.length ? clueMap.map((location) => {
+        const clues = (location.clues || []).map((clue) => {
+          const tags = [
+            clue.required ? "required" : "",
+            clue.skill ? clue.skill + " " + clue.difficulty : "automatic",
+            clue.sanity_loss ? "SAN " + clue.sanity_loss : ""
+          ].filter(Boolean).join(", ");
+          return "<li><strong>" + escapeHtml(clue.title) + "</strong> - "
+            + escapeHtml(clue.action || "inspect")
+            + (tags ? " <span class=\"muted\">(" + escapeHtml(tags) + ")</span>" : "")
+            + "</li>";
+        }).join("") || "<li>none</li>";
+        return "<li><strong>" + escapeHtml(location.location) + "</strong><ul>" + clues + "</ul></li>";
+      }).join("") : "<li>none</li>";
+      const npcHtml = npcCards.length ? npcCards.map((npc) => {
+        return "<li><strong>" + escapeHtml(npc.name) + "</strong> at " + escapeHtml(npc.location)
+          + "<br><span class=\"muted\">" + escapeHtml(npc.keeper_use || npc.description || "") + "</span></li>";
+      }).join("") : "<li>none</li>";
+      keeperBriefing.innerHTML = "<div class=\"packet-view\">"
+        + "<section class=\"packet-section\"><h3>" + escapeHtml(packet.title || "COC Table Packet") + "</h3>"
+        + "<p class=\"muted\">" + escapeHtml(String(profile.location_count || 0)) + " locations, "
+        + escapeHtml(String(profile.clue_count || 0)) + " clues, "
+        + escapeHtml(String(profile.npc_count || 0)) + " NPCs, estimated "
+        + escapeHtml(String(profile.estimated_minutes || 0)) + " minutes.</p></section>"
+        + "<section class=\"packet-section\"><h3>Keeper Opening</h3><p>"
+        + escapeHtml(opening.read_aloud || "") + "</p><p class=\"muted\">"
+        + escapeHtml(opening.safety_note || "") + "</p></section>"
+        + "<section class=\"packet-section\"><h3>Player Handout</h3><p>"
+        + escapeHtml((handout.investigator || "Investigator") + " - " + (handout.occupation || ""))
+        + "</p><p>" + escapeHtml(handout.case_hook || "") + "</p></section>"
+        + "<section class=\"packet-section\"><h3>Scene Beats</h3><ul>"
+        + (checklist.scene_beats || []).map((beat) => "<li>" + escapeHtml(beat) + "</li>").join("")
+        + "</ul>" + actionButtons + "</section>"
+        + "<section class=\"packet-section\"><h3>Clue Map</h3><ul>" + clueHtml + "</ul></section>"
+        + "<section class=\"packet-section\"><h3>NPC Cards</h3><ul>" + npcHtml + "</ul></section>"
+        + "</div>";
+      document.querySelectorAll("[data-keeper-action]").forEach((button) => {
+        button.addEventListener("click", () => runAction(button.dataset.keeperAction));
+      });
     }
     function renderKeeperBriefing(briefing) {
       if (!briefing) {
