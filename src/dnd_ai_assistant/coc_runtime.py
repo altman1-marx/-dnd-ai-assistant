@@ -443,7 +443,8 @@ def describe_coc_scene(runtime: COCRuntime) -> None:
 
 
 def handle_coc_action(runtime: COCRuntime, action: str) -> bool:
-    normalized = action.strip().lower()
+    normalized = " ".join(action.strip().lower().split())
+    normalized = _normalize_coc_action_alias(normalized)
     if not normalized:
         return True
     runtime.narrate(f"Player: {action}")
@@ -541,6 +542,53 @@ def handle_coc_action(runtime: COCRuntime, action: str) -> bool:
         return True
     runtime.narrate("Keeper: That action is not supported yet.")
     return True
+
+
+def _normalize_coc_action_alias(normalized: str) -> str:
+    exact = {
+        "观察": "look",
+        "观察四周": "look",
+        "查看": "look",
+        "状态": "status",
+        "技能": "skills",
+        "摘要": "recap",
+        "回顾": "recap",
+        "进度": "progress",
+        "提示": "hint",
+        "理智": "sanity",
+        "线索": "clues",
+        "物品": "inventory",
+        "背包": "inventory",
+        "结案": "conclude",
+        "结束调查": "conclude",
+        "退出": "quit",
+    }
+    if normalized in exact:
+        return exact[normalized]
+    prefixes = [
+        ("去 ", "go "),
+        ("前往 ", "go "),
+        ("移动到 ", "go "),
+        ("检查 ", "inspect "),
+        ("调查 ", "inspect "),
+        ("搜索 ", "search "),
+        ("阅读 ", "read "),
+        ("读 ", "read "),
+        ("聆听 ", "listen "),
+        ("听 ", "listen "),
+        ("交谈 ", "talk "),
+        ("谈话 ", "talk "),
+        ("问 ", "ask "),
+        ("询问 ", "ask "),
+        ("技能检定 ", "check "),
+        ("检定 ", "check "),
+        ("记录 ", "note "),
+        ("笔记 ", "note "),
+    ]
+    for source, target in prefixes:
+        if normalized.startswith(source):
+            return target + normalized[len(source) :].strip()
+    return normalized
 
 
 

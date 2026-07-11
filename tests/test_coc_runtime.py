@@ -657,6 +657,24 @@ class COCRuntimeTests(unittest.TestCase):
         self.assertIn("You ask about lantern", speak_output)
         self.assertIn("forbade us from trimming", speak_output)
 
+    def test_chinese_action_aliases_cover_common_coc_commands(self) -> None:
+        scenario = create_sample_coc_scenario()
+        runtime = COCRuntime(scenario)
+
+        handle_coc_action(runtime, "观察四周")
+        look_output = runtime.flush()
+        handle_coc_action(runtime, "询问 ember about cellar")
+        talk_output = runtime.flush()
+        handle_coc_action(runtime, "检查 portrait")
+        runtime.flush()
+        handle_coc_action(runtime, "去 cellar")
+        move_output = runtime.flush()
+
+        self.assertIn("Briar House Study", look_output)
+        self.assertIn("portrait passage", talk_output)
+        self.assertEqual(scenario.current_location_id, "cellar")
+        self.assertIn("Briar House Cellar", move_output)
+
     def test_talk_cannot_reach_npc_in_other_location(self) -> None:
         runtime = COCRuntime(create_sample_coc_scenario())
 

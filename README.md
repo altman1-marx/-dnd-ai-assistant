@@ -131,6 +131,9 @@ inspect hearth
 talk ember
 ask mrs ember about cellar
 speak to mrs ember
+观察四周
+询问 ember about cellar
+去 cellar
 check library use
 push hearth
 spend luck hearth
