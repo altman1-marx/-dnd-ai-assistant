@@ -502,7 +502,7 @@ POST /coc/{scenario_id}/keeper-suggestion
 
 `GET /coc/{scenario_id}/player-card` 会返回玩家可见的调查员手卡，包括 HP/MP/SAN/Luck、conditions、skills、inventory、已发现线索、部分线索和过滤后的可用动作；它不会返回隐藏线索队列或 Keeper-only briefing。
 
-`GET /coc/{scenario_id}/briefing` 会返回 Keeper 面向的续团简报，包括当前地点、调查员 HP/SAN/Luck、证据、隐藏线索队列、部分线索、风险、下一步 Keeper moves 和可直接显示的 `text`。`GET /coc/{scenario_id}/table-packet` 会返回开桌包，合并 Keeper opening、玩家 handout、首轮动作按钮、隐藏线索数量和安全提示，适合开局前复制给主持人使用。`GET /coc/{scenario_id}/review` 会返回 COC 剧本质量审查，包括地点可达性、线索数量与分布、NPC 台词、证据 inventory 覆盖、结局文本和总 SAN loss 预算。
+`GET /coc/{scenario_id}/briefing` 会返回 Keeper 面向的续团简报，包括当前地点、调查员 HP/SAN/Luck、证据、隐藏线索队列、部分线索、风险、下一步 Keeper moves 和可直接显示的 `text`。`GET /coc/{scenario_id}/table-packet` 会返回开桌包，合并 Keeper opening、玩家 handout、首轮动作按钮、场景 profile、scene beats、clue map、NPC cards、隐藏线索数量和安全提示，适合开局前复制给主持人使用。`GET /coc/{scenario_id}/review` 会返回 COC 剧本质量审查，包括地点可达性、线索数量与分布、NPC 台词、证据 inventory 覆盖、结局文本和总 SAN loss 预算。
 
 Keeper briefing 还会返回结构化的 `opening`、`open_threads` 和 `spotlight_actions`：`opening` 包含可直接朗读的开场、调查员钩子、首轮目标、安全提示和首轮动作；`open_threads` 列出未解决的线索、卡住的出口和结局门槛；`spotlight_actions` 给出当前最值得推给玩家的动作。Web 面板会把 opening/spotlight actions 渲染成按钮，Keeper 可以直接点击执行。
 

@@ -74,11 +74,22 @@ class COCBriefingTests(unittest.TestCase):
 
         self.assertEqual(packet["title"], "The Lantern Under Briar House")
         self.assertIn("keeper_opening", packet)
+        self.assertEqual(packet["scenario_profile"]["location_count"], 3)
+        self.assertEqual(packet["scenario_profile"]["clue_count"], 6)
         self.assertEqual(packet["player_handout"]["investigator"], "Eleanor Vale")
         self.assertIn("Mrs. Ember", packet["player_handout"]["known_people"])
         self.assertIn("read waterlogged journal", packet["keeper_checklist"]["first_turn_actions"])
+        self.assertIn("Open at Briar House Study.", packet["keeper_checklist"]["scene_beats"])
+        self.assertEqual(packet["clue_map"][0]["location"], "Briar House Study")
+        self.assertTrue(packet["clue_map"][0]["clues"][2]["required"])
+        self.assertEqual(packet["clue_map"][0]["clues"][0]["action"], "read waterlogged journal")
+        self.assertEqual(packet["npc_cards"][0]["name"], "Mrs. Ember")
+        self.assertIn("Use them to deliver", packet["npc_cards"][0]["keeper_use"])
         self.assertIn("COC Table Packet", text)
         self.assertIn("Player handout", text)
+        self.assertIn("Profile: 3 locations, 6 clues, 2 NPCs", text)
+        self.assertIn("Clue map", text)
+        self.assertIn("NPC cards", text)
 
     def test_render_briefing_handles_completed_case(self) -> None:
         scenario = create_sample_coc_scenario()

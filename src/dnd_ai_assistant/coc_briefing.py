@@ -67,17 +67,23 @@ def build_coc_table_packet(scenario: COCScenario) -> dict:
     visible_npcs = [npc for npc in scenario.npcs if npc.location_id in {None, location.id}]
     player_actions = ["look", "status", "skills", "recap", "hint"]
     player_actions.extend(briefing["opening"].get("first_turn_actions", []))
+    clue_map = _clue_map(scenario)
+    npc_cards = _npc_cards(scenario)
     packet = {
         "scenario_id": scenario.id,
         "title": scenario.title,
         "system_id": "coc7e",
+        "scenario_profile": _scenario_profile(scenario),
         "keeper_opening": briefing["opening"],
         "keeper_checklist": {
             "first_turn_actions": list(dict.fromkeys(player_actions))[:8],
             "hidden_clue_count": len([clue for clue in scenario.clues if not clue.discovered]),
             "safety_note": briefing["opening"].get("safety_note", ""),
             "open_threads": list(briefing.get("open_threads", [])),
+            "scene_beats": _scene_beats(scenario, clue_map),
         },
+        "clue_map": clue_map,
+        "npc_cards": npc_cards,
         "player_handout": {
             "investigator": investigator.name,
             "occupation": investigator.occupation,
@@ -96,8 +102,10 @@ def render_coc_table_packet(packet: dict) -> str:
     handout = packet["player_handout"]
     checklist = packet["keeper_checklist"]
     opening = packet["keeper_opening"]
+    profile = packet.get("scenario_profile", {})
     lines = [
         f"COC Table Packet: {packet['title']}",
+        f"Profile: {profile.get('location_count', 0)} locations, {profile.get('clue_count', 0)} clues, {profile.get('npc_count', 0)} NPCs, estimated {profile.get('estimated_minutes', 0)} minutes.",
         "Keeper opening:",
         f"- Read aloud: {opening.get('read_aloud', '')}",
         f"- Safety note: {opening.get('safety_note', '')}",
@@ -114,11 +122,108 @@ def render_coc_table_packet(packet: dict) -> str:
         lines.append("- Suggested actions: " + ", ".join(handout["suggested_actions"]))
     lines.append("Keeper checklist:")
     lines.append(f"- Hidden clues: {checklist['hidden_clue_count']}")
+    if checklist.get("scene_beats"):
+        lines.append("- Scene beats: " + " | ".join(checklist["scene_beats"]))
     if checklist.get("first_turn_actions"):
         lines.append("- First turn buttons: " + ", ".join(checklist["first_turn_actions"]))
     if checklist.get("open_threads"):
         lines.append("- Open threads: " + " | ".join(checklist["open_threads"][:4]))
+    if packet.get("clue_map"):
+        lines.append("Clue map:")
+        for location in packet["clue_map"]:
+            clue_titles = ", ".join(clue["title"] for clue in location["clues"]) or "none"
+            lines.append(f"- {location['location']}: {clue_titles}")
+    if packet.get("npc_cards"):
+        lines.append("NPC cards:")
+        for npc in packet["npc_cards"]:
+            lines.append(f"- {npc['name']} at {npc['location']}: {npc['keeper_use']}")
     return "\n".join(lines)
+
+
+def _scenario_profile(scenario: COCScenario) -> dict:
+    location_count = len(scenario.locations) or 1
+    clue_count = len(scenario.clues)
+    npc_count = len(scenario.npcs)
+    estimated_minutes = 20 + location_count * 10 + clue_count * 5 + npc_count * 5
+    return {
+        "location_count": location_count,
+        "clue_count": clue_count,
+        "npc_count": npc_count,
+        "estimated_minutes": estimated_minutes,
+        "starting_location": scenario.current_location().name,
+        "completion_gate_count": sum(len(values) for values in scenario.completion_requirements.values()),
+    }
+
+
+def _scene_beats(scenario: COCScenario, clue_map: list[dict]) -> list[str]:
+    beats = [f"Open at {scenario.current_location().name}."]
+    if clue_map:
+        first_location = clue_map[0]
+        if first_location["clues"]:
+            beats.append(f"Surface {first_location['clues'][0]['title']} as the first tangible lead.")
+    if scenario.completion_requirements:
+        beats.append("Track ending gates before letting the case close.")
+    if scenario.ending_text:
+        beats.append("Use the ending text once the required evidence is in hand.")
+    return beats[:5]
+
+
+def _clue_map(scenario: COCScenario) -> list[dict]:
+    location_names = {location_id: location.name for location_id, location in scenario.locations.items()}
+    required_clue_ids = set(scenario.completion_requirements.get("required_clue_ids", []))
+    mapped: list[dict] = []
+    for location_id, location_name in location_names.items():
+        clues = [clue for clue in scenario.clues if clue.location_id in {None, location_id}]
+        mapped.append({
+            "location_id": location_id,
+            "location": location_name,
+            "clues": [_clue_map_entry(clue, required_clue_ids) for clue in clues],
+        })
+    legacy_clues = [clue for clue in scenario.clues if clue.location_id and clue.location_id not in location_names]
+    if legacy_clues:
+        mapped.append({
+            "location_id": "unknown",
+            "location": "Unknown",
+            "clues": [_clue_map_entry(clue, required_clue_ids) for clue in legacy_clues],
+        })
+    return mapped
+
+
+def _clue_map_entry(clue, required_clue_ids: set[str]) -> dict:
+    return {
+        "id": clue.id,
+        "title": clue.title,
+        "status": "found" if clue.discovered else ("partial" if clue.partial_discovered else "hidden"),
+        "required": clue.id in required_clue_ids,
+        "action": f"{_natural_clue_verb(clue)} {clue.title.lower()}",
+        "skill": clue.skill,
+        "difficulty": clue.difficulty,
+        "evidence": clue.evidence,
+        "sanity_loss": clue.sanity_loss,
+    }
+
+
+def _npc_cards(scenario: COCScenario) -> list[dict]:
+    location_names = {location_id: location.name for location_id, location in scenario.locations.items()}
+    cards = []
+    for npc in scenario.npcs:
+        dialogue = list(npc.dialogue)
+        cards.append({
+            "id": npc.id,
+            "name": npc.name,
+            "location_id": npc.location_id,
+            "location": location_names.get(npc.location_id or "", "Anywhere"),
+            "description": npc.description,
+            "first_line": dialogue[0] if dialogue else "",
+            "keeper_use": _npc_keeper_use(npc),
+        })
+    return cards
+
+
+def _npc_keeper_use(npc) -> str:
+    if npc.dialogue:
+        return f"Use them to deliver: {npc.dialogue[0]}"
+    return "Use them as a human reaction shot and a reason to ask the investigator what they do next."
 
 def render_coc_briefing(briefing: dict) -> str:
     lines = [
