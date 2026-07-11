@@ -44,6 +44,8 @@ python -m dnd_ai_assistant.demo quickstart
 CLI 试玩内置场景：
 
 ```powershell
+python -m dnd_ai_assistant.demo list-coc-demos
+python -m dnd_ai_assistant.demo list-coc-demos --format json
 python -m dnd_ai_assistant.demo play-coc --action "look" --action "inspect portrait" --action "status"
 python -m dnd_ai_assistant.demo play-coc --demo-scenario glass_lake --action "read signal log" --action "go lighthouse"
 ```

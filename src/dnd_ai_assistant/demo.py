@@ -16,7 +16,7 @@ from .ai_dm import generate_dm_suggestion
 from .ai_provider import build_provider
 from .api import run_server
 from .coc_briefing import build_coc_briefing, build_coc_table_packet, render_coc_briefing, render_coc_table_packet
-from .coc_runtime import COCRuntime, coc_demo_scenario_names, create_coc_demo_scenario, describe_coc_scene, handle_coc_action
+from .coc_runtime import COCRuntime, coc_demo_scenario_names, coc_demo_scenario_options, create_coc_demo_scenario, describe_coc_scene, handle_coc_action
 from .coc_serialization import coc_scenario_to_dict, load_coc_scenario, save_coc_scenario
 from .coc_generator import COCScenarioRequest, build_coc_scenario_prompt, generate_coc_scenario_file
 from .coc_review import review_coc_scenario, render_coc_review, render_coc_review_json
@@ -86,6 +86,19 @@ def run_quickstart(seed: int) -> str:
     lines.extend(f"- [{event.actor}] {event.content}" for event in campaign.session_log)
     return "\n".join(lines)
 
+
+def list_coc_demo_scenarios(output_format: str = "text") -> str:
+    options = coc_demo_scenario_options()
+    if output_format == "json":
+        return json.dumps({"scenarios": options}, ensure_ascii=False, indent=2)
+    lines = ["Built-in COC demo scenarios:"]
+    for option in options:
+        lines.append(
+            f"- {option['id']}: {option['title']} | {option['location']} | "
+            f"{option['investigator']} ({option['occupation']}) | "
+            f"{option['clue_count']} clues, {option['npc_count']} NPCs"
+        )
+    return "\n".join(lines)
 
 def run_scripted_coc(
     seed: int,
@@ -402,6 +415,9 @@ def main() -> int:
         help="Run a non-interactive action. Repeat this option to script a scene.",
     )
 
+    list_coc = subparsers.add_parser("list-coc-demos", help="List built-in Call of Cthulhu demo scenarios.")
+    list_coc.add_argument("--format", choices=("text", "json"), default="text", help="Output format.")
+
     play_coc = subparsers.add_parser("play-coc", help="Run the starter Call of Cthulhu investigation.")
     play_coc.add_argument("--seed", type=int, default=1, help="Random seed for reproducible percentile rolls.")
     play_coc.add_argument("--scenario", default=None, help="Optional saved COC scenario JSON to load.")
@@ -609,6 +625,9 @@ def main() -> int:
             print(run_scripted_scene(args.seed, args.action, args.scene, args.save_state))
             return 0
         return run_interactive_scene(args.seed, args.scene, args.save_state)
+    if args.command == "list-coc-demos":
+        print(list_coc_demo_scenarios(args.format))
+        return 0
     if args.command == "play-coc":
         if args.action:
             print(run_scripted_coc(args.seed, args.action, args.scenario, args.save_state, args.demo_scenario))

@@ -12,6 +12,7 @@ from dnd_ai_assistant.demo import (
     run_combat_demo,
     run_initiative_demo,
     run_quickstart,
+    list_coc_demo_scenarios,
     run_scripted_coc,
     run_scripted_scene,
     summarize_coc_state,
@@ -42,6 +43,20 @@ class DemoTests(unittest.TestCase):
         self.assertIn("System: Perception with advantage vs DC 15 -> rolls (5, 19), total 23.", output)
         self.assertIn("DM: The seal grinds open.", output)
         self.assertIn("DM: The scene pauses here.", output)
+
+
+    def test_list_coc_demos_cli_prints_text_and_json(self) -> None:
+        text = list_coc_demo_scenarios()
+        argv = ["dnd-ai-assistant", "list-coc-demos", "--format", "json"]
+
+        with patch("sys.argv", argv), patch("builtins.print") as mocked_print:
+            exit_code = main()
+        data = json.loads(mocked_print.call_args.args[0])
+
+        self.assertEqual(exit_code, 0)
+        self.assertIn("briar_house", text)
+        self.assertIn("glass_lake", text)
+        self.assertEqual(data["scenarios"][1]["id"], "glass_lake")
 
     def test_scripted_coc_investigation_reveals_clue(self) -> None:
         output = run_scripted_coc(seed=1, actions=["inspect portrait", "sanity", "quit"])
