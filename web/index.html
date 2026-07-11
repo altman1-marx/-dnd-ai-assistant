@@ -1099,6 +1099,7 @@
       const sections = [
         renderCocSanityState(summary.investigator || {}),
         renderCocProgress(summary.completion_progress || {}),
+        renderCocVisitedLocations(summary.visited_location_ids || []),
         renderCocExits(summary.exits || []),
         renderCocNpcs(summary.npcs || []),
         renderCocDiscoveredClues(summary.discovered_clues || []),
@@ -1135,6 +1136,12 @@
     function renderCocRemaining(remaining) {
       if (!remaining.length) return "";
       return "<p class=\"muted\">Remaining " + escapeHtml(remaining.join(", ")) + "</p>";
+    }
+
+    function renderCocVisitedLocations(locationIds) {
+      if (!locationIds.length) return "";
+      return "<div class=\"item\"><strong>Visited Locations</strong><p>"
+        + escapeHtml(locationIds.join(", ")) + "</p></div>";
     }
 
     function cocProgressLabel(key) {
