@@ -1050,7 +1050,8 @@ def _describe_inventory(runtime: COCRuntime) -> None:
 
 
 def _talk_to_coc_npc(runtime: COCRuntime, target: str) -> None:
-    npc = _match_npc(_visible_npcs(runtime.scenario), _strip_conversation_topic(target))
+    npc_target, topic = _split_conversation_topic(target)
+    npc = _match_npc(_visible_npcs(runtime.scenario), npc_target)
     if npc is None:
         runtime.narrate("Keeper: No one by that name is here.")
         return
@@ -1060,7 +1061,9 @@ def _talk_to_coc_npc(runtime: COCRuntime, target: str) -> None:
         runtime.scenario.talked_npc_ids.add(npc.id)
         _maybe_complete_scenario(runtime)
         return
-    for line in npc.dialogue:
+    if topic:
+        runtime.narrate(f"Keeper: You ask about {topic}.")
+    for line in _dialogue_for_topic(npc.dialogue, topic):
         runtime.narrate(f"{npc.name}: {line}")
     runtime.scenario.talked_npc_ids.add(npc.id)
     _maybe_complete_scenario(runtime)
@@ -1074,11 +1077,25 @@ def _conversation_alias_target(normalized: str) -> str | None:
     return None
 
 
-def _strip_conversation_topic(target: str) -> str:
+def _split_conversation_topic(target: str) -> tuple[str, str]:
     for marker in (" about ", " re: ", " regarding "):
         if marker in target:
-            return target.split(marker, 1)[0].strip()
-    return target.strip()
+            npc_target, topic = target.split(marker, 1)
+            return npc_target.strip(), topic.strip()
+    return target.strip(), ""
+
+
+def _dialogue_for_topic(dialogue: list[str], topic: str) -> list[str]:
+    if not topic:
+        return dialogue
+    topic_words = {word for word in topic.lower().replace("_", " ").split() if len(word) > 2}
+    if not topic_words:
+        return dialogue
+    matches = [
+        line for line in dialogue
+        if any(word in line.lower() for word in topic_words)
+    ]
+    return matches or dialogue
 
 
 def _add_inventory_item(runtime: COCRuntime, item: str) -> None:

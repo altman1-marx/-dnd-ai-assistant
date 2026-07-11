@@ -651,7 +651,10 @@ class COCRuntimeTests(unittest.TestCase):
         speak_output = runtime.flush()
 
         self.assertIn("Mrs. Ember", ask_output)
+        self.assertIn("You ask about cellar", ask_output)
         self.assertIn("portrait passage", ask_output)
+        self.assertNotIn("forbade us from trimming", ask_output)
+        self.assertIn("You ask about lantern", speak_output)
         self.assertIn("forbade us from trimming", speak_output)
 
     def test_talk_cannot_reach_npc_in_other_location(self) -> None:
