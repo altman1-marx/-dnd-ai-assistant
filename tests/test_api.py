@@ -143,6 +143,15 @@ class APITests(unittest.TestCase):
         self.assertIn("take damage 1d4", summary["available_actions"])
         self.assertIn("spend luck 5", summary["available_actions"])
         self.assertIn("recover luck 1d10", summary["available_actions"])
+        action_groups = {group["label"]: group["actions"] for group in summary["action_groups"]}
+        self.assertIn("look", action_groups["Case"])
+        self.assertIn("go cellar", action_groups["Movement"])
+        self.assertIn("talk mrs. ember", action_groups["NPCs"])
+        self.assertIn("inspect scratched portrait", action_groups["Investigation"])
+        self.assertIn("check library use bonus", action_groups["Skills"])
+        self.assertIn("san check 0/1d4", action_groups["Health"])
+        self.assertIn("note <text>", action_groups["Notes"])
+        self.assertIn("keeper note <text>", action_groups["Keeper"])
 
     def test_coc_summary_suggests_listen_actions_for_auditory_clues(self) -> None:
         state = APIState()

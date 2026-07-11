@@ -384,6 +384,7 @@ def coc_summary(state: APIState, scenario_id: str) -> dict:
             for clue in partial
         ],
         "available_actions": _coc_available_actions(scenario),
+        "action_groups": _coc_action_groups(scenario),
         "session_event_count": len(scenario.session_log),
         "recent_events": list(scenario.session_log[-20:]),
     }
@@ -946,6 +947,45 @@ def _coc_player_actions(scenario: COCScenario) -> list[str]:
             continue
         actions.append(action)
     return actions
+
+
+def _coc_action_groups(scenario: COCScenario) -> list[dict]:
+    grouped: dict[str, list[str]] = {}
+    for action in _coc_available_actions(scenario):
+        label = _coc_action_group_label(action)
+        grouped.setdefault(label, []).append(action)
+    order = ["Case", "Movement", "Investigation", "NPCs", "Skills", "Health", "Notes", "Keeper"]
+    return [
+        {"label": label, "actions": grouped[label]}
+        for label in order
+        if label in grouped
+    ] + [
+        {"label": label, "actions": actions}
+        for label, actions in grouped.items()
+        if label not in order
+    ]
+
+
+def _coc_action_group_label(action: str) -> str:
+    if action in {"look", "status", "recap", "progress", "hint", "sanity", "clues", "inventory", "conclude", "quit"}:
+        return "Case"
+    if action.startswith("go "):
+        return "Movement"
+    if action.startswith("talk "):
+        return "NPCs"
+    if action.startswith("inspect ") or action.startswith("search ") or action.startswith("read ") or action.startswith("listen "):
+        return "Investigation"
+    if action.startswith("check ") or action == "skills":
+        return "Skills"
+    if action.startswith("san check ") or action.startswith("take damage ") or action.startswith("heal "):
+        return "Health"
+    if action.startswith("spend luck ") or action.startswith("recover luck ") or action == "first aid":
+        return "Health"
+    if action.startswith("note "):
+        return "Notes"
+    if action.startswith("keeper note "):
+        return "Keeper"
+    return "Case"
 
 
 def _coc_available_actions(scenario: COCScenario) -> list[str]:

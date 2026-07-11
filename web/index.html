@@ -1066,7 +1066,7 @@
         metric("Evidence", (summary.inventory || []).length),
         metric("Available Actions", (summary.available_actions || []).length)
       ].join("");
-      renderQuickActions(summary.available_actions || []);
+      renderQuickActions(summary.available_actions || [], summary.action_groups || []);
       characters.innerHTML = renderInvestigator(investigator);
       activityTitle.textContent = "Investigation";
       combat.innerHTML = renderCocInvestigationPanel(summary, review);
@@ -1588,12 +1588,15 @@ function clearCampaign() {
       runSuggestedButton.disabled = !state.pendingSuggestedAction || (state.mode === "dnd" ? !state.campaignId : !state.scenarioId);
     }
 
-    function renderQuickActions(actions) {
+    function renderQuickActions(actions, actionGroups = []) {
       const fallback = ["look", "inspect"];
       const preferred = actions.length ? actions : fallback;
-      const groups = groupQuickActions(preferred);
-      quickActions.innerHTML = Object.entries(groups).map(([label, groupedActions]) => {
-        return "<div class=\"quick-action-group\"><div class=\"quick-action-group-title\">" + escapeHtml(label)
+      const groups = actionGroups.length ? actionGroups : Object.entries(groupQuickActions(preferred)).map(([label, groupedActions]) => {
+        return { label, actions: groupedActions };
+      });
+      quickActions.innerHTML = groups.map((group) => {
+        const groupedActions = group.actions || [];
+        return "<div class=\"quick-action-group\"><div class=\"quick-action-group-title\">" + escapeHtml(group.label || "Actions")
           + "</div><div class=\"quick-action-buttons\">" + groupedActions.map((action) => {
             return "<button type=\"button\" class=\"secondary\" data-action=\"" + escapeHtml(action) + "\">"
               + escapeHtml(actionLabel(action)) + "</button>";
