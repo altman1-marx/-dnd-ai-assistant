@@ -14,6 +14,8 @@ def build_coc_briefing(scenario: COCScenario) -> dict:
     remaining_goals = _remaining_completion_goals(scenario)
     risks = _risks(scenario, blocked_exits, remaining_goals)
     next_actions = _next_actions(scenario, partial, hidden, blocked_exits, remaining_goals)
+    open_threads = _open_threads(scenario, partial, hidden, blocked_exits, remaining_goals)
+    spotlight_actions = _spotlight_actions(scenario, partial, hidden, blocked_exits, remaining_goals)
     briefing = {
         "scenario_id": scenario.id,
         "title": scenario.title,
@@ -48,6 +50,8 @@ def build_coc_briefing(scenario: COCScenario) -> dict:
         },
         "risks": risks,
         "next_actions": next_actions,
+        "open_threads": open_threads,
+        "spotlight_actions": spotlight_actions,
     }
     briefing["text"] = render_coc_briefing(briefing)
     return briefing
@@ -71,6 +75,12 @@ def render_coc_briefing(briefing: dict) -> str:
     if briefing["next_actions"]:
         lines.append("Next Keeper moves:")
         lines.extend(f"- {action}" for action in briefing["next_actions"])
+    if briefing.get("open_threads"):
+        lines.append("Open threads:")
+        lines.extend(f"- {thread}" for thread in briefing["open_threads"])
+    if briefing.get("spotlight_actions"):
+        lines.append("Spotlight actions:")
+        lines.extend(f"- {action}" for action in briefing["spotlight_actions"])
     if briefing["keeper_notes"].get("partial_leads"):
         lines.append("Partial leads:")
         lines.extend(f"- {lead['title']}: {lead['text']}" for lead in briefing["keeper_notes"]["partial_leads"])
@@ -144,6 +154,64 @@ def _risks(scenario: COCScenario, blocked_exits: list[dict], remaining_goals: di
     if scenario.completed:
         risks.append("Scenario is completed; use the briefing for epilogue or recap only.")
     return risks
+
+
+def _open_threads(
+    scenario: COCScenario,
+    partial: list,
+    hidden: list,
+    blocked_exits: list[dict],
+    remaining_goals: dict[str, list[str]],
+) -> list[str]:
+    threads: list[str] = []
+    for clue in partial:
+        threads.append(f"Partial lead unresolved: {clue.title}.")
+    for exit_data in blocked_exits:
+        threads.append(f"Blocked route: {exit_data['name']}.")
+    for key, values in remaining_goals.items():
+        threads.append(f"Ending gate {key}: {', '.join(values)}.")
+    current_location_id = scenario.current_location().id
+    local_hidden = [clue.title for clue in hidden if clue.location_id in {None, current_location_id}]
+    if local_hidden:
+        threads.append("Local clue opportunities: " + ", ".join(local_hidden) + ".")
+    elif hidden:
+        threads.append("Remote clue opportunities: " + ", ".join(clue.title for clue in hidden[:3]) + ".")
+    return threads
+
+
+def _spotlight_actions(
+    scenario: COCScenario,
+    partial: list,
+    hidden: list,
+    blocked_exits: list[dict],
+    remaining_goals: dict[str, list[str]],
+) -> list[str]:
+    actions: list[str] = []
+    if partial:
+        lead = partial[0]
+        actions.extend([f"push {lead.title.lower()}", f"spend luck {lead.title.lower()}"])
+    clue = _best_hidden_clue(scenario, hidden) if hidden else None
+    if clue is not None:
+        verb = _natural_clue_verb(clue)
+        actions.append(f"{verb} {clue.title.lower()}")
+        if clue.skill:
+            actions.append(f"check {clue.skill}")
+    if blocked_exits:
+        actions.append("hint")
+    if remaining_goals and not actions:
+        actions.append("progress")
+    if scenario.completed:
+        actions.append("recap")
+    return list(dict.fromkeys(actions[:5]))
+
+
+def _natural_clue_verb(clue) -> str:
+    text = f"{clue.id} {clue.title}".lower()
+    if any(word in text for word in ("journal", "diary", "letter", "book", "note")):
+        return "read"
+    if any(word in text for word in ("voice", "voices", "whisper", "well", "sound")):
+        return "listen"
+    return "inspect"
 
 
 def _next_actions(scenario: COCScenario, partial: list, hidden: list, blocked_exits: list[dict], remaining_goals: dict[str, list[str]]) -> list[str]:

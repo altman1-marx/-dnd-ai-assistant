@@ -1321,7 +1321,15 @@ function clearCampaign() {
         keeperBriefing.textContent = state.mode === "coc" ? "Briefing unavailable." : "COC mode only.";
         return;
       }
-      keeperBriefing.textContent = briefing.text || "Keeper briefing is empty.";
+      const actions = briefing.spotlight_actions || [];
+      const actionButtons = actions.length ? "\n\n" + actions.map((action) => {
+        return "<button type=\"button\" class=\"secondary\" data-keeper-action=\""
+          + escapeHtml(action) + "\">" + escapeHtml(actionLabel(action)) + "</button>";
+      }).join(" ") : "";
+      keeperBriefing.innerHTML = escapeHtml(briefing.text || "Keeper briefing is empty.") + actionButtons;
+      document.querySelectorAll("[data-keeper-action]").forEach((button) => {
+        button.addEventListener("click", () => runAction(button.dataset.keeperAction));
+      });
     }
 
     function renderRecentEvents(events) {

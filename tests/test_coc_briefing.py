@@ -19,6 +19,12 @@ class COCBriefingTests(unittest.TestCase):
         self.assertTrue(briefing["keeper_notes"]["hidden_clues"])
         self.assertIn("Hidden clue queue", briefing["text"])
         self.assertIn("Next Keeper moves", briefing["text"])
+        self.assertTrue(briefing["open_threads"])
+        self.assertIn("Blocked route: cellar.", briefing["open_threads"])
+        self.assertTrue(briefing["spotlight_actions"])
+        self.assertIn("read waterlogged journal", briefing["spotlight_actions"])
+        self.assertIn("Open threads", briefing["text"])
+        self.assertIn("Spotlight actions", briefing["text"])
 
     def test_briefing_reports_partial_leads_risks_and_recent_log(self) -> None:
         scenario = create_sample_coc_scenario()
@@ -32,6 +38,9 @@ class COCBriefingTests(unittest.TestCase):
         self.assertEqual(briefing["keeper_notes"]["partial_leads"][0]["title"], "Ashen Spiral")
         self.assertTrue(any("blocked" in risk for risk in briefing["risks"]))
         self.assertTrue(any("push roll" in action.lower() for action in briefing["next_actions"]))
+        self.assertIn("Partial lead unresolved: Ashen Spiral.", briefing["open_threads"])
+        self.assertIn("push ashen spiral", briefing["spotlight_actions"])
+        self.assertIn("spend luck ashen spiral", briefing["spotlight_actions"])
         self.assertIn("Partial leads", briefing["text"])
         self.assertIn("Recent table log", briefing["text"])
         self.assertIn("Player: inspect hearth", briefing["text"])
