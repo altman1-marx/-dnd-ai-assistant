@@ -57,6 +57,7 @@ class COCScenario:
     npcs: list[COCNPC] = field(default_factory=list)
     locations: dict[str, COCLocation] = field(default_factory=dict)
     current_location_id: str | None = None
+    visited_location_ids: set[str] = field(default_factory=set)
     inventory: list[str] = field(default_factory=list)
     completion_requirements: dict[str, list[str]] = field(default_factory=dict)
     talked_npc_ids: set[str] = field(default_factory=set)
@@ -64,6 +65,10 @@ class COCScenario:
     completed: bool = False
     session_log: list[str] = field(default_factory=list)
     id: str = field(default_factory=lambda: f"coc_{uuid4().hex[:12]}")
+
+    def __post_init__(self) -> None:
+        if self.current_location_id:
+            self.visited_location_ids.add(self.current_location_id)
 
     def current_location(self) -> COCLocation:
         if self.current_location_id and self.current_location_id in self.locations:
@@ -873,7 +878,7 @@ def _describe_completion_progress(runtime: COCRuntime) -> None:
         return
     discovered_ids = {clue.id for clue in scenario.clues if clue.discovered}
     inventory = set(scenario.inventory)
-    current_locations = {scenario.current_location_id} if scenario.current_location_id else set()
+    current_locations = _visited_location_ids(scenario)
     pieces = [
         _progress_piece("clues", requirements.get("required_clue_ids", []), discovered_ids),
         _progress_piece("evidence", requirements.get("required_evidence", []), inventory),
@@ -958,8 +963,9 @@ def _hint_for_required_evidence(scenario: COCScenario, required_evidence: list[s
 
 
 def _hint_for_required_locations(scenario: COCScenario, required_location_ids: list[str]) -> str:
+    visited = _visited_location_ids(scenario)
     for location_id in required_location_ids:
-        if scenario.current_location_id == location_id:
+        if location_id in visited:
             continue
         location = scenario.current_location()
         exit_name = next((name for name, destination in location.exits.items() if destination == location_id), "")
@@ -1083,6 +1089,7 @@ def _move_coc_location(runtime: COCRuntime, target: str) -> None:
         runtime.narrate(f"Keeper: {requirement.get('message') or 'Something still blocks the way.'}")
         return
     scenario.current_location_id = destination_id
+    scenario.visited_location_ids.add(destination_id)
     destination = scenario.current_location()
     scenario.location = destination.name
     scenario.description = destination.description
@@ -1130,7 +1137,7 @@ def _completion_requirements_met(scenario: COCScenario) -> bool:
     if required_evidence and not required_evidence.issubset(set(scenario.inventory)):
         return False
     required_location_ids = set(requirements.get("required_location_ids", []))
-    if required_location_ids and scenario.current_location_id not in required_location_ids:
+    if required_location_ids and not required_location_ids.issubset(_visited_location_ids(scenario)):
         return False
     required_npc_ids = set(requirements.get("required_npc_ids", []))
     if required_npc_ids and not required_npc_ids.issubset(scenario.talked_npc_ids):
@@ -1150,6 +1157,13 @@ def _visible_npcs(scenario: COCScenario) -> list[COCNPC]:
     if not current_location_id:
         return scenario.npcs
     return [npc for npc in scenario.npcs if npc.location_id in {None, current_location_id}]
+
+
+def _visited_location_ids(scenario: COCScenario) -> set[str]:
+    visited = set(scenario.visited_location_ids)
+    if scenario.current_location_id:
+        visited.add(scenario.current_location_id)
+    return visited
 
 
 def _match_clue(clues: list[COCClue], target: str) -> COCClue | None:

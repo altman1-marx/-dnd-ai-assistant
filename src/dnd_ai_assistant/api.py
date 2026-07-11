@@ -334,6 +334,7 @@ def coc_summary(state: APIState, scenario_id: str) -> dict:
         "system_id": "coc7e",
         "location": location.name,
         "location_id": scenario.current_location_id,
+        "visited_location_ids": sorted(_coc_visited_location_ids(scenario)),
         "description": location.description,
         "exits": [
             {
@@ -925,7 +926,7 @@ def _coc_completion_progress(scenario: COCScenario) -> dict:
         "required_evidence": _requirement_progress(requirements.get("required_evidence", []), inventory),
         "required_location_ids": _requirement_progress(
             requirements.get("required_location_ids", []),
-            {scenario.current_location_id} if scenario.current_location_id else set(),
+            _coc_visited_location_ids(scenario),
         ),
         "required_npc_ids": _requirement_progress(requirements.get("required_npc_ids", []), talked_npc_ids),
     }
@@ -938,6 +939,13 @@ def _requirement_progress(required: list[str], current: set[str]) -> dict:
         "remaining": remaining,
         "complete": not remaining,
     }
+
+
+def _coc_visited_location_ids(scenario: COCScenario) -> set[str]:
+    visited = set(scenario.visited_location_ids)
+    if scenario.current_location_id:
+        visited.add(scenario.current_location_id)
+    return visited
 
 
 def _coc_player_actions(scenario: COCScenario) -> list[str]:

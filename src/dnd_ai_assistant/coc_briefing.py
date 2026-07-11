@@ -343,7 +343,7 @@ def _remaining_completion_goals(scenario: COCScenario) -> dict[str, list[str]]:
     remaining: dict[str, list[str]] = {}
     discovered_ids = {clue.id for clue in scenario.clues if clue.discovered}
     evidence = set(scenario.inventory)
-    visited = {scenario.current_location_id} if scenario.current_location_id else set()
+    visited = _visited_location_ids(scenario)
     talked = set(scenario.talked_npc_ids)
     current = {
         "required_clue_ids": discovered_ids,
@@ -468,3 +468,10 @@ def _requirement_met(scenario: COCScenario, requirement: dict) -> bool:
         if item not in evidence:
             return False
     return True
+
+
+def _visited_location_ids(scenario: COCScenario) -> set[str]:
+    visited = set(scenario.visited_location_ids)
+    if scenario.current_location_id:
+        visited.add(scenario.current_location_id)
+    return visited

@@ -583,8 +583,26 @@ class COCRuntimeTests(unittest.TestCase):
         output = runtime.flush()
 
         self.assertEqual(scenario.current_location_id, "cellar")
+        self.assertIn("cellar", scenario.visited_location_ids)
         self.assertIn("You move to Briar House Cellar", output)
         self.assertIn("Clue found - Black Wick", output)
+
+    def test_completion_location_gate_uses_visited_locations(self) -> None:
+        scenario = create_sample_coc_scenario()
+        scenario.completion_requirements = {"required_location_ids": ["cellar"]}
+        runtime = COCRuntime(scenario)
+
+        handle_coc_action(runtime, "inspect portrait")
+        runtime.flush()
+        handle_coc_action(runtime, "go cellar")
+        handle_coc_action(runtime, "go study")
+        handle_coc_action(runtime, "conclude")
+        output = runtime.flush()
+
+        self.assertEqual(scenario.current_location_id, "study")
+        self.assertIn("cellar", scenario.visited_location_ids)
+        self.assertTrue(scenario.completed)
+        self.assertIn("cellar", output.lower())
 
     def test_go_can_be_blocked_by_exit_requirements(self) -> None:
         scenario = create_sample_coc_scenario()

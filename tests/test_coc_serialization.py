@@ -22,6 +22,7 @@ class COCSerializationTests(unittest.TestCase):
         scenario.clues[1].last_required_total = 45
         scenario.clues[1].last_check_level = "failure"
         scenario.inventory.append("Waterlogged journal")
+        scenario.visited_location_ids.add("garden")
         scenario.investigator.lose_sanity(3)
         scenario.completed = True
 
@@ -33,6 +34,7 @@ class COCSerializationTests(unittest.TestCase):
         self.assertTrue(restored.clues[0].discovered)
         self.assertTrue(restored.completed)
         self.assertEqual(restored.current_location_id, "study")
+        self.assertEqual(restored.visited_location_ids, {"garden", "study"})
         self.assertEqual(restored.inventory, ["Waterlogged journal"])
         self.assertIn("cellar", restored.locations["study"].exits)
         self.assertIn("cellar", restored.locations["study"].exit_requirements)
@@ -65,6 +67,14 @@ class COCSerializationTests(unittest.TestCase):
 
         self.assertTrue(restored.id.startswith("coc_"))
         self.assertNotEqual(restored.id, "coc_legacy")
+
+    def test_coc_scenario_without_visited_locations_uses_current_location(self) -> None:
+        data = coc_scenario_to_dict(create_sample_coc_scenario())
+        del data["visited_location_ids"]
+
+        restored = coc_scenario_from_dict(data)
+
+        self.assertEqual(restored.visited_location_ids, {"study"})
 
     def test_validate_coc_scenario_data_accepts_sample(self) -> None:
         validate_coc_scenario_data(coc_scenario_to_dict(create_sample_coc_scenario()))
@@ -109,6 +119,13 @@ class COCSerializationTests(unittest.TestCase):
         data["clues"][0]["location_id"] = "attic"
 
         with self.assertRaisesRegex(COCScenarioValidationError, "unknown location"):
+            validate_coc_scenario_data(data)
+
+    def test_validate_coc_scenario_data_rejects_bad_visited_location(self) -> None:
+        data = coc_scenario_to_dict(create_sample_coc_scenario())
+        data["visited_location_ids"] = ["attic"]
+
+        with self.assertRaisesRegex(COCScenarioValidationError, "visited_location_ids references unknown location"):
             validate_coc_scenario_data(data)
 
     def test_validate_coc_scenario_data_rejects_bad_exit_reference(self) -> None:

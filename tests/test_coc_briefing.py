@@ -66,6 +66,16 @@ class COCBriefingTests(unittest.TestCase):
         self.assertLessEqual(len(briefing["opening"]["first_turn_actions"]), 3)
         self.assertIn("escalating dread", briefing["opening"]["safety_note"])
 
+    def test_briefing_completion_goals_use_visited_locations(self) -> None:
+        scenario = create_sample_coc_scenario()
+        scenario.completion_requirements = {"required_location_ids": ["cellar"]}
+        scenario.visited_location_ids.add("cellar")
+        scenario.current_location_id = "study"
+
+        briefing = build_coc_briefing(scenario)
+
+        self.assertNotIn("required_location_ids", briefing["progress"]["remaining_goals"])
+        self.assertFalse(any("required_location_ids" in thread for thread in briefing["open_threads"]))
 
     def test_table_packet_combines_keeper_opening_and_player_handout(self) -> None:
         scenario = create_sample_coc_scenario()

@@ -118,6 +118,7 @@ class APITests(unittest.TestCase):
         self.assertFalse(summary["completed"])
         self.assertEqual(summary["investigator"]["name"], "Eleanor Vale")
         self.assertEqual(summary["location_id"], "study")
+        self.assertEqual(summary["visited_location_ids"], ["study"])
         self.assertEqual(summary["exits"][0]["name"], "cellar")
         self.assertEqual(summary["npcs"][0]["name"], "Mrs. Ember")
         self.assertEqual(summary["clue_count"], 6)
@@ -152,6 +153,20 @@ class APITests(unittest.TestCase):
         self.assertIn("san check 0/1d4", action_groups["Health"])
         self.assertIn("note <text>", action_groups["Notes"])
         self.assertIn("keeper note <text>", action_groups["Keeper"])
+
+    def test_coc_completion_progress_uses_visited_locations(self) -> None:
+        state = APIState()
+        scenario_id = create_coc_demo(state)["scenario_id"]
+        scenario = state.coc_scenarios[scenario_id]
+        scenario.completion_requirements = {"required_location_ids": ["cellar"]}
+        scenario.visited_location_ids.add("cellar")
+        scenario.current_location_id = "study"
+
+        summary = coc_summary(state, scenario_id)
+
+        self.assertEqual(summary["visited_location_ids"], ["cellar", "study"])
+        self.assertTrue(summary["completion_progress"]["required_location_ids"]["complete"])
+        self.assertEqual(summary["completion_progress"]["required_location_ids"]["remaining"], [])
 
     def test_coc_summary_suggests_listen_actions_for_auditory_clues(self) -> None:
         state = APIState()

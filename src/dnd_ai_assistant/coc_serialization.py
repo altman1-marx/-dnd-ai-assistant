@@ -97,6 +97,7 @@ def coc_scenario_to_dict(scenario: COCScenario) -> dict:
             for npc in scenario.npcs
         ],
         "current_location_id": scenario.current_location_id,
+        "visited_location_ids": sorted(scenario.visited_location_ids),
         "inventory": list(scenario.inventory),
         "completion_requirements": {key: list(value) for key, value in scenario.completion_requirements.items()},
         "talked_npc_ids": sorted(scenario.talked_npc_ids),
@@ -156,6 +157,7 @@ def coc_scenario_from_dict(data: dict) -> COCScenario:
             for location in data.get("locations", [])
         },
         current_location_id=data.get("current_location_id"),
+        visited_location_ids=set(data.get("visited_location_ids", [])),
         inventory=list(data.get("inventory", [])),
         completion_requirements={key: list(value) for key, value in data.get("completion_requirements", {}).items()},
         talked_npc_ids=set(data.get("talked_npc_ids", [])),
@@ -212,6 +214,14 @@ def validate_coc_scenario_data(data: dict) -> None:
             raise COCScenarioValidationError("current_location_id must be a non-empty string")
         if current_location_id not in location_ids:
             raise COCScenarioValidationError(f"current_location_id references unknown location: {current_location_id}")
+    visited_location_ids = data.get("visited_location_ids", [])
+    if not isinstance(visited_location_ids, list):
+        raise COCScenarioValidationError("visited_location_ids must be a list")
+    for location_id in visited_location_ids:
+        if not isinstance(location_id, str) or not location_id.strip():
+            raise COCScenarioValidationError("visited_location_ids must contain non-empty strings")
+        if location_id not in location_ids:
+            raise COCScenarioValidationError(f"visited_location_ids references unknown location: {location_id}")
     clues = data.get("clues", [])
     if not isinstance(clues, list):
         raise COCScenarioValidationError("clues must be a list")
