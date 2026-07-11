@@ -127,8 +127,12 @@ def summarize_coc_state(path: str | Path, output_format: str = "text") -> str:
     return render_coc_briefing(briefing)
 
 
-def coc_table_packet_text(path: str | Path, output_format: str = "text") -> str:
-    scenario = load_coc_scenario(path)
+def coc_table_packet_text(
+    path: str | Path | None = None,
+    output_format: str = "text",
+    demo_scenario: str = "briar_house",
+) -> str:
+    scenario = load_coc_scenario(path) if path is not None else create_coc_demo_scenario(demo_scenario)
     packet = build_coc_table_packet(scenario)
     if output_format == "json":
         return json.dumps(packet, ensure_ascii=False, indent=2)
@@ -447,7 +451,8 @@ def main() -> int:
     coc_briefing.add_argument("--format", choices=("text", "json"), default="text", help="Briefing output format.")
 
     coc_packet = subparsers.add_parser("coc-table-packet", help="Print a table-start packet for a saved COC scenario.")
-    coc_packet.add_argument("path", help="Path to a saved COC scenario JSON file.")
+    coc_packet.add_argument("path", nargs="?", default=None, help="Optional path to a saved COC scenario JSON file.")
+    coc_packet.add_argument("--demo-scenario", choices=coc_demo_scenario_names(), default="briar_house", help="Built-in COC demo to use when path is omitted.")
     coc_packet.add_argument("--format", choices=("text", "json"), default="text", help="Packet output format.")
 
     coc_prompt = subparsers.add_parser("coc-scenario-prompt", help="Print a prompt for a COC scenario-writing AI.")
@@ -658,7 +663,7 @@ def main() -> int:
         print(summarize_coc_state(args.path, args.format))
         return 0
     if args.command == "coc-table-packet":
-        print(coc_table_packet_text(args.path, args.format))
+        print(coc_table_packet_text(args.path, args.format, args.demo_scenario))
         return 0
     if args.command == "coc-scenario-prompt":
         print(build_coc_scenario_prompt(coc_request_from_args(args)))

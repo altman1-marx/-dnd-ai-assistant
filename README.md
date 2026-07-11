@@ -91,6 +91,7 @@ python -m dnd_ai_assistant.demo coc-briefing scenarios\briar_house.json
 python -m dnd_ai_assistant.demo coc-briefing scenarios\briar_house.json --format json
 python -m dnd_ai_assistant.demo coc-table-packet scenarios\briar_house.json
 python -m dnd_ai_assistant.demo coc-table-packet scenarios\briar_house.json --format json
+python -m dnd_ai_assistant.demo coc-table-packet --demo-scenario glass_lake
 ```
 
 使用 OpenAI-compatible provider 生成 COC 剧本：

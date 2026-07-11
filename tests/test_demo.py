@@ -232,6 +232,17 @@ class DemoTests(unittest.TestCase):
         self.assertEqual(data["title"], "The Glass Lake")
         self.assertIn("player_handout", data)
 
+
+    def test_coc_table_packet_cli_can_use_builtin_demo_without_path(self) -> None:
+        argv = ["dnd-ai-assistant", "coc-table-packet", "--demo-scenario", "glass_lake"]
+
+        with patch("sys.argv", argv), patch("builtins.print") as mocked_print:
+            exit_code = main()
+        printed = mocked_print.call_args.args[0]
+
+        self.assertEqual(exit_code, 0)
+        self.assertIn("The Glass Lake Signal", printed)
+        self.assertIn("Mara Voss", printed)
     def test_coc_scenario_prompt_cli_prints_prompt(self) -> None:
         argv = [
             "dnd-ai-assistant",
