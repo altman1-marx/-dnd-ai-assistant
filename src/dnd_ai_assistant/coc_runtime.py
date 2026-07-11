@@ -392,6 +392,25 @@ def coc_demo_scenario_names() -> list[str]:
     return sorted(COC_DEMO_SCENARIOS)
 
 
+
+
+def coc_demo_scenario_options() -> list[dict]:
+    options: list[dict] = []
+    for name in coc_demo_scenario_names():
+        scenario = create_coc_demo_scenario(name)
+        options.append({
+            "id": name,
+            "title": scenario.title,
+            "location": scenario.current_location().name,
+            "investigator": scenario.investigator.name,
+            "occupation": scenario.investigator.occupation,
+            "clue_count": len(scenario.clues),
+            "npc_count": len(scenario.npcs),
+            "description": scenario.description,
+        })
+    return options
+
+
 def create_coc_demo_scenario(name: str = "briar_house") -> COCScenario:
     key = name.strip().lower().replace("-", "_").replace(" ", "_")
     factory = COC_DEMO_SCENARIOS.get(key)

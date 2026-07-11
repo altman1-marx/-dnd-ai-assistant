@@ -442,6 +442,7 @@
       scenarioId: "",
       campaigns: [],
       cocScenarios: [],
+      cocDemoOptions: [],
       summary: null,
       cocSummary: null,
       cocReview: null,
@@ -457,6 +458,7 @@
     const adventureFile = document.getElementById("adventureFile");
     const cocFile = document.getElementById("cocFile");
     const cocPremise = document.getElementById("cocPremise");
+    const cocDemoScenario = document.getElementById("cocDemoScenario");
     const statusBox = document.getElementById("status");
     const transcript = document.getElementById("transcript");
     const campaignList = document.getElementById("campaignList");
@@ -509,6 +511,7 @@
 
     setControls(false);
     checkHealth();
+    loadCocDemoOptions();
     refreshCampaigns();
 
     async function checkHealth() {
@@ -576,9 +579,32 @@
       }
     }
 
+    async function loadCocDemoOptions() {
+      try {
+        const data = await api("GET", "/coc/demo-options");
+        state.cocDemoOptions = data.options || [];
+        renderCocDemoOptions();
+      } catch (error) {
+        state.cocDemoOptions = [];
+      }
+    }
+
+    function renderCocDemoOptions() {
+      if (!state.cocDemoOptions.length) return;
+      const current = cocDemoScenario.value;
+      cocDemoScenario.innerHTML = state.cocDemoOptions.map((option) => {
+        const detail = option.location + " | " + option.investigator + ", " + option.occupation;
+        return "<option value=\"" + escapeHtml(option.id) + "\" title=\"" + escapeHtml(detail) + "\">"
+          + escapeHtml(option.title) + "</option>";
+      }).join("");
+      if (state.cocDemoOptions.some((option) => option.id === current)) {
+        cocDemoScenario.value = current;
+      }
+    }
+
     async function loadCocDemo() {
       try {
-        const data = await api("POST", "/coc/demo", { scenario: document.getElementById("cocDemoScenario").value });
+        const data = await api("POST", "/coc/demo", { scenario: cocDemoScenario.value });
         if (state.scenarioId !== data.scenario_id || state.mode !== "coc") clearTranscriptView();
         state.mode = "coc";
         state.scenarioId = data.scenario_id;

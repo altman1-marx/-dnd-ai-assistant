@@ -16,7 +16,7 @@ from .ai_dm import generate_dm_suggestion
 from .ai_keeper import generate_keeper_suggestion
 from .ai_provider import AIProvider
 from .coc_briefing import build_coc_briefing
-from .coc_runtime import COCRuntime, COCScenario, coc_demo_scenario_names, coc_keeper_hint, create_coc_demo_scenario, handle_coc_action
+from .coc_runtime import COCRuntime, COCScenario, coc_demo_scenario_names, coc_demo_scenario_options, coc_keeper_hint, create_coc_demo_scenario, handle_coc_action
 from .coc_generator import COCScenarioRequest, generate_coc_scenario_text
 from .coc_review import coc_review_to_dict
 from .coc_serialization import coc_scenario_from_dict, coc_scenario_to_dict, load_coc_scenario, save_coc_scenario
@@ -314,6 +314,7 @@ def create_coc_demo(state: APIState, scenario_name: str = "briar_house") -> dict
         "scenario_id": scenario.id,
         "demo_scenario": scenario_name,
         "available_demo_scenarios": coc_demo_scenario_names(),
+        "available_demo_options": coc_demo_scenario_options(),
         "scenario": coc_scenario_to_dict(scenario),
     }
 
@@ -570,7 +571,7 @@ def route_request(state: APIState, method: str, path: str, body: dict) -> dict:
     if method == "POST" and parts == ["campaigns", "demo-with-character"]:
         return create_playable_demo_campaign(state)
     if method == "GET" and parts == ["coc", "demo-options"]:
-        return {"scenarios": coc_demo_scenario_names()}
+        return {"scenarios": coc_demo_scenario_names(), "options": coc_demo_scenario_options()}
     if method == "POST" and parts == ["coc", "demo"]:
         return create_coc_demo(state, str(body.get("scenario", "briar_house")))
     if method == "GET" and len(parts) == 3 and parts[0] == "coc" and parts[2] == "summary":

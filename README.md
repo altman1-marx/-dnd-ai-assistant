@@ -491,7 +491,7 @@ POST /coc/{scenario_id}/keeper-suggestion
 }
 ```
 
-`GET /coc/{scenario_id}/summary` 会返回调查员 HP/MP/SAN/Luck、当前地点、出口、NPC、证据 inventory、已发现线索、可用动作和 `completed` 完成状态。出口会包含 `available` 和 `requirements`，因此前端可以显示哪些路径仍被线索或证据锁住。`POST /coc/{scenario_id}/actions` 使用和 CLI 相同的动作文本，例如 `inspect portrait`、`go cellar`、`talk ember` 或 `inventory`；如果出口被 `exit_requirements` 阻挡，Keeper 会给出对应 `message`，不会移动地点。`completion_requirements` 用来声明触发结局所需的关键线索、证据、地点或 NPC 对话；API summary 会返回 `completion_progress` 和确定性的 `keeper_hint`，便于前端显示调查进度和防卡关提示。`POST /coc/{scenario_id}/keeper-suggestion` 会调用已配置的 AI provider 生成 Keeper 建议，但不会修改 scenario state。
+`GET /coc/demo-options` 会返回内置 COC demo 的 `scenarios` 名称列表和 `options` 元数据，包括标题、起始地点、调查员、职业、线索数、NPC 数与简介；Web 前端会用它刷新 demo 场景下拉框。`GET /coc/{scenario_id}/summary` 会返回调查员 HP/MP/SAN/Luck、当前地点、出口、NPC、证据 inventory、已发现线索、可用动作和 `completed` 完成状态。出口会包含 `available` 和 `requirements`，因此前端可以显示哪些路径仍被线索或证据锁住。`POST /coc/{scenario_id}/actions` 使用和 CLI 相同的动作文本，例如 `inspect portrait`、`go cellar`、`talk ember` 或 `inventory`；如果出口被 `exit_requirements` 阻挡，Keeper 会给出对应 `message`，不会移动地点。`completion_requirements` 用来声明触发结局所需的关键线索、证据、地点或 NPC 对话；API summary 会返回 `completion_progress` 和确定性的 `keeper_hint`，便于前端显示调查进度和防卡关提示。`POST /coc/{scenario_id}/keeper-suggestion` 会调用已配置的 AI provider 生成 Keeper 建议，但不会修改 scenario state。
 
 `GET /coc/{scenario_id}/player-card` 会返回玩家可见的调查员手卡，包括 HP/MP/SAN/Luck、conditions、skills、inventory、已发现线索、部分线索和过滤后的可用动作；它不会返回隐藏线索队列或 Keeper-only briefing。
 

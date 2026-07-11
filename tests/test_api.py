@@ -876,6 +876,7 @@ class APITests(unittest.TestCase):
         self.assertEqual(demo["demo_scenario"], "glass_lake")
         self.assertEqual(demo["scenario"]["title"], "The Glass Lake Signal")
         self.assertIn("glass_lake", demo["available_demo_scenarios"])
+        self.assertEqual(demo["available_demo_options"][1]["location"], "Glass Lake Boathouse")
         with self.assertRaisesRegex(APIError, "Unknown COC demo scenario"):
             route_request(state, "POST", "/coc/demo", {"scenario": "missing"})
 

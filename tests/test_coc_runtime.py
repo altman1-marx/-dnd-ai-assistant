@@ -1,7 +1,7 @@
 import random
 import unittest
 
-from dnd_ai_assistant.coc_runtime import COCRuntime, create_coc_demo_scenario, create_glass_lake_coc_scenario, create_sample_coc_scenario, describe_coc_scene, handle_coc_action
+from dnd_ai_assistant.coc_runtime import COCRuntime, coc_demo_scenario_options, create_coc_demo_scenario, create_glass_lake_coc_scenario, create_sample_coc_scenario, describe_coc_scene, handle_coc_action
 
 
 class COCRuntimeTests(unittest.TestCase):
@@ -33,6 +33,17 @@ class COCRuntimeTests(unittest.TestCase):
         self.assertIn("Cracked Green Lens", output)
         self.assertIn("false moon dims", output)
         self.assertIn("Cracked green lens shard", scenario.inventory)
+
+
+    def test_coc_demo_scenario_options_describe_builtin_library(self) -> None:
+        options = coc_demo_scenario_options()
+        by_id = {option["id"]: option for option in options}
+
+        self.assertEqual(sorted(by_id), ["briar_house", "glass_lake"])
+        self.assertEqual(by_id["glass_lake"]["title"], "The Glass Lake Signal")
+        self.assertEqual(by_id["glass_lake"]["investigator"], "Mara Voss")
+        self.assertGreaterEqual(by_id["briar_house"]["clue_count"], 1)
+        self.assertIn("description", by_id["briar_house"])
 
     def test_named_coc_demo_factory_rejects_unknown_scenario(self) -> None:
         scenario = create_coc_demo_scenario("glass-lake")
