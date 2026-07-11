@@ -452,7 +452,7 @@ def handle_coc_action(runtime: COCRuntime, action: str) -> bool:
         return False
     if normalized in {"help", "?"}:
         runtime.narrate(
-            "Keeper: Actions: look, status, skills, recap, progress, hint, note <text>, keeper note <text>, go <exit>, inspect/search/read/listen/examine <target>, talk <npc>, check <skill>, san check <success>/<failure>, push <target>, spend luck <target|amount>, recover luck <dice>, first aid, take damage <dice>, heal <dice>, conclude, sanity, clues, inventory, quit."
+            "Keeper: Actions: look, status, skills, recap, progress, hint, note <text>, keeper note <text>, go <exit>, inspect/search/read/listen/examine <target>, talk/ask/question/speak to <npc>, check <skill>, san check <success>/<failure>, push <target>, spend luck <target|amount>, recover luck <dice>, first aid, take damage <dice>, heal <dice>, conclude, sanity, clues, inventory, quit."
         )
         return True
     if normalized in {"recap", "summary"}:
@@ -528,6 +528,10 @@ def handle_coc_action(runtime: COCRuntime, action: str) -> bool:
         return True
     if normalized.startswith("talk "):
         _talk_to_coc_npc(runtime, normalized[len("talk ") :].strip())
+        return True
+    conversation_target = _conversation_alias_target(normalized)
+    if conversation_target is not None:
+        _talk_to_coc_npc(runtime, conversation_target)
         return True
     if normalized.startswith("san check "):
         _manual_sanity_check(runtime, normalized[len("san check ") :].strip())
@@ -1046,7 +1050,7 @@ def _describe_inventory(runtime: COCRuntime) -> None:
 
 
 def _talk_to_coc_npc(runtime: COCRuntime, target: str) -> None:
-    npc = _match_npc(_visible_npcs(runtime.scenario), target)
+    npc = _match_npc(_visible_npcs(runtime.scenario), _strip_conversation_topic(target))
     if npc is None:
         runtime.narrate("Keeper: No one by that name is here.")
         return
@@ -1060,6 +1064,21 @@ def _talk_to_coc_npc(runtime: COCRuntime, target: str) -> None:
         runtime.narrate(f"{npc.name}: {line}")
     runtime.scenario.talked_npc_ids.add(npc.id)
     _maybe_complete_scenario(runtime)
+
+
+def _conversation_alias_target(normalized: str) -> str | None:
+    for prefix in ("ask ", "question ", "speak to ", "speak with "):
+        if normalized.startswith(prefix):
+            target = normalized[len(prefix) :].strip()
+            return target or None
+    return None
+
+
+def _strip_conversation_topic(target: str) -> str:
+    for marker in (" about ", " re: ", " regarding "):
+        if marker in target:
+            return target.split(marker, 1)[0].strip()
+    return target.strip()
 
 
 def _add_inventory_item(runtime: COCRuntime, item: str) -> None:

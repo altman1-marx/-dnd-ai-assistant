@@ -129,6 +129,8 @@ inspect portrait
 inspect journal
 inspect hearth
 talk ember
+ask mrs ember about cellar
+speak to mrs ember
 check library use
 push hearth
 spend luck hearth
@@ -498,7 +500,7 @@ POST /coc/{scenario_id}/keeper-suggestion
 }
 ```
 
-`GET /coc/demo-options` 会返回内置 COC demo 的 `scenarios` 名称列表和 `options` 元数据，包括标题、起始地点、调查员、职业、线索数、NPC 数与简介；Web 前端会用它刷新 demo 场景下拉框。`GET /coc/{scenario_id}/summary` 会返回调查员 HP/MP/SAN/Luck、当前地点、`visited_location_ids`、出口、NPC、证据 inventory、已发现线索、可用动作和 `completed` 完成状态；其中 `available_actions` 保持旧版扁平列表兼容，`action_groups` 则按 Case、Movement、Investigation、NPCs、Skills、Health、Notes、Keeper 分组，供前端直接渲染更清晰的动作按钮。出口会包含 `available` 和 `requirements`，因此前端可以显示哪些路径仍被线索或证据锁住。`POST /coc/{scenario_id}/actions` 使用和 CLI 相同的动作文本，例如 `inspect portrait`、`go cellar`、`talk ember` 或 `inventory`；如果出口被 `exit_requirements` 阻挡，Keeper 会给出对应 `message`，不会移动地点。`completion_requirements` 用来声明触发结局所需的关键线索、证据、地点或 NPC 对话；其中 `required_location_ids` 按已访问地点判断，而不是只看当前地点。API summary 会返回 `completion_progress` 和确定性的 `keeper_hint`，便于前端显示调查进度和防卡关提示。`POST /coc/{scenario_id}/keeper-suggestion` 会调用已配置的 AI provider 生成 Keeper 建议，但不会修改 scenario state。
+`GET /coc/demo-options` 会返回内置 COC demo 的 `scenarios` 名称列表和 `options` 元数据，包括标题、起始地点、调查员、职业、线索数、NPC 数与简介；Web 前端会用它刷新 demo 场景下拉框。`GET /coc/{scenario_id}/summary` 会返回调查员 HP/MP/SAN/Luck、当前地点、`visited_location_ids`、出口、NPC、证据 inventory、已发现线索、可用动作和 `completed` 完成状态；其中 `available_actions` 保持旧版扁平列表兼容，`action_groups` 则按 Case、Movement、Investigation、NPCs、Skills、Health、Notes、Keeper 分组，供前端直接渲染更清晰的动作按钮。出口会包含 `available` 和 `requirements`，因此前端可以显示哪些路径仍被线索或证据锁住。`POST /coc/{scenario_id}/actions` 使用和 CLI 相同的动作文本，例如 `inspect portrait`、`go cellar`、`talk ember`、`ask mrs ember about cellar` 或 `inventory`；如果出口被 `exit_requirements` 阻挡，Keeper 会给出对应 `message`，不会移动地点。`completion_requirements` 用来声明触发结局所需的关键线索、证据、地点或 NPC 对话；其中 `required_location_ids` 按已访问地点判断，而不是只看当前地点。API summary 会返回 `completion_progress` 和确定性的 `keeper_hint`，便于前端显示调查进度和防卡关提示。`POST /coc/{scenario_id}/keeper-suggestion` 会调用已配置的 AI provider 生成 Keeper 建议，但不会修改 scenario state。
 
 `GET /coc/{scenario_id}/player-card` 会返回玩家可见的调查员手卡，包括 HP/MP/SAN/Luck、conditions、skills、inventory、已发现线索、部分线索和过滤后的可用动作；它不会返回隐藏线索队列或 Keeper-only briefing。
 
@@ -573,7 +575,7 @@ python -m dnd_ai_assistant.demo serve-api `
 3. 点击 `Start Demo`，或选择一个 adventure JSON 文件并导入。
 4. 如果是手动导入，点击 `Add Sample Character`，然后用动作栏或输入框推进冒险。
 5. 可先点击 `DM Suggest` 生成叙述/规则建议，再点击 `Run Suggested` 执行同一条 runtime action。
-6. COC 模式可先选择 `Briar House` 或 `Glass Lake Signal`，再点击 `Start COC Demo`，或选择一个 COC scenario JSON 后点击 `Import COC Scenario`；配置 AI provider 后，也可以输入 premise 并点击 `Generate COC Scenario`。随后用 `look`、`recap`、`hint`、`progress`、`go cellar`、`talk ember`、`inspect portrait`、`push hearth`、`spend luck hearth`、`spend luck 5`、`recover luck 1d10`、`san check 0/1d4`、`take damage 1d4`、`heal 1d3`、`first aid`、`skills`、`conclude`、`inventory` 等动作推进调查。配置 AI provider 后，`DM Suggest` 在 COC 模式下会生成 AI Keeper 建议。
+6. COC 模式可先选择 `Briar House` 或 `Glass Lake Signal`，再点击 `Start COC Demo`，或选择一个 COC scenario JSON 后点击 `Import COC Scenario`；配置 AI provider 后，也可以输入 premise 并点击 `Generate COC Scenario`。随后用 `look`、`recap`、`hint`、`progress`、`go cellar`、`talk ember`、`ask mrs ember about cellar`、`inspect portrait`、`push hearth`、`spend luck hearth`、`spend luck 5`、`recover luck 1d10`、`san check 0/1d4`、`take damage 1d4`、`heal 1d3`、`first aid`、`skills`、`conclude`、`inventory` 等动作推进调查。配置 AI provider 后，`DM Suggest` 在 COC 模式下会生成 AI Keeper 建议。
 
 当前页面支持 API 健康检查、列出/删除内存中的 campaign、内置 demo adventure、导入冒险、添加示例角色、查看摘要、加载和按可见性过滤 session log、发送 runtime action、AI DM 建议、执行刚建议过的动作、规则搜索、COC demo/import/generate/list/summary/player-card/briefing/table-packet/review/action、AI Keeper 建议和结构化 transcript。它是前端骨架，不需要 Node.js 或构建步骤。
 

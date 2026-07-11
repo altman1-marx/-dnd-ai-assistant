@@ -642,6 +642,18 @@ class COCRuntimeTests(unittest.TestCase):
         self.assertIn("Mrs. Ember", output)
         self.assertIn("forbade us from trimming", output)
 
+    def test_conversation_aliases_support_topic_phrasing(self) -> None:
+        runtime = COCRuntime(create_sample_coc_scenario())
+
+        handle_coc_action(runtime, "ask mrs ember about cellar")
+        ask_output = runtime.flush()
+        handle_coc_action(runtime, "speak to mrs ember regarding lantern")
+        speak_output = runtime.flush()
+
+        self.assertIn("Mrs. Ember", ask_output)
+        self.assertIn("portrait passage", ask_output)
+        self.assertIn("forbade us from trimming", speak_output)
+
     def test_talk_cannot_reach_npc_in_other_location(self) -> None:
         runtime = COCRuntime(create_sample_coc_scenario())
 

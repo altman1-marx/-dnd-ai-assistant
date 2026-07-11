@@ -979,7 +979,9 @@ def _coc_action_group_label(action: str) -> str:
         return "Case"
     if action.startswith("go "):
         return "Movement"
-    if action.startswith("talk "):
+    if action.startswith("talk ") or action.startswith("ask ") or action.startswith("question "):
+        return "NPCs"
+    if action.startswith("speak to ") or action.startswith("speak with "):
         return "NPCs"
     if action.startswith("inspect ") or action.startswith("search ") or action.startswith("read ") or action.startswith("listen "):
         return "Investigation"
@@ -1006,6 +1008,8 @@ def _coc_available_actions(scenario: COCScenario) -> list[str]:
     for npc in _visible_coc_npcs(scenario):
         actions.append(f"talk {npc.name.lower()}")
         actions.append(f"talk {npc.id.replace('_', ' ')}")
+        actions.append(f"ask {npc.name.lower()} about clue")
+        actions.append(f"speak to {npc.name.lower()}")
     for clue in scenario.clues:
         if clue.discovered:
             continue
