@@ -357,46 +357,58 @@
     <aside class="sidebar stack">
       <header class="stack">
         <h1>DND AI Assistant</h1>
-        <p class="muted">Local campaign console for the lightweight API.</p>
+        <p class="muted" data-i18n="appSubtitle">Local campaign console for the lightweight API.</p>
+        <label>
+          <span class="muted" data-i18n="languageLabel">Language</span>
+          <select id="languageSelect">
+            <option value="en">English</option>
+            <option value="zh">中文</option>
+          </select>
+        </label>
       </header>
 
       <section class="stack" aria-labelledby="api-title">
         <h2 id="api-title">API</h2>
         <label>
-          <span class="muted">Base URL</span>
+          <span class="muted" data-i18n="baseUrl">Base URL</span>
           <input id="apiBase" value="http://127.0.0.1:8000" autocomplete="off">
         </label>
-        <button id="healthButton" type="button" class="secondary">Check API</button>
+        <button id="healthButton" type="button" class="secondary" data-i18n="checkApi">Check API</button>
+      </section>
+
+      <section class="stack" aria-labelledby="help-title">
+        <h2 id="help-title" data-i18n="helpTitle">Help</h2>
+        <div id="helpText" class="status"></div>
       </section>
 
       <section class="stack" aria-labelledby="import-title">
-        <h2 id="import-title">Adventure</h2>
+        <h2 id="import-title" data-i18n="adventureTitle">Adventure</h2>
         <input id="adventureFile" type="file" accept="application/json,.json">
-        <button id="importButton" type="button">Import Adventure</button>
-        <button id="demoButton" type="button" class="secondary">Start Demo</button>
-        <button id="sampleButton" type="button" class="secondary" disabled>Add Sample Character</button>
+        <button id="importButton" type="button" data-i18n="importAdventure">Import Adventure</button>
+        <button id="demoButton" type="button" class="secondary" data-i18n="startDemo">Start Demo</button>
+        <button id="sampleButton" type="button" class="secondary" disabled data-i18n="addSampleCharacter">Add Sample Character</button>
       </section>
 
       <section class="stack" aria-labelledby="coc-title">
         <h2 id="coc-title">Call of Cthulhu</h2>
         <input id="cocFile" type="file" accept="application/json,.json">
-        <button id="cocImportButton" type="button">Import COC Scenario</button>
-        <textarea id="cocPremise" placeholder="COC premise, e.g. A lake reflects the wrong moon."></textarea>
-        <button id="cocGenerateButton" type="button" class="secondary">Generate COC Scenario</button>
-        <label>Demo Scenario
+        <button id="cocImportButton" type="button" data-i18n="importCoc">Import COC Scenario</button>
+        <textarea id="cocPremise" placeholder="COC premise, e.g. A lake reflects the wrong moon." data-i18n-placeholder="cocPremisePlaceholder"></textarea>
+        <button id="cocGenerateButton" type="button" class="secondary" data-i18n="generateCoc">Generate COC Scenario</button>
+        <label><span data-i18n="demoScenario">Demo Scenario</span>
           <select id="cocDemoScenario">
             <option value="briar_house">Briar House</option>
             <option value="glass_lake">Glass Lake Signal</option>
           </select>
         </label>
-        <button id="cocDemoButton" type="button" class="secondary">Start COC Demo</button>
+        <button id="cocDemoButton" type="button" class="secondary" data-i18n="startCocDemo">Start COC Demo</button>
         <div id="cocList" class="campaign-list"></div>
       </section>
 
       <section class="stack" aria-labelledby="campaign-title">
-        <h2 id="campaign-title">Campaign</h2>
+        <h2 id="campaign-title" data-i18n="campaignTitle">Campaign</h2>
         <div id="status" class="status">No campaign loaded.</div>
-        <button id="campaignsButton" type="button" class="secondary">Refresh Campaigns</button>
+        <button id="campaignsButton" type="button" class="secondary" data-i18n="refreshCampaigns">Refresh Campaigns</button>
         <div id="campaignList" class="campaign-list"></div>
       </section>
     </aside>
@@ -404,17 +416,17 @@
     <main>
       <div class="toolbar">
         <div>
-          <h2>Table</h2>
-          <p id="locationLine" class="muted">Import an adventure to begin.</p>
+          <h2 data-i18n="tableTitle">Table</h2>
+          <p id="locationLine" class="muted" data-i18n="importToBegin">Import an adventure to begin.</p>
         </div>
         <div class="row compact-row">
           <select id="logVisibility" disabled aria-label="Log visibility">
-            <option value="">All Logs</option>
-            <option value="public">Public</option>
-            <option value="dm_only">DM Only</option>
+            <option value="" data-i18n="allLogs">All Logs</option>
+            <option value="public" data-i18n="publicLogs">Public</option>
+            <option value="dm_only" data-i18n="dmOnlyLogs">DM Only</option>
           </select>
-          <button id="refreshButton" type="button" class="secondary" disabled>Refresh</button>
-          <button id="clearTranscriptButton" type="button" class="secondary" disabled>Clear Log View</button>
+          <button id="refreshButton" type="button" class="secondary" disabled data-i18n="refresh">Refresh</button>
+          <button id="clearTranscriptButton" type="button" class="secondary" disabled data-i18n="clearLogView">Clear Log View</button>
         </div>
       </div>
 
@@ -422,26 +434,26 @@
 
       <section class="stack" aria-label="Action input">
         <div class="quick-actions">
-          <button type="button" class="secondary" data-action="look">Look</button>
-          <button type="button" class="secondary" data-action="inspect">Inspect</button>
+          <button type="button" class="secondary" data-action="look" data-i18n="lookAction">Look</button>
+          <button type="button" class="secondary" data-action="inspect" data-i18n="inspectAction">Inspect</button>
         </div>
         <div class="row">
-          <input id="actionInput" placeholder="Type an action, e.g. go old road" autocomplete="off" disabled>
-          <button id="sendButton" type="button" disabled>Send</button>
-          <button id="dmButton" type="button" class="secondary" disabled>DM Suggest</button>
-          <button id="runSuggestedButton" type="button" class="secondary" disabled>Run Suggested</button>
+          <input id="actionInput" placeholder="Type an action, e.g. go old road" autocomplete="off" disabled data-i18n-placeholder="actionPlaceholder">
+          <button id="sendButton" type="button" disabled data-i18n="send">Send</button>
+          <button id="dmButton" type="button" class="secondary" disabled data-i18n="dmSuggest">DM Suggest</button>
+          <button id="runSuggestedButton" type="button" class="secondary" disabled data-i18n="runSuggested">Run Suggested</button>
         </div>
       </section>
     </main>
 
     <aside class="panel stack">
       <section>
-        <h2>Summary</h2>
+        <h2 data-i18n="summaryTitle">Summary</h2>
         <div id="metrics"></div>
       </section>
 
       <section>
-        <h2>Characters</h2>
+        <h2 data-i18n="charactersTitle">Characters</h2>
         <div id="characters" class="list"></div>
       </section>
 
@@ -451,30 +463,140 @@
       </section>
 
       <section class="stack" aria-labelledby="player-card-title">
-        <h2 id="player-card-title">Player Card</h2>
-        <button id="playerCardButton" type="button" class="secondary" disabled>Load Player Card</button>
+        <h2 id="player-card-title" data-i18n="playerCardTitle">Player Card</h2>
+        <button id="playerCardButton" type="button" class="secondary" disabled data-i18n="loadPlayerCard">Load Player Card</button>
         <div id="playerCard" class="status">No player card loaded.</div>
       </section>
 
       <section class="stack" aria-labelledby="briefing-title">
-        <h2 id="briefing-title">Keeper Briefing</h2>
-        <button id="briefingButton" type="button" class="secondary" disabled>Load Keeper Briefing</button>
-        <button id="tablePacketButton" type="button" class="secondary" disabled>Table Packet</button>
+        <h2 id="briefing-title" data-i18n="keeperBriefingTitle">Keeper Briefing</h2>
+        <button id="briefingButton" type="button" class="secondary" disabled data-i18n="loadKeeperBriefing">Load Keeper Briefing</button>
+        <button id="tablePacketButton" type="button" class="secondary" disabled data-i18n="tablePacket">Table Packet</button>
         <div id="keeperBriefing" class="status">No briefing loaded.</div>
       </section>
 
       <section class="stack" aria-labelledby="rules-title">
-        <h2 id="rules-title">Rules</h2>
-        <input id="rulesQuery" placeholder="Search rules, e.g. grapple attack action" autocomplete="off">
-        <button id="rulesButton" type="button" class="secondary">Search Rules</button>
+        <h2 id="rules-title" data-i18n="rulesTitle">Rules</h2>
+        <input id="rulesQuery" placeholder="Search rules, e.g. grapple attack action" autocomplete="off" data-i18n-placeholder="rulesPlaceholder">
+        <button id="rulesButton" type="button" class="secondary" data-i18n="searchRules">Search Rules</button>
         <div id="rulesResults" class="rules-results"></div>
       </section>
     </aside>
   </div>
 
   <script>
+    const translations = {
+      en: {
+        appSubtitle: "Local campaign console for the lightweight API.",
+        languageLabel: "Language",
+        baseUrl: "Base URL",
+        checkApi: "Check API",
+        helpTitle: "Help",
+        adventureTitle: "Adventure",
+        importAdventure: "Import Adventure",
+        startDemo: "Start Demo",
+        addSampleCharacter: "Add Sample Character",
+        importCoc: "Import COC Scenario",
+        cocPremisePlaceholder: "COC premise, e.g. A lake reflects the wrong moon.",
+        generateCoc: "Generate COC Scenario",
+        demoScenario: "Demo Scenario",
+        startCocDemo: "Start COC Demo",
+        campaignTitle: "Campaign",
+        refreshCampaigns: "Refresh Campaigns",
+        tableTitle: "Table",
+        importToBegin: "Import an adventure to begin.",
+        allLogs: "All Logs",
+        publicLogs: "Public",
+        dmOnlyLogs: "DM Only",
+        refresh: "Refresh",
+        clearLogView: "Clear Log View",
+        lookAction: "Look",
+        inspectAction: "Inspect",
+        actionPlaceholder: "Type an action, e.g. go old road",
+        send: "Send",
+        dmSuggest: "DM Suggest",
+        runSuggested: "Run Suggested",
+        summaryTitle: "Summary",
+        charactersTitle: "Characters",
+        playerCardTitle: "Player Card",
+        loadPlayerCard: "Load Player Card",
+        keeperBriefingTitle: "Keeper Briefing",
+        loadKeeperBriefing: "Load Keeper Briefing",
+        tablePacket: "Table Packet",
+        rulesTitle: "Rules",
+        rulesPlaceholder: "Search rules, e.g. grapple attack action",
+        searchRules: "Search Rules",
+        noCampaignLoaded: "No campaign loaded.",
+        noPlayerCard: "No player card loaded.",
+        noTablePacket: "No table packet loaded.",
+        noBriefing: "No briefing loaded.",
+        playerCardUnavailable: "Player card unavailable.",
+        briefingUnavailable: "Briefing unavailable.",
+        cocModeOnly: "COC mode only.",
+        helpText: [
+          "Quick start: click Check API, then Start Demo for D&D or Start COC Demo for Call of Cthulhu.",
+          "COC supports English and Chinese action aliases, such as look, inspect portrait, ask mrs ember about cellar, 观察四周, 询问 ember about cellar, 去 cellar.",
+          "Use Table Packet for a Keeper-ready opening, clue map, NPC cards, and first-turn buttons."
+        ].join("\n")
+      },
+      zh: {
+        appSubtitle: "本地跑团控制台，用来连接轻量 API。",
+        languageLabel: "语言",
+        baseUrl: "API 地址",
+        checkApi: "检查 API",
+        helpTitle: "帮助",
+        adventureTitle: "DND 冒险",
+        importAdventure: "导入冒险",
+        startDemo: "启动示例",
+        addSampleCharacter: "添加示例角色",
+        importCoc: "导入 COC 剧本",
+        cocPremisePlaceholder: "COC 前提，例如：湖水倒映出错误的月亮。",
+        generateCoc: "生成 COC 剧本",
+        demoScenario: "示例剧本",
+        startCocDemo: "启动 COC 示例",
+        campaignTitle: "战役",
+        refreshCampaigns: "刷新战役列表",
+        tableTitle: "跑团桌面",
+        importToBegin: "导入冒险或启动示例后开始。",
+        allLogs: "全部日志",
+        publicLogs: "公开",
+        dmOnlyLogs: "仅主持人",
+        refresh: "刷新",
+        clearLogView: "清空日志视图",
+        lookAction: "观察",
+        inspectAction: "检查",
+        actionPlaceholder: "输入动作，例如：go old road / 去 cellar",
+        send: "发送",
+        dmSuggest: "AI 建议",
+        runSuggested: "执行建议",
+        summaryTitle: "摘要",
+        charactersTitle: "角色",
+        playerCardTitle: "玩家手卡",
+        loadPlayerCard: "加载玩家手卡",
+        keeperBriefingTitle: "守秘人简报",
+        loadKeeperBriefing: "加载守秘人简报",
+        tablePacket: "开桌包",
+        rulesTitle: "规则",
+        rulesPlaceholder: "搜索规则，例如：grapple attack action",
+        searchRules: "搜索规则",
+        noCampaignLoaded: "尚未加载战役。",
+        noPlayerCard: "尚未加载玩家手卡。",
+        noTablePacket: "尚未加载开桌包。",
+        noBriefing: "尚未加载简报。",
+        playerCardUnavailable: "玩家手卡不可用。",
+        briefingUnavailable: "简报不可用。",
+        cocModeOnly: "仅 COC 模式可用。",
+        helpText: [
+          "快速开始：先点“检查 API”，再用“启动示例”开始 DND，或用“启动 COC 示例”开始克苏鲁调查。",
+          "COC 动作支持英文和中文别名，例如 look、inspect portrait、ask mrs ember about cellar、观察四周、询问 ember about cellar、去 cellar。",
+          "“开桌包”会生成守秘人可直接使用的开场白、线索地图、NPC 小卡和首轮动作按钮。"
+        ].join("\n")
+      }
+    };
+
     const state = {
       mode: "dnd",
+      locale: "en",
       campaignId: "",
       scenarioId: "",
       campaigns: [],
@@ -493,6 +615,8 @@
     };
 
     const apiBase = document.getElementById("apiBase");
+    const languageSelect = document.getElementById("languageSelect");
+    const helpText = document.getElementById("helpText");
     const adventureFile = document.getElementById("adventureFile");
     const cocFile = document.getElementById("cocFile");
     const cocPremise = document.getElementById("cocPremise");
@@ -524,6 +648,7 @@
     const playerCard = document.getElementById("playerCard");
 
     document.getElementById("healthButton").addEventListener("click", checkHealth);
+    languageSelect.addEventListener("change", () => setLanguage(languageSelect.value));
     document.getElementById("importButton").addEventListener("click", importAdventure);
     document.getElementById("demoButton").addEventListener("click", loadDemoAdventure);
     document.getElementById("cocImportButton").addEventListener("click", importCocScenario);
@@ -550,9 +675,53 @@
     bindQuickActions();
 
     setControls(false);
+    setLanguage(loadPreferredLanguage());
     checkHealth();
     loadCocDemoOptions();
     refreshCampaigns();
+
+    function loadPreferredLanguage() {
+      try {
+        const saved = localStorage.getItem("dnd-ai-language");
+        return saved === "zh" ? "zh" : "en";
+      } catch (error) {
+        return "en";
+      }
+    }
+
+    function setLanguage(locale) {
+      state.locale = locale === "zh" ? "zh" : "en";
+      languageSelect.value = state.locale;
+      document.documentElement.lang = state.locale === "zh" ? "zh-CN" : "en";
+      try {
+        localStorage.setItem("dnd-ai-language", state.locale);
+      } catch (error) {
+        // Ignore storage failures in file:// or private browsing contexts.
+      }
+      translateStaticText();
+      helpText.textContent = t("helpText");
+      translateEmptyDynamicPanels();
+    }
+
+    function translateStaticText() {
+      document.querySelectorAll("[data-i18n]").forEach((element) => {
+        element.textContent = t(element.dataset.i18n);
+      });
+      document.querySelectorAll("[data-i18n-placeholder]").forEach((element) => {
+        element.setAttribute("placeholder", t(element.dataset.i18nPlaceholder));
+      });
+    }
+
+    function t(key) {
+      const dictionary = translations[state.locale] || translations.en;
+      return dictionary[key] || translations.en[key] || key;
+    }
+
+    function translateEmptyDynamicPanels() {
+      if (!state.campaignId && !state.scenarioId) statusBox.textContent = t("noCampaignLoaded");
+      if (!state.cocPlayerCard) playerCard.textContent = t("noPlayerCard");
+      if (!state.cocBriefing && !state.cocTablePacket) keeperBriefing.textContent = t("noBriefing");
+    }
 
     async function checkHealth() {
       try {
@@ -1392,7 +1561,7 @@ function clearCampaign() {
 
     function renderPlayerCard(card) {
       if (!card) {
-        playerCard.textContent = state.mode === "coc" ? "Player card unavailable." : "COC mode only.";
+        playerCard.textContent = state.mode === "coc" ? t("playerCardUnavailable") : t("cocModeOnly");
         return;
       }
       const investigator = card.investigator || {};
@@ -1410,7 +1579,7 @@ function clearCampaign() {
 
     function renderTablePacket(packet) {
       if (!packet) {
-        keeperBriefing.textContent = "No table packet loaded.";
+        keeperBriefing.textContent = t("noTablePacket");
         return;
       }
       const profile = packet.scenario_profile || {};
@@ -1466,7 +1635,7 @@ function clearCampaign() {
     }
     function renderKeeperBriefing(briefing) {
       if (!briefing) {
-        keeperBriefing.textContent = state.mode === "coc" ? "Briefing unavailable." : "COC mode only.";
+        keeperBriefing.textContent = state.mode === "coc" ? t("briefingUnavailable") : t("cocModeOnly");
         return;
       }
       const opening = briefing.opening || {};

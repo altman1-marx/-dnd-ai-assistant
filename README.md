@@ -575,10 +575,12 @@ python -m dnd_ai_assistant.demo serve-api `
 ```
 
 2. 在浏览器中打开 `web/index.html`。
-3. 点击 `Start Demo`，或选择一个 adventure JSON 文件并导入。
-4. 如果是手动导入，点击 `Add Sample Character`，然后用动作栏或输入框推进冒险。
-5. 可先点击 `DM Suggest` 生成叙述/规则建议，再点击 `Run Suggested` 执行同一条 runtime action。
-6. COC 模式可先选择 `Briar House` 或 `Glass Lake Signal`，再点击 `Start COC Demo`，或选择一个 COC scenario JSON 后点击 `Import COC Scenario`；配置 AI provider 后，也可以输入 premise 并点击 `Generate COC Scenario`。随后用 `look`、`recap`、`hint`、`progress`、`go cellar`、`talk ember`、`ask mrs ember about cellar`、`inspect portrait`、`push hearth`、`spend luck hearth`、`spend luck 5`、`recover luck 1d10`、`san check 0/1d4`、`take damage 1d4`、`heal 1d3`、`first aid`、`skills`、`conclude`、`inventory` 等动作推进调查。配置 AI provider 后，`DM Suggest` 在 COC 模式下会生成 AI Keeper 建议。
+3. 左上角 `Language / 语言` 可以切换 English / 中文。选择会保存在浏览器 `localStorage`，下次打开页面会自动恢复；切换语言会更新主要标题、按钮、输入框占位提示和左侧 Help/帮助说明，但不会翻译 API 返回的剧本正文或日志内容。
+4. 左侧 `Help / 帮助` 会给出最短上手流程、常用 COC 动作示例和 `Table Packet / 开桌包` 的用途。
+5. 点击 `Start Demo`，或选择一个 adventure JSON 文件并导入。
+6. 如果是手动导入，点击 `Add Sample Character`，然后用动作栏或输入框推进冒险。
+7. 可先点击 `DM Suggest` 生成叙述/规则建议，再点击 `Run Suggested` 执行同一条 runtime action。
+8. COC 模式可先选择 `Briar House` 或 `Glass Lake Signal`，再点击 `Start COC Demo`，或选择一个 COC scenario JSON 后点击 `Import COC Scenario`；配置 AI provider 后，也可以输入 premise 并点击 `Generate COC Scenario`。随后用 `look`、`recap`、`hint`、`progress`、`go cellar`、`talk ember`、`ask mrs ember about cellar`、`观察四周`、`询问 ember about cellar`、`去 cellar`、`inspect portrait`、`push hearth`、`spend luck hearth`、`spend luck 5`、`recover luck 1d10`、`san check 0/1d4`、`take damage 1d4`、`heal 1d3`、`first aid`、`skills`、`conclude`、`inventory` 等动作推进调查。配置 AI provider 后，`DM Suggest` 在 COC 模式下会生成 AI Keeper 建议。
 
 当前页面支持 API 健康检查、列出/删除内存中的 campaign、内置 demo adventure、导入冒险、添加示例角色、查看摘要、加载和按可见性过滤 session log、发送 runtime action、AI DM 建议、执行刚建议过的动作、规则搜索、COC demo/import/generate/list/summary/player-card/briefing/table-packet/review/action、AI Keeper 建议和结构化 transcript。它是前端骨架，不需要 Node.js 或构建步骤。
 
