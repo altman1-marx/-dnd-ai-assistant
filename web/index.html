@@ -4,6 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>DND AI Assistant</title>
+  <link rel="icon" href="data:,">
   <style>
     :root {
       color-scheme: light;
@@ -208,6 +209,38 @@
       display: flex;
       flex-wrap: wrap;
       gap: 6px;
+    }
+
+    .briefing-view {
+      display: grid;
+      gap: 10px;
+      color: var(--ink);
+      white-space: normal;
+    }
+
+    .briefing-kv {
+      display: grid;
+      grid-template-columns: auto 1fr;
+      gap: 4px 8px;
+      font-size: 13px;
+      line-height: 1.35;
+    }
+
+    .briefing-kv span {
+      color: var(--muted);
+    }
+
+    .briefing-list {
+      margin: 0;
+      padding-left: 18px;
+      display: grid;
+      gap: 4px;
+    }
+
+    .briefing-note {
+      border-left: 3px solid var(--accent);
+      padding-left: 9px;
+      line-height: 1.4;
     }
 
     .transcript {
@@ -668,6 +701,22 @@
         requiredTag: "required",
         automaticTag: "automatic",
         keeperBriefingEmpty: "Keeper briefing is empty.",
+        briefingStatusTitle: "Scene Status",
+        readAloudTitle: "Read Aloud",
+        investigatorHookTitle: "Investigator Hook",
+        firstObjectivesTitle: "First Objectives",
+        risksTitle: "Risks",
+        nextMovesTitle: "Next Keeper Moves",
+        openThreadsTitle: "Open Threads",
+        hiddenClueQueueTitle: "Hidden Clue Queue",
+        recentLogTitle: "Recent Table Log",
+        spotlightActionsTitle: "Spotlight Actions",
+        progressLabel: "Progress",
+        inventoryLabel: "Inventory",
+        blockedRoutesLabel: "Blocked Routes",
+        safetyNoteTitle: "Safety Note",
+        visibleNpcsLabel: "Visible NPCs",
+        hiddenCluesLabel: "Hidden clues",
         campaignLoadedPrefix: "Campaign",
         campaignLoadedSuffix: "loaded.",
         cocScenarioLoadedPrefix: "COC scenario",
@@ -874,6 +923,22 @@
         requiredTag: "必要",
         automaticTag: "自动",
         keeperBriefingEmpty: "守秘人简报为空。",
+        briefingStatusTitle: "场景状态",
+        readAloudTitle: "朗读文本",
+        investigatorHookTitle: "调查员导入",
+        firstObjectivesTitle: "首轮目标",
+        risksTitle: "风险提示",
+        nextMovesTitle: "守秘人下一步",
+        openThreadsTitle: "未结线头",
+        hiddenClueQueueTitle: "隐藏线索队列",
+        recentLogTitle: "最近跑团日志",
+        spotlightActionsTitle: "重点行动",
+        progressLabel: "进度",
+        inventoryLabel: "物品",
+        blockedRoutesLabel: "受阻路线",
+        safetyNoteTitle: "安全提示",
+        visibleNpcsLabel: "可见 NPC",
+        hiddenCluesLabel: "隐藏线索",
         campaignLoadedPrefix: "战役",
         campaignLoadedSuffix: "已加载。",
         cocScenarioLoadedPrefix: "COC 剧本",
@@ -1961,14 +2026,92 @@ function clearCampaign() {
       const openingActions = opening.first_turn_actions || [];
       const actions = [...openingActions, ...(briefing.spotlight_actions || [])]
         .filter((action, index, values) => values.indexOf(action) === index);
-      const actionButtons = actions.length ? "\n\n" + actions.map((action) => {
-        return "<button type=\"button\" class=\"secondary\" data-keeper-action=\""
-          + escapeHtml(action) + "\">" + escapeHtml(actionLabel(action)) + "</button>";
-      }).join(" ") : "";
-      keeperBriefing.innerHTML = escapeHtml(briefing.text || t("keeperBriefingEmpty")) + actionButtons;
+      const location = briefing.location || {};
+      const investigator = briefing.investigator || {};
+      const progress = briefing.progress || {};
+      const notes = briefing.keeper_notes || {};
+      const blockedExits = location.blocked_exits || [];
+      const inventory = progress.inventory || [];
+      const progressText = String(progress.discovered_clues ?? 0) + "/"
+        + String(progress.total_clues ?? 0) + " " + t("discoveredSuffix")
+        + ", " + String(progress.partial_clues ?? 0) + " " + t("partialLeadsMetric");
+      const statusRows = [
+        [t("scenarioMetric"), briefing.title || t("unknown")],
+        [t("locationMetric"), location.name || t("unknown")],
+        [t("investigatorLabel"), (investigator.name || t("unknown")) + " | HP "
+          + (investigator.hp || "?") + " | SAN " + (investigator.sanity || "?")
+          + " | Luck " + String(investigator.luck ?? "?")],
+        [t("progressLabel"), progressText],
+        [t("inventoryLabel"), inventory.join(", ") || t("none")],
+        [t("visibleNpcsLabel"), (notes.visible_npcs || []).join(", ") || t("none")],
+        [t("blockedRoutesLabel"), blockedExits.map((exit) => exit.name).join(", ") || t("none")]
+      ];
+      const sections = [
+        "<section class=\"packet-section\"><h3>" + escapeHtml(t("briefingStatusTitle")) + "</h3>"
+          + renderBriefingKeyValues(statusRows) + "</section>",
+        renderBriefingTextSection(t("readAloudTitle"), opening.read_aloud, "briefing-note"),
+        renderBriefingTextSection(t("investigatorHookTitle"), opening.investigator_hook),
+        renderBriefingListSection(t("firstObjectivesTitle"), opening.first_objectives || []),
+        renderBriefingTextSection(t("safetyNoteTitle"), opening.safety_note),
+        renderBriefingListSection(t("nextMovesTitle"), briefing.next_actions || []),
+        renderBriefingListSection(t("risksTitle"), briefing.risks || []),
+        renderBriefingListSection(t("openThreadsTitle"), briefing.open_threads || []),
+        renderBriefingClueQueue(notes.hidden_clues || []),
+        renderBriefingListSection(t("recentLogTitle"), notes.recent_events || [])
+      ];
+      const actionButtons = renderKeeperActionButtons(actions, t("spotlightActionsTitle"));
+      keeperBriefing.innerHTML = "<div class=\"briefing-view\">" + actionButtons
+        + sections.filter(Boolean).join("")
+        + "</div>";
+      bindKeeperActionButtons();
+    }
+
+    function renderKeeperActionButtons(actions, title) {
+      if (!actions.length) return "";
+      return "<section class=\"packet-section\"><h3>" + escapeHtml(title) + "</h3><div class=\"packet-actions\">"
+        + actions.map((action) => {
+          return "<button type=\"button\" class=\"secondary\" data-keeper-action=\""
+            + escapeHtml(action) + "\">" + escapeHtml(actionLabel(action)) + "</button>";
+        }).join("") + "</div></section>";
+    }
+
+    function bindKeeperActionButtons() {
       document.querySelectorAll("[data-keeper-action]").forEach((button) => {
         button.addEventListener("click", () => runAction(button.dataset.keeperAction));
       });
+    }
+
+    function renderBriefingKeyValues(rows) {
+      return "<div class=\"briefing-kv\">" + rows.map(([key, value]) => {
+        return "<span>" + escapeHtml(key) + "</span><strong>" + escapeHtml(value) + "</strong>";
+      }).join("") + "</div>";
+    }
+
+    function renderBriefingTextSection(title, text, className = "") {
+      if (!text) return "";
+      const paragraphClass = className ? " class=\"" + escapeHtml(className) + "\"" : "";
+      return "<section class=\"packet-section\"><h3>" + escapeHtml(title) + "</h3><p" + paragraphClass + ">"
+        + escapeHtml(text) + "</p></section>";
+    }
+
+    function renderBriefingListSection(title, items) {
+      const cleanItems = (items || []).filter(Boolean);
+      if (!cleanItems.length) return "";
+      return "<section class=\"packet-section\"><h3>" + escapeHtml(title) + "</h3><ul class=\"briefing-list\">"
+        + cleanItems.map((item) => "<li>" + escapeHtml(item) + "</li>").join("")
+        + "</ul></section>";
+    }
+
+    function renderBriefingClueQueue(clues) {
+      if (!clues.length) return "";
+      return "<section class=\"packet-section\"><h3>" + escapeHtml(t("hiddenClueQueueTitle")) + "</h3><ul class=\"briefing-list\">"
+        + clues.slice(0, 6).map((clue) => {
+          const gate = clue.skill ? clue.skill + " / " + clue.difficulty : t("automaticTag");
+          const sanity = clue.sanity_loss ? " | SAN " + clue.sanity_loss : "";
+          return "<li><strong>" + escapeHtml(clue.title || t("unknown")) + "</strong>"
+            + " <span class=\"muted\">" + escapeHtml(gate + sanity) + "</span></li>";
+        }).join("")
+        + "</ul></section>";
     }
 
     function renderRecentEvents(events) {
