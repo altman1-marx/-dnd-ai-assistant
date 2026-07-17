@@ -711,12 +711,20 @@
         hiddenClueQueueTitle: "Hidden Clue Queue",
         recentLogTitle: "Recent Table Log",
         spotlightActionsTitle: "Spotlight Actions",
+        recommendedNextTitle: "Recommended Next Steps",
         progressLabel: "Progress",
         inventoryLabel: "Inventory",
         blockedRoutesLabel: "Blocked Routes",
         safetyNoteTitle: "Safety Note",
         visibleNpcsLabel: "Visible NPCs",
         hiddenCluesLabel: "Hidden clues",
+        packetProfileTitle: "Table Profile",
+        knownPeopleLabel: "Known People",
+        knownEvidenceLabel: "Known Evidence",
+        suggestedActionsTitle: "Suggested Actions",
+        hiddenClueCountLabel: "Hidden Clues",
+        completionGateCountLabel: "Ending Gates",
+        startingLocationLabel: "Starting Location",
         campaignLoadedPrefix: "Campaign",
         campaignLoadedSuffix: "loaded.",
         cocScenarioLoadedPrefix: "COC scenario",
@@ -933,12 +941,20 @@
         hiddenClueQueueTitle: "隐藏线索队列",
         recentLogTitle: "最近跑团日志",
         spotlightActionsTitle: "重点行动",
+        recommendedNextTitle: "推荐下一步",
         progressLabel: "进度",
         inventoryLabel: "物品",
         blockedRoutesLabel: "受阻路线",
         safetyNoteTitle: "安全提示",
         visibleNpcsLabel: "可见 NPC",
         hiddenCluesLabel: "隐藏线索",
+        packetProfileTitle: "开桌概况",
+        knownPeopleLabel: "已知人物",
+        knownEvidenceLabel: "已知证据",
+        suggestedActionsTitle: "建议行动",
+        hiddenClueCountLabel: "隐藏线索",
+        completionGateCountLabel: "结局门槛",
+        startingLocationLabel: "起始地点",
         campaignLoadedPrefix: "战役",
         campaignLoadedSuffix: "已加载。",
         cocScenarioLoadedPrefix: "COC 剧本",
@@ -1973,10 +1989,17 @@ function clearCampaign() {
       const actions = checklist.first_turn_actions || [];
       const clueMap = packet.clue_map || [];
       const npcCards = packet.npc_cards || [];
-      const actionButtons = actions.length ? "<div class=\"packet-actions\">" + actions.map((action) => {
-        return "<button type=\"button\" class=\"secondary\" data-keeper-action=\""
-          + escapeHtml(action) + "\">" + escapeHtml(actionLabel(action)) + "</button>";
-      }).join("") + "</div>" : "";
+      const profileRows = [
+        [t("scenarioMetric"), packet.title || t("cocTablePacketTitle")],
+        [t("systemMetric"), packet.system_id || "coc7e"],
+        [t("startingLocationLabel"), profile.starting_location || handout.starting_location || t("unknown")],
+        [t("locationsLabel"), String(profile.location_count || 0)],
+        [t("cluesMetric"), String(profile.clue_count || 0)],
+        [t("npcsMetric"), String(profile.npc_count || 0)],
+        [t("estimatedLabel"), String(profile.estimated_minutes || 0) + " " + t("minutesLabel")],
+        [t("hiddenClueCountLabel"), String(checklist.hidden_clue_count || 0)],
+        [t("completionGateCountLabel"), String(profile.completion_gate_count || 0)]
+      ];
       const clueHtml = clueMap.length ? clueMap.map((location) => {
         const clues = (location.clues || []).map((clue) => {
           const tags = [
@@ -1996,26 +2019,36 @@ function clearCampaign() {
           + "<br><span class=\"muted\">" + escapeHtml(npc.keeper_use || npc.description || "") + "</span></li>";
       }).join("") : "<li>" + escapeHtml(t("none")) + "</li>";
       keeperBriefing.innerHTML = "<div class=\"packet-view\">"
-        + "<section class=\"packet-section\"><h3>" + escapeHtml(packet.title || t("cocTablePacketTitle")) + "</h3>"
-        + "<p class=\"muted\">" + escapeHtml(String(profile.location_count || 0)) + " " + escapeHtml(t("locationsLabel")) + ", "
-        + escapeHtml(String(profile.clue_count || 0)) + " " + escapeHtml(t("cluesMetric")) + ", "
-        + escapeHtml(String(profile.npc_count || 0)) + " NPCs, " + escapeHtml(t("estimatedLabel")) + " "
-        + escapeHtml(String(profile.estimated_minutes || 0)) + " " + escapeHtml(t("minutesLabel")) + ".</p></section>"
+        + renderKeeperActionButtons(actions, t("recommendedNextTitle"))
+        + "<section class=\"packet-section\"><h3>" + escapeHtml(t("packetProfileTitle")) + "</h3>"
+        + renderBriefingKeyValues(profileRows) + "</section>"
         + "<section class=\"packet-section\"><h3>" + escapeHtml(t("keeperOpeningTitle")) + "</h3><p>"
         + escapeHtml(opening.read_aloud || "") + "</p><p class=\"muted\">"
         + escapeHtml(opening.safety_note || "") + "</p></section>"
         + "<section class=\"packet-section\"><h3>" + escapeHtml(t("playerHandoutTitle")) + "</h3><p>"
         + escapeHtml((handout.investigator || t("investigatorFallback")) + " - " + (handout.occupation || ""))
-        + "</p><p>" + escapeHtml(handout.case_hook || "") + "</p></section>"
+        + "</p><p>" + escapeHtml(handout.case_hook || "")
+        + "</p>" + renderPacketHandoutMeta(handout) + "</section>"
         + "<section class=\"packet-section\"><h3>" + escapeHtml(t("sceneBeatsTitle")) + "</h3><ul>"
         + (checklist.scene_beats || []).map((beat) => "<li>" + escapeHtml(beat) + "</li>").join("")
-        + "</ul>" + actionButtons + "</section>"
+        + "</ul></section>"
+        + renderBriefingListSection(t("openThreadsTitle"), checklist.open_threads || [])
         + "<section class=\"packet-section\"><h3>" + escapeHtml(t("clueMapTitle")) + "</h3><ul>" + clueHtml + "</ul></section>"
         + "<section class=\"packet-section\"><h3>" + escapeHtml(t("npcCardsTitle")) + "</h3><ul>" + npcHtml + "</ul></section>"
         + "</div>";
-      document.querySelectorAll("[data-keeper-action]").forEach((button) => {
-        button.addEventListener("click", () => runAction(button.dataset.keeperAction));
-      });
+      bindKeeperActionButtons();
+    }
+
+    function renderPacketHandoutMeta(handout) {
+      const knownPeople = handout.known_people || [];
+      const knownEvidence = handout.known_evidence || [];
+      const suggested = handout.suggested_actions || [];
+      const rows = [
+        [t("knownPeopleLabel"), knownPeople.join(", ") || t("none")],
+        [t("knownEvidenceLabel"), knownEvidence.join(", ") || t("none")],
+        [t("suggestedActionsTitle"), suggested.map(actionLabel).join(", ") || t("none")]
+      ];
+      return renderBriefingKeyValues(rows);
     }
     function renderKeeperBriefing(briefing) {
       if (!briefing) {
