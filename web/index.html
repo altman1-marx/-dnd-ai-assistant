@@ -292,6 +292,43 @@
       gap: 10px;
     }
 
+    .recommended-actions {
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: #fff;
+      padding: 10px;
+      display: grid;
+      gap: 8px;
+    }
+
+    .recommended-actions h3 {
+      color: var(--accent);
+    }
+
+    .recommendation-list {
+      display: grid;
+      gap: 8px;
+    }
+
+    .recommendation {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 8px;
+      align-items: center;
+      border-top: 1px solid var(--line);
+      padding-top: 8px;
+    }
+
+    .recommendation:first-child {
+      border-top: 0;
+      padding-top: 0;
+    }
+
+    .recommendation strong {
+      display: block;
+      font-size: 13px;
+    }
+
     .quick-action-group {
       display: grid;
       gap: 6px;
@@ -465,6 +502,8 @@
 
       <section id="transcript" class="transcript" aria-live="polite"></section>
 
+      <section id="recommendedActions" class="recommended-actions" aria-live="polite"></section>
+
       <section class="stack" aria-label="Action input">
         <div class="quick-actions">
           <button type="button" class="secondary" data-action="look" data-i18n="lookAction">Look</button>
@@ -549,6 +588,17 @@
         send: "Send",
         dmSuggest: "DM Suggest",
         runSuggested: "Run Suggested",
+        recommendedActionsTitle: "Recommended Next",
+        recommendedEmpty: "Load a scenario or campaign to see recommended actions.",
+        reasonInvestigation: "Likely to reveal or confirm a clue.",
+        reasonNpc: "Use visible NPCs to surface context or pressure.",
+        reasonMovement: "Moves the scene toward another location or route.",
+        reasonCase: "Good for orientation when the table is unsure.",
+        reasonHealth: "Use when SAN, HP, or Luck pressure matters.",
+        reasonCombat: "Relevant to the current encounter.",
+        reasonMagic: "Uses a spell or magical resource.",
+        reasonGeneral: "Useful table action.",
+        reasonKeeperHint: "Uses the current Keeper hint.",
         summaryTitle: "Summary",
         charactersTitle: "Characters",
         playerCardTitle: "Player Card",
@@ -779,6 +829,17 @@
         send: "发送",
         dmSuggest: "AI 建议",
         runSuggested: "执行建议",
+        recommendedActionsTitle: "推荐下一步",
+        recommendedEmpty: "加载剧本或战役后会显示推荐行动。",
+        reasonInvestigation: "最可能发现或确认线索。",
+        reasonNpc: "通过可见 NPC 推出背景、压力或新方向。",
+        reasonMovement: "把场景推进到新的地点或路线。",
+        reasonCase: "桌面不确定时用于重新定位。",
+        reasonHealth: "理智、生命或幸运承压时使用。",
+        reasonCombat: "适用于当前遭遇。",
+        reasonMagic: "消耗法术或魔法资源。",
+        reasonGeneral: "常用桌面行动。",
+        reasonKeeperHint: "基于当前守秘人提示。",
         summaryTitle: "摘要",
         charactersTitle: "角色",
         playerCardTitle: "玩家手卡",
@@ -1010,6 +1071,7 @@
     const cocDemoScenario = document.getElementById("cocDemoScenario");
     const statusBox = document.getElementById("status");
     const transcript = document.getElementById("transcript");
+    const recommendedActions = document.getElementById("recommendedActions");
     const campaignList = document.getElementById("campaignList");
     const cocList = document.getElementById("cocList");
     const locationLine = document.getElementById("locationLine");
@@ -1095,6 +1157,7 @@
         renderSummary();
       } else {
         activityTitle.textContent = t("combatTitle");
+        renderRecommendedActions([]);
       }
     }
 
@@ -1599,6 +1662,7 @@
         metric(t("npcsMetric"), location ? location.npcs.map((npc) => npc.name).join(", ") || t("noneTitle") : t("noneTitle"))
       ].join("");
       renderQuickActions(summary.available_actions || []);
+      renderRecommendedActions(recommendDndActions(summary));
 
       characters.innerHTML = summary.characters.length
         ? summary.characters.map(renderCharacter).join("")
@@ -1636,6 +1700,7 @@
         metric(t("availableActionsMetric"), (summary.available_actions || []).length)
       ].join("");
       renderQuickActions(summary.available_actions || [], summary.action_groups || []);
+      renderRecommendedActions(recommendCocActions(summary));
       characters.innerHTML = renderInvestigator(investigator);
       activityTitle.textContent = t("investigationTitle");
       combat.innerHTML = renderCocInvestigationPanel(summary, review);
@@ -1843,6 +1908,7 @@ function clearCampaign() {
       characters.innerHTML = "";
       activityTitle.textContent = t("combatTitle");
       combat.innerHTML = "";
+      renderRecommendedActions([]);
       setControls(false);
     }
 
@@ -2257,6 +2323,92 @@ function clearCampaign() {
 
     function updateSuggestedActionControl() {
       runSuggestedButton.disabled = !state.pendingSuggestedAction || (state.mode === "dnd" ? !state.campaignId : !state.scenarioId);
+    }
+
+    function renderRecommendedActions(recommendations) {
+      const items = recommendations || [];
+      if (!items.length) {
+        recommendedActions.innerHTML = "<h3>" + escapeHtml(t("recommendedActionsTitle")) + "</h3><p class=\"muted\">"
+          + escapeHtml(t("recommendedEmpty")) + "</p>";
+        return;
+      }
+      recommendedActions.innerHTML = "<h3>" + escapeHtml(t("recommendedActionsTitle")) + "</h3><div class=\"recommendation-list\">"
+        + items.map((item) => {
+          return "<div class=\"recommendation\"><div><strong>" + escapeHtml(actionLabel(item.action))
+            + "</strong><p class=\"muted\">" + escapeHtml(item.reason) + "</p></div>"
+            + "<button type=\"button\" class=\"secondary\" data-action=\"" + escapeHtml(item.action) + "\">"
+            + escapeHtml(t("useButton")) + "</button></div>";
+        }).join("")
+        + "</div>";
+      recommendedActions.querySelectorAll("[data-action]").forEach((button) => {
+        button.addEventListener("click", () => runAction(button.dataset.action));
+      });
+    }
+
+    function recommendCocActions(summary) {
+      const actions = summary.available_actions || [];
+      const groups = summary.action_groups || [];
+      const recommendations = [];
+      const add = (action, reason) => {
+        if (!action || recommendations.some((item) => item.action === action)) return;
+        if (!actions.includes(action)) return;
+        recommendations.push({ action, reason });
+      };
+      const grouped = {};
+      groups.forEach((group) => {
+        grouped[group.label] = group.actions || [];
+      });
+      firstUsefulActions(grouped.Investigation || actions.filter(isInvestigationAction), 2)
+        .forEach((action) => add(action, t("reasonInvestigation")));
+      firstUsefulActions(grouped.NPCs || actions.filter(isNpcAction), 1)
+        .forEach((action) => add(action, t("reasonNpc")));
+      firstUsefulActions(grouped.Movement || actions.filter((action) => action.startsWith("go ")), 1)
+        .forEach((action) => add(action, t("reasonMovement")));
+      if (summary.keeper_hint) add("hint", t("reasonKeeperHint") + " " + summary.keeper_hint);
+      firstUsefulActions(grouped.Case || ["progress", "clues", "inventory", "recap"], 1)
+        .forEach((action) => add(action, t("reasonCase")));
+      return recommendations.slice(0, 5);
+    }
+
+    function recommendDndActions(summary) {
+      const actions = summary.available_actions || [];
+      const recommendations = [];
+      const add = (action, reason) => {
+        if (!action || recommendations.some((item) => item.action === action)) return;
+        if (!actions.includes(action)) return;
+        recommendations.push({ action, reason });
+      };
+      const combatActions = actions.filter((action) => action.startsWith("attack ") || action.startsWith("cast "));
+      firstUsefulActions(combatActions, 2).forEach((action) => {
+        add(action, action.startsWith("cast ") ? t("reasonMagic") : t("reasonCombat"));
+      });
+      firstUsefulActions(actions.filter(isInvestigationAction), 2)
+        .forEach((action) => add(action, t("reasonInvestigation")));
+      firstUsefulActions(actions.filter(isNpcAction), 1)
+        .forEach((action) => add(action, t("reasonNpc")));
+      firstUsefulActions(actions.filter((action) => action.startsWith("go ")), 1)
+        .forEach((action) => add(action, t("reasonMovement")));
+      ["look", "inspect"].forEach((action) => add(action, t("reasonGeneral")));
+      return recommendations.slice(0, 5);
+    }
+
+    function firstUsefulActions(actions, limit) {
+      return (actions || [])
+        .filter((action) => action && !action.includes("<text>"))
+        .filter((action) => !action.endsWith(" bonus") && !action.endsWith(" penalty"))
+        .slice(0, limit);
+    }
+
+    function isInvestigationAction(action) {
+      return action.startsWith("inspect ") || action.startsWith("search ")
+        || action.startsWith("read ") || action.startsWith("listen ")
+        || action === "look" || action === "inspect";
+    }
+
+    function isNpcAction(action) {
+      return action.startsWith("talk ") || action.startsWith("ask ")
+        || action.startsWith("question ") || action.startsWith("speak to ")
+        || action.startsWith("speak with ");
     }
 
     function renderQuickActions(actions, actionGroups = []) {
