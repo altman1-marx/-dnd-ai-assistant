@@ -1662,7 +1662,7 @@
         metric(t("npcsMetric"), location ? location.npcs.map((npc) => npc.name).join(", ") || t("noneTitle") : t("noneTitle"))
       ].join("");
       renderQuickActions(summary.available_actions || []);
-      renderRecommendedActions(recommendDndActions(summary));
+      renderRecommendedActions(summary.recommended_actions || recommendDndActions(summary));
 
       characters.innerHTML = summary.characters.length
         ? summary.characters.map(renderCharacter).join("")
@@ -1700,7 +1700,7 @@
         metric(t("availableActionsMetric"), (summary.available_actions || []).length)
       ].join("");
       renderQuickActions(summary.available_actions || [], summary.action_groups || []);
-      renderRecommendedActions(recommendCocActions(summary));
+      renderRecommendedActions(summary.recommended_actions || recommendCocActions(summary));
       characters.innerHTML = renderInvestigator(investigator);
       activityTitle.textContent = t("investigationTitle");
       combat.innerHTML = renderCocInvestigationPanel(summary, review);
@@ -2335,7 +2335,7 @@ function clearCampaign() {
       recommendedActions.innerHTML = "<h3>" + escapeHtml(t("recommendedActionsTitle")) + "</h3><div class=\"recommendation-list\">"
         + items.map((item) => {
           return "<div class=\"recommendation\"><div><strong>" + escapeHtml(actionLabel(item.action))
-            + "</strong><p class=\"muted\">" + escapeHtml(item.reason) + "</p></div>"
+            + "</strong><p class=\"muted\">" + escapeHtml(recommendationReason(item.reason, item.reason_detail)) + "</p></div>"
             + "<button type=\"button\" class=\"secondary\" data-action=\"" + escapeHtml(item.action) + "\">"
             + escapeHtml(t("useButton")) + "</button></div>";
         }).join("")
@@ -2349,24 +2349,26 @@ function clearCampaign() {
       const actions = summary.available_actions || [];
       const groups = summary.action_groups || [];
       const recommendations = [];
-      const add = (action, reason) => {
+      const add = (action, reason, reasonDetail = "") => {
         if (!action || recommendations.some((item) => item.action === action)) return;
         if (!actions.includes(action)) return;
-        recommendations.push({ action, reason });
+        const item = { action, reason };
+        if (reasonDetail) item.reason_detail = reasonDetail;
+        recommendations.push(item);
       };
       const grouped = {};
       groups.forEach((group) => {
         grouped[group.label] = group.actions || [];
       });
       firstUsefulActions(grouped.Investigation || actions.filter(isInvestigationAction), 2)
-        .forEach((action) => add(action, t("reasonInvestigation")));
+        .forEach((action) => add(action, "likely_clue"));
       firstUsefulActions(grouped.NPCs || actions.filter(isNpcAction), 1)
-        .forEach((action) => add(action, t("reasonNpc")));
+        .forEach((action) => add(action, "npc_context"));
       firstUsefulActions(grouped.Movement || actions.filter((action) => action.startsWith("go ")), 1)
-        .forEach((action) => add(action, t("reasonMovement")));
-      if (summary.keeper_hint) add("hint", t("reasonKeeperHint") + " " + summary.keeper_hint);
+        .forEach((action) => add(action, "movement"));
+      if (summary.keeper_hint) add("hint", "keeper_hint", summary.keeper_hint);
       firstUsefulActions(grouped.Case || ["progress", "clues", "inventory", "recap"], 1)
-        .forEach((action) => add(action, t("reasonCase")));
+        .forEach((action) => add(action, "orientation"));
       return recommendations.slice(0, 5);
     }
 
@@ -2380,16 +2382,32 @@ function clearCampaign() {
       };
       const combatActions = actions.filter((action) => action.startsWith("attack ") || action.startsWith("cast "));
       firstUsefulActions(combatActions, 2).forEach((action) => {
-        add(action, action.startsWith("cast ") ? t("reasonMagic") : t("reasonCombat"));
+        add(action, action.startsWith("cast ") ? "magic" : "combat");
       });
       firstUsefulActions(actions.filter(isInvestigationAction), 2)
-        .forEach((action) => add(action, t("reasonInvestigation")));
+        .forEach((action) => add(action, "likely_clue"));
       firstUsefulActions(actions.filter(isNpcAction), 1)
-        .forEach((action) => add(action, t("reasonNpc")));
+        .forEach((action) => add(action, "npc_context"));
       firstUsefulActions(actions.filter((action) => action.startsWith("go ")), 1)
-        .forEach((action) => add(action, t("reasonMovement")));
-      ["look", "inspect"].forEach((action) => add(action, t("reasonGeneral")));
+        .forEach((action) => add(action, "movement"));
+      ["look", "inspect"].forEach((action) => add(action, "general"));
       return recommendations.slice(0, 5);
+    }
+
+    function recommendationReason(reason, detail = "") {
+      const labels = {
+        likely_clue: "reasonInvestigation",
+        npc_context: "reasonNpc",
+        movement: "reasonMovement",
+        orientation: "reasonCase",
+        health: "reasonHealth",
+        combat: "reasonCombat",
+        magic: "reasonMagic",
+        general: "reasonGeneral",
+        keeper_hint: "reasonKeeperHint",
+      };
+      const label = t(labels[reason] || "reasonGeneral");
+      return detail ? label + " " + detail : label;
     }
 
     function firstUsefulActions(actions, limit) {

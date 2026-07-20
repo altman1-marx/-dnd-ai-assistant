@@ -184,6 +184,7 @@ def campaign_summary(state: APIState, campaign_id: str) -> dict:
     campaign = _campaign_or_404(state, campaign_id)
     location = campaign.locations.get(campaign.current_location_id or "")
     active_combat = _active_combat_summary(campaign)
+    available_actions = _available_actions(campaign, active_combat)
     return {
         "id": campaign.id,
         "title": campaign.title,
@@ -239,7 +240,8 @@ def campaign_summary(state: APIState, campaign_id: str) -> dict:
         "discovered_clue_count": sum(1 for clue in campaign.clues.values() if clue.discovered),
         "session_event_count": len(campaign.session_log),
         "active_combat": active_combat,
-        "available_actions": _available_actions(campaign, active_combat),
+        "available_actions": available_actions,
+        "recommended_actions": _recommend_dnd_actions(available_actions),
         "recent_events": [_event_message(event) for event in campaign.session_log[-10:]],
     }
 
@@ -327,6 +329,9 @@ def coc_summary(state: APIState, scenario_id: str) -> dict:
     partial = [
         clue for clue in scenario.clues if clue.partial_discovered and not clue.discovered
     ]
+    available_actions = _coc_available_actions(scenario)
+    action_groups = _coc_action_groups_from_actions(available_actions)
+    keeper_hint = coc_keeper_hint(scenario)
     return {
         "id": scenario.id,
         "title": scenario.title,
@@ -352,7 +357,7 @@ def coc_summary(state: APIState, scenario_id: str) -> dict:
         "completed": scenario.completed,
         "completion_requirements": {key: list(value) for key, value in scenario.completion_requirements.items()},
         "completion_progress": _coc_completion_progress(scenario),
-        "keeper_hint": coc_keeper_hint(scenario),
+        "keeper_hint": keeper_hint,
         "inventory": list(scenario.inventory),
         "investigator": {
             "name": investigator.name,
@@ -384,8 +389,9 @@ def coc_summary(state: APIState, scenario_id: str) -> dict:
             }
             for clue in partial
         ],
-        "available_actions": _coc_available_actions(scenario),
-        "action_groups": _coc_action_groups(scenario),
+        "available_actions": available_actions,
+        "action_groups": action_groups,
+        "recommended_actions": _recommend_coc_actions(available_actions, action_groups, keeper_hint),
         "session_event_count": len(scenario.session_log),
         "recent_events": list(scenario.session_log[-20:]),
     }
@@ -910,6 +916,30 @@ def _available_actions(campaign: Campaign, active_combat: dict | None) -> list[s
     return list(dict.fromkeys(actions))
 
 
+def _recommend_dnd_actions(available_actions: list[str]) -> list[dict]:
+    recommendations: list[dict] = []
+
+    def add(action: str, reason: str) -> None:
+        _add_recommendation(recommendations, available_actions, action, reason)
+
+    combat_actions = [
+        action
+        for action in available_actions
+        if action.startswith("attack ") or action.startswith("cast ")
+    ]
+    for action in _first_useful_actions(combat_actions, 2):
+        add(action, "magic" if action.startswith("cast ") else "combat")
+    for action in _first_useful_actions([action for action in available_actions if _is_investigation_action(action)], 2):
+        add(action, "likely_clue")
+    for action in _first_useful_actions([action for action in available_actions if _is_npc_action(action)], 1):
+        add(action, "npc_context")
+    for action in _first_useful_actions([action for action in available_actions if action.startswith("go ")], 1):
+        add(action, "movement")
+    for action in ("look", "inspect"):
+        add(action, "general")
+    return recommendations[:5]
+
+
 def _coc_completion_counts(scenario: COCScenario) -> dict:
     progress = _coc_completion_progress(scenario)
     required = sum(len(group["required"]) for group in progress.values())
@@ -958,8 +988,12 @@ def _coc_player_actions(scenario: COCScenario) -> list[str]:
 
 
 def _coc_action_groups(scenario: COCScenario) -> list[dict]:
+    return _coc_action_groups_from_actions(_coc_available_actions(scenario))
+
+
+def _coc_action_groups_from_actions(actions: list[str]) -> list[dict]:
     grouped: dict[str, list[str]] = {}
-    for action in _coc_available_actions(scenario):
+    for action in actions:
         label = _coc_action_group_label(action)
         grouped.setdefault(label, []).append(action)
     order = ["Case", "Movement", "Investigation", "NPCs", "Skills", "Health", "Notes", "Keeper"]
@@ -1044,6 +1078,77 @@ def _coc_available_actions(scenario: COCScenario) -> list[str]:
             actions.append(f"spend luck {clue.title.lower()}")
             actions.append(f"spend luck {clue.id.replace('_', ' ')}")
     return list(dict.fromkeys(actions))
+
+
+def _recommend_coc_actions(available_actions: list[str], action_groups: list[dict], keeper_hint: str) -> list[dict]:
+    recommendations: list[dict] = []
+
+    def add(action: str, reason: str, reason_detail: str = "") -> None:
+        _add_recommendation(recommendations, available_actions, action, reason, reason_detail)
+
+    grouped = {
+        str(group.get("label")): list(group.get("actions") or [])
+        for group in action_groups
+    }
+    for action in _first_useful_actions(grouped.get("Investigation", []), 2):
+        add(action, "likely_clue")
+    for action in _first_useful_actions(grouped.get("NPCs", []), 1):
+        add(action, "npc_context")
+    for action in _first_useful_actions(grouped.get("Movement", []), 1):
+        add(action, "movement")
+    if keeper_hint:
+        add("hint", "keeper_hint", keeper_hint)
+    for action in _first_useful_actions(grouped.get("Case", []), 1):
+        add(action, "orientation")
+    return recommendations[:5]
+
+
+def _add_recommendation(
+    recommendations: list[dict],
+    available_actions: list[str],
+    action: str,
+    reason: str,
+    reason_detail: str = "",
+) -> None:
+    if not action or action not in available_actions:
+        return
+    if any(item["action"] == action for item in recommendations):
+        return
+    item = {"action": action, "reason": reason}
+    if reason_detail:
+        item["reason_detail"] = reason_detail
+    recommendations.append(item)
+
+
+def _first_useful_actions(actions: list[str], limit: int) -> list[str]:
+    return [
+        action
+        for action in actions
+        if action
+        and "<text>" not in action
+        and not action.endswith(" bonus")
+        and not action.endswith(" penalty")
+    ][:limit]
+
+
+def _is_investigation_action(action: str) -> bool:
+    return (
+        action.startswith("inspect ")
+        or action.startswith("search ")
+        or action.startswith("read ")
+        or action.startswith("listen ")
+        or action in {"look", "inspect"}
+    )
+
+
+def _is_npc_action(action: str) -> bool:
+    return (
+        action.startswith("talk ")
+        or action.startswith("ask ")
+        or action.startswith("question ")
+        or action.startswith("speak to ")
+        or action.startswith("speak with ")
+    )
 
 
 def _coc_luck_cost(clue) -> int | None:

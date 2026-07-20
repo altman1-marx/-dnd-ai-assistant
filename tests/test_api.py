@@ -146,6 +146,13 @@ class APITests(unittest.TestCase):
         self.assertIn("take damage 1d4", summary["available_actions"])
         self.assertIn("spend luck 5", summary["available_actions"])
         self.assertIn("recover luck 1d10", summary["available_actions"])
+        self.assertIn("recommended_actions", summary)
+        self.assertTrue(summary["recommended_actions"][0]["action"].startswith("inspect "))
+        self.assertEqual(summary["recommended_actions"][0]["reason"], "likely_clue")
+        self.assertIn("hint", [item["action"] for item in summary["recommended_actions"]])
+        self.assertTrue(
+            all(item["action"] in summary["available_actions"] for item in summary["recommended_actions"])
+        )
         action_groups = {group["label"]: group["actions"] for group in summary["action_groups"]}
         self.assertIn("look", action_groups["Case"])
         self.assertIn("go cellar", action_groups["Movement"])
@@ -530,6 +537,12 @@ class APITests(unittest.TestCase):
         self.assertIn("flee", summary["available_actions"])
         self.assertIn("surrender", summary["available_actions"])
         self.assertIn("accept surrender", summary["available_actions"])
+        self.assertIn("recommended_actions", summary)
+        self.assertEqual(summary["recommended_actions"][0]["action"], "cast bless")
+        self.assertEqual(summary["recommended_actions"][0]["reason"], "magic")
+        self.assertTrue(
+            all(item["action"] in summary["available_actions"] for item in summary["recommended_actions"])
+        )
 
     def test_campaign_summary_exposes_monster_action_strategy(self) -> None:
         state = APIState()
